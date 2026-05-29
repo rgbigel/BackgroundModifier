@@ -5,7 +5,17 @@ Profile: default
 Author: Rolf Bercht
 
 This document describes the implementation details of the BackgroundModifier solution.
-It complements the `Requirements.md`, which defines the architectural behavior and invariants.
+It complements the `Req
+<!--
+This document describes how the functional requirements are implemented.
+It must not redefine functional requirements.
+-->
+uirements.md`, which defines the architectural behavior and invariants.
+
+Implementation ownership rule (2026-05-29):
+- Concrete runtime wiring is defined here.
+- This includes file/folder paths, task naming, command invocations, module loading, scheduling, and deployment/install behavior.
+- Requirements-level documents may reference only atom/class contracts, not runtime wiring specifics.
 
 Implementation.md defines coding conventions, module structure, logging behavior, JSON handling, rendering rules, wallpaper application, scheduled task configuration, symlink rules, and error‑handling patterns.
 
@@ -444,3 +454,58 @@ The following function inventory is documented to establish explicit reference c
 - Minor, non-breaking changes increment by `.001` (for example: `5.001`, `5.002`).
 - Redesign-level changes increment by `.100` (for example: `5.100`, `5.200`).
 - Module headers and documentation versions should be kept aligned with the active repository version.
+
+14. Cross-Project Atom Harmonization Snapshot (2026-05-29)
+
+Status:
+- Architecture review completed.
+- Documentation freeze for target structure completed.
+- No implementation refactor executed yet.
+
+14.1 Target Reuse Model
+- Reusable functionality is to be published as globally useful `.psm1` modules.
+- BM is the preferred default source when BM and BEM/INV provide equivalent behavior.
+- BEM and INV atoms are used to close BM gaps, especially in machine-descriptive information.
+
+14.2 Target Module Groups
+- `CoreMachineInfo`
+- `CoreLogging`
+- `CoreValidation`
+- `CoreState`
+- `CoreOps`
+
+14.3 Atom Interface Style (PowerShell)
+- Use PowerShell classes for contract/data shapes and provider boundaries.
+- Service classes remain part of the design and are kept.
+- Class contracts define input/output/error expectations; implementation may remain function-based internally.
+
+14.4 Compatibility Rule Update
+- Canonical timestamp format is unified to `yyyyMMdd_HHmmss` for all logs, run IDs, and file name stamps.
+
+14.5 Source Preference Rules
+- For BEM-related implementation candidates, BM logic may replace BEM logic when BM is functionally better.
+- BEM/INV atoms remain authoritative where BM currently lacks equivalent information extraction depth.
+
+15. Runtime Mapping to End-User Use Cases (2026-05-29)
+
+This section maps implementation/runtime mechanics to the top-level user use cases defined in `Requirements.md`.
+
+15.1 Install and Verify Prerequisites
+- Runtime layout creation, symlink creation, and task registration are implementation-owned.
+- Asset verification and installer validation steps are implementation-owned.
+
+15.2 Collect Startup Identity Snapshot
+- Startup-stage runtime trigger and execution context are implementation-owned.
+- Machine/boot identity collection wiring and state write sequence are implementation-owned.
+
+15.3 Render and Apply Backgrounds at Logon
+- Logon trigger, stage orchestration, render/apply sequence, and registry integration are implementation-owned.
+
+15.4 Diagnose and Verify
+- Logging/transcript paths, verifier routines, and report generation wiring are implementation-owned.
+
+15.5 Update/Repair Safely
+- Idempotent setup/repair and cleanup mechanics are implementation-owned.
+
+Compatibility note:
+- Timestamp format remains `yyyyMMdd_HHmmss` for logs, run IDs, and file-name stamps.
