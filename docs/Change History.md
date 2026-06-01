@@ -251,6 +251,18 @@ Verified changes:
 4. Test run result: `Passed: 59`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_07.txt`.
 
+### 18. Verifier opt-in link validation extension (2026-06-01)
+
+Verified changes:
+
+1. Extended verifier smoke suite:
+   - `Tests/Install/InstallScripts.Smoke.Tests.ps1`
+2. Added success-path coverage for opt-in test entry verification:
+   - `BackgroundInstallationVerifier.ps1` succeeds with `-IncludeTestLinks` when test cmd entry files are present
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 60`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_08.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

@@ -1,0 +1,25 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New verifier opt-in smoke coverage:
+- Tests/Install/InstallScripts.Smoke.Tests.ps1
+  - BackgroundInstallationVerifier succeeds when -IncludeTestLinks is set and test cmd entries are present
+
+Combined results:
+- Total: 60
+- Passed: 60
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Verifier runs are isolated to temporary runtime/cmd roots under %TEMP%.
+- No production cmd/runtime paths are modified by this test.
