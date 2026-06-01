@@ -1,0 +1,20 @@
+BackgroundModifier live setup install attempt
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Command intent:
+- Run Setup.ps1 with -IncludeTestLinks using isolated temp roots
+- Run BackgroundInstallationVerifier.ps1 against same roots
+
+Attempt parameters:
+- RuntimeRoot: C:\Users\rgbig\AppData\Local\Temp\BM_LiveRuntime_10cbbeb833914647afef0e23d8991744
+- CmdRoot: C:\Users\rgbig\AppData\Local\Temp\BM_LiveCmd_d79209cd14ab4f6d94a89d71b2a7c881
+
+Observed results:
+- Setup exited with code 1
+- Error: [ERROR] Administrator rights required.
+- Verifier exited with code 1 (runtime folders not provisioned because setup did not run)
+
+Conclusion:
+- Live install with test supporting links is blocked in this shell because it is not elevated.
+- Next required action: rerun Setup.ps1 in an elevated PowerShell session with the same parameters.

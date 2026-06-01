@@ -378,6 +378,33 @@ Verified changes:
 4. Test run result: `Passed: 70`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_17.txt`.
 
+### 28. Cleanup execution coverage extension (2026-06-01)
+
+Verified changes:
+
+1. Added cleanup execution suite:
+   - `Tests/Install/InstallScripts.Cleanup.Tests.ps1`
+2. Added execution-path and fail-path checks for `Cleanup.ps1`:
+   - normal module-present path executes cleanup commands
+   - module-root-missing path returns exit code 1
+   - `CleanupTools.psm1`-missing path returns exit code 1
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 73`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_18.txt`.
+
+### 29. Live setup install attempt with test links (2026-06-01)
+
+Execution outcome:
+
+1. Attempted live install using isolated temp roots with:
+   - `Setup.ps1 -IncludeTestLinks -CmdRoot <temp> -RuntimeRoot <temp>`
+2. Attempt failed because current shell is not elevated:
+   - setup output: `[ERROR] Administrator rights required.`
+   - setup exit code: `1`
+3. Verifier run after failed setup also returned `1` because expected runtime provisioning had not occurred.
+4. Added attempt report:
+   - `reports/live-install-attempt-20260601_01.txt`
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

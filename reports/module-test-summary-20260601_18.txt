@@ -1,0 +1,27 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New install coverage:
+- Tests/Install/InstallScripts.Cleanup.Tests.ps1
+  - Cleanup.ps1 executes cleanup tools path when module path exists
+  - Cleanup.ps1 returns exit code 1 when module root is missing
+  - Cleanup.ps1 returns exit code 1 when CleanupTools module is missing
+
+Combined results:
+- Total: 73
+- Passed: 73
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Cleanup negative-path checks execute from isolated temporary repo copies.
+- No production install roots are modified by the cleanup tests.
