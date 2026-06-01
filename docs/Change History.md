@@ -205,6 +205,23 @@ Verified changes:
 5. Test run result: `Passed: 45`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 6. Added run summary report: `reports/module-test-summary-20260601_04.txt`.
 
+### 15. Install orchestration contract test wave (2026-06-01)
+
+Verified changes:
+
+1. Added install orchestration contract suite:
+   - `Tests/Install/InstallScripts.Orchestration.Tests.ps1`
+2. Added non-destructive coverage for required install-flow contracts:
+   - setup verifier passthrough contract (`-CmdRoot`, `-RuntimeRoot`, `-IncludeTestLinks`)
+   - setup operational and test cmd entry-point name sets
+   - enable/disable admin and scheduled-task operation markers
+   - enable/disable expected task-name contracts
+   - uninstall safety guard and teardown operation markers
+   - uninstall cmd cleanup list contracts
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 53`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_05.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

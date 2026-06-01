@@ -1,0 +1,31 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New orchestration contract coverage:
+- Tests/Install/InstallScripts.Orchestration.Tests.ps1
+  - Setup: verifier invocation includes CmdRoot/RuntimeRoot/IncludeTestLinks passthrough
+  - Setup: operational cmd entry-point names present
+  - Setup: test cmd entry-point names present
+  - Disable/Enable: Require-Admin and scheduled-task operation markers present
+  - Disable/Enable: expected task names present
+  - Uninstall: runtime-root safety guard and teardown call markers present
+  - Uninstall: operational + test cmd cleanup entry names present
+
+Combined results:
+- Total: 53
+- Passed: 53
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Contract tests are non-destructive text/contract checks.
+- Existing install smoke verifier run remains isolated to temporary runtime/cmd roots.
