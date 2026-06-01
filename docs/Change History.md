@@ -329,6 +329,18 @@ Verified changes:
 4. Test run result: `Passed: 66`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_13.txt`.
 
+### 24. Enable failure-handling execution extension (2026-06-01)
+
+Verified changes:
+
+1. Extended mocked execution suite:
+   - `Tests/Install/InstallScripts.Execution.Tests.ps1`
+2. Added error-path behavior check for task enable operation:
+   - `Enable.ps1` continues processing remaining tasks when one `Enable-ScheduledTask` call fails
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 67`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_14.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
