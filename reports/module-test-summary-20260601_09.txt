@@ -1,0 +1,26 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New verifier negative-path smoke coverage:
+- Tests/Install/InstallScripts.Smoke.Tests.ps1
+  - BackgroundInstallationVerifier fails with -IncludeTestLinks when a required test cmd entry is missing
+  - Exit-path behavior validated in a child PowerShell process to avoid terminating the Pester host
+
+Combined results:
+- Total: 61
+- Passed: 61
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Verification runs use temporary runtime/cmd roots under %TEMP%.
+- No production runtime or cmd links are modified.

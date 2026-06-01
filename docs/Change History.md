@@ -263,6 +263,19 @@ Verified changes:
 4. Test run result: `Passed: 60`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_08.txt`.
 
+### 19. Verifier opt-in negative-path extension (2026-06-01)
+
+Verified changes:
+
+1. Extended verifier smoke suite:
+   - `Tests/Install/InstallScripts.Smoke.Tests.ps1`
+2. Added failure-path coverage for opt-in test entry verification:
+   - `BackgroundInstallationVerifier.ps1` returns failure when `-IncludeTestLinks` is set and at least one required test cmd entry is missing
+3. Implemented failure-path validation via child PowerShell process to safely assert exit behavior.
+4. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+5. Test run result: `Passed: 61`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+6. Added run summary report: `reports/module-test-summary-20260601_09.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
