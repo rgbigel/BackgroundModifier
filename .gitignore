@@ -1,0 +1,73 @@
+# ============================
+# Background4Logon+Desktop v4
+# Git Ignore Specification
+# ============================
+
+# ----------------------------
+# Runtime artifacts (never commit)
+# ----------------------------
+Runtime/Logs/
+Runtime/State/
+Runtime/Symlinks/
+Runtime/*.log
+Runtime/*.json
+
+# Installed version file (machine-specific)
+Runtime/InstalledVersion-Background4Logon+Desktop.txt
+
+# ----------------------------
+# Output artifacts (generated)
+# ----------------------------
+Output/
+Output/**
+
+# ----------------------------
+# ESP Reader temporary files
+# ----------------------------
+Install/BackgroundESPreader/*.tmp
+Install/BackgroundESPreader/*.log
+
+# ----------------------------
+# PowerShell cache / temp
+# ----------------------------
+*.ps1xml
+*.cache
+*.psd1.tmp
+*.psm1.tmp
+
+# ----------------------------
+# VS Code workspace files
+# ----------------------------
+.vscode/
+*.code-workspace
+
+# ----------------------------
+# OS / OneDrive noise
+# ----------------------------
+Thumbs.db
+desktop.ini
+*.lnk
+~$*
+*.tmp
+
+# ----------------------------
+# OneDrive sync metadata
+# ----------------------------
+*.lnk
+*.ini
+*.tmp
+*.DS_Store
+
+# ----------------------------
+# Git internal safety
+# ----------------------------
+.git/
+
+# Prevent accidental project-root files/folders that shadow git internals
+/HEAD
+/config
+/description
+/index
+/info/
+/objects/
+/refs/
