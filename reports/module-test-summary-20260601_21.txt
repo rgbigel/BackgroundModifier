@@ -1,0 +1,20 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+Context:
+- BootIdentity ESP detection aligned to BootEntryManager tactic (Get-Partition + GPT EFI type + Get-Volume correlation).
+
+Combined results:
+- Total: 74
+- Passed: 74
+- Failed: 0
+- Skipped: 0
+- Pending: 0

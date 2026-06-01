@@ -463,6 +463,28 @@ Execution outcome:
    - `reports/live-phase3-prelogon-20260601_01.txt`
    - `reports/module-test-summary-20260601_20.txt`
 
+### 33. BootIdentity ESP detection alignment with BootEntryManager tactic (2026-06-01)
+
+Verified changes:
+
+1. Replaced BootIdentity DiskPart text parsing path with partition-object detection strategy used in BootEntryManager:
+   - enumerate EFI partitions by GPT type `{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}` via `Get-Partition`
+   - resolve corresponding volume metadata via `Get-Volume`
+2. Extended ESP state payload for each detected partition with deterministic fields:
+   - `PartitionType`, `IsSystem`, `IsBoot`, `VolumeLabel`, `DriveLetter`, `FileSystemType`
+3. Updated active ESP selection rule:
+   - prefer entry with `IsSystem = true`
+   - fallback to first EFI partition in sorted order
+4. Updated boot loader path recording from BCD current entry to `device + path` composition.
+5. Live Phase 3 re-run confirmed populated ESP data in runtime state:
+   - `C:\BackgroundMotives\system\State.json` now contains multiple EFI entries under `ESP.All`
+   - `ESP.Active` resolved to current system EFI partition (`Disk 0`, `Partition 1`, label `D0-ESP`)
+6. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+7. Test run result: `Passed: 74`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+8. Added reports:
+   - `reports/live-phase3-prelogon-20260601_02.txt`
+   - `reports/module-test-summary-20260601_21.txt`
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

@@ -73,90 +73,45 @@ try {
     Write-Log -Path $Log -Message "Collected OS and System identity."
 
     # =============================================================================================
-    #  DISKPART ESP ENUMERATION  (A1 + Variant 1)
+    #  EFI PARTITION ENUMERATION  (BootEntryManager tactic)
     # =============================================================================================
 
-    function Invoke-Diskpart {
-        param([string[]]$Lines)
+    $efiGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
+    $efiPartitionsRaw = Get-Partition -ErrorAction Stop |
+        Where-Object { $_.GptType -eq $efiGuid } |
+        Sort-Object DiskNumber, PartitionNumber
 
-        $script = $Lines -join "`r`n"
-        $bytes  = [System.Text.Encoding]::ASCII.GetBytes($script)
-        $ms     = New-Object System.IO.MemoryStream
-        $ms.Write($bytes,0,$bytes.Length)
-        $ms.Position = 0
-
-        return (diskpart /s - $ms | Out-String)
-    }
-
-    # --- Step 1: list disk
-    $DiskList = Invoke-Diskpart @("list disk")
-    $DiskNumbers = @(
-        [regex]::Matches($DiskList, "Disk\s+(\d+)") |
-        ForEach-Object { $_.Groups[1].Value }
-    ) | Select-Object -Unique
-
-    $Partitions = @()
-
-    foreach ($d in $DiskNumbers) {
-
-        $out = Invoke-Diskpart @(
-            "list disk"
-            "select disk $d"
-            "list partition"
-        )
-
-        foreach ($line in ($out -split "`r?`n")) {
-            if ($line -match "^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.+)$") {
-                $Partitions += [ordered]@{
-                    DiskNumber        = [int]$d
-                    PartitionNumber   = [int]$Matches[1]
-                    PartitionTypeGuid = $Matches[5].Trim()
-                }
-            }
-        }
-    }
-
-    # --- Step 2: list volume
-    $VolOut = Invoke-Diskpart @("list volume")
-    $Volumes = @()
-
-    foreach ($line in ($VolOut -split "`r?`n")) {
-        if ($line -match "^\s*(\d+)\s+([A-Z]?)\s+(\S*)\s+(.+?)\s+(\d+)\s+(\d+)\s*$") {
-            $Volumes += [ordered]@{
-                VolumeNumber    = [int]$Matches[1]
-                DriveLetter     = $Matches[2]
-                Label           = $Matches[3]
-                DiskNumber      = [int]$Matches[5]
-                PartitionNumber = [int]$Matches[6]
-            }
-        }
-    }
-
-    # --- Step 3: correlate EFI partitions
     $EfiPartitions = @()
 
-    foreach ($p in $Partitions) {
-        if ($p.PartitionTypeGuid -match "EFI") {
+    foreach ($partition in $efiPartitionsRaw) {
+        $volume = $null
+        try {
+            $volume = $partition | Get-Volume -ErrorAction Stop
+        }
+        catch {
+            $volume = $null
+        }
 
-            $v = $Volumes | Where-Object {
-                $_.DiskNumber -eq $p.DiskNumber -and
-                $_.PartitionNumber -eq $p.PartitionNumber
-            }
-
-            $EfiPartitions += [ordered]@{
-                DiskNumber        = $p.DiskNumber
-                PartitionNumber   = $p.PartitionNumber
-                PartitionTypeGuid = $p.PartitionTypeGuid
-                VolumeLabel       = $v.Label
-                DriveLetter       = $v.DriveLetter
-            }
+        $EfiPartitions += [ordered]@{
+            DiskNumber        = $partition.DiskNumber
+            PartitionNumber   = $partition.PartitionNumber
+            PartitionTypeGuid = $partition.GptType
+            PartitionType     = $partition.Type
+            IsSystem          = [bool]$partition.IsSystem
+            IsBoot            = [bool]$partition.IsBoot
+            VolumeLabel       = if ($volume) { [string]$volume.FileSystemLabel } else { $null }
+            DriveLetter       = if ($volume -and $volume.DriveLetter) { [string]$volume.DriveLetter } else { $null }
+            FileSystemType    = if ($volume) { [string]$volume.FileSystemType } else { $null }
         }
     }
 
     Write-Log -Path $Log -Message "Enumerated and correlated EFI partitions."
 
-    # --- Step 4: determine active ESP
-    $ActiveEsp = $EfiPartitions | Where-Object { $_.VolumeLabel -eq "System" } | Select-Object -First 1
+    # --- Determine active ESP from partition metadata.
+    $ActiveEsp = $EfiPartitions | Where-Object { $_.IsSystem } | Select-Object -First 1
+    if (-not $ActiveEsp) {
+        $ActiveEsp = $EfiPartitions | Select-Object -First 1
+    }
 
     if (-not $ActiveEsp) {
         Write-Log -Path $Log -Message "No active ESP with label 'System' found." -Level "ERROR"
@@ -168,20 +123,13 @@ try {
 
     $Bcd = bcdedit /enum "{current}" | Out-String
 
-    $Device = ($Bcd -split "`r?`n" | Select-String "device").ToString().Split()[-1]
-    $Path   = ($Bcd -split "`r?`n" | Select-String "path").ToString().Split()[-1]
+    $Device = ($Bcd -split "`r?`n" | Select-String "^\s*device\s+").ToString().Split()[-1]
+    $Path   = ($Bcd -split "`r?`n" | Select-String "^\s*path\s+").ToString().Split()[-1]
 
     $BootLoaderPath = $null
 
-    if ($ActiveEsp -and $Path) {
-
-        $root = if ($ActiveEsp.DriveLetter) {
-            "$($ActiveEsp.DriveLetter):\"
-        } else {
-            "\"
-        }
-
-        $BootLoaderPath = Join-Path $root $Path.TrimStart("\")
+    if ($Device -and $Path) {
+        $BootLoaderPath = "$Device$Path"
         Write-Log -Path $Log -Message "Resolved bootloader path: $BootLoaderPath"
     }
     else {

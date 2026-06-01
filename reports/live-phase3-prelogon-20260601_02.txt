@@ -1,0 +1,23 @@
+BackgroundModifier live phase test
+Date: 2026-06-01
+Phase: 3 (Runtime Stage A - Pre-Logon)
+Branch: backup/local-snapshot-20260601_140543
+
+Issue investigated:
+- State.json ESP fields were null after BootIdentity run.
+
+Root cause in previous implementation:
+- DiskPart text parsing assumed fields that did not match host output shape.
+- Active ESP selection relied on volume label == "System".
+
+Tactic adopted from BootEntryManager:
+- Enumerate EFI partitions by GPT type {C12A7328-F81F-11D2-BA4B-00A0C93EC93B} using Get-Partition.
+- Correlate each partition with Get-Volume for label/filesystem metadata.
+- Select active ESP by IsSystem=true fallback first-entry ordering.
+
+Validation result:
+- BootIdentity cmd entry run exit code: 0
+- State file updated: C:\BackgroundMotives\system\State.json
+- ESP.All now includes detected EFI partitions.
+- ESP.Active now resolves to Disk 0 / Partition 1 with label D0-ESP.
+- BootLoaderPath recorded from BCD current entry: partition=C:\WINDOWS\system32\winload.efi
