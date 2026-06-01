@@ -190,6 +190,21 @@ Verified changes:
 3. Test run result: `Passed: 40`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 4. Added run summary report: `reports/module-test-summary-20260601_03.txt`.
 
+### 14. Install script smoke test wave (2026-06-01)
+
+Verified changes:
+
+1. Added install smoke suite:
+   - `Tests/Install/InstallScripts.Smoke.Tests.ps1`
+2. Added coverage for install-script parser validation and install contract checks:
+   - `Setup.ps1` and `BackgroundInstallationVerifier.ps1` include `IncludeTestLinks`
+   - `Uninstall.ps1` includes runtime-root protection guard marker
+3. Added isolated verification execution check:
+   - `BackgroundInstallationVerifier.ps1` executes successfully against temporary runtime and cmd roots
+4. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+5. Test run result: `Passed: 45`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+6. Added run summary report: `reports/module-test-summary-20260601_04.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

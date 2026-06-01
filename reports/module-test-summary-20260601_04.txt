@@ -1,0 +1,28 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New install smoke coverage:
+- Tests/Install/InstallScripts.Smoke.Tests.ps1
+  - Parse/syntax smoke checks for install scripts
+  - Parameter contract checks for IncludeTestLinks in setup/verifier
+  - Runtime-root safety-guard marker check in uninstall
+  - Isolated BackgroundInstallationVerifier execution against temporary runtime/cmd roots
+
+Combined results:
+- Total: 45
+- Passed: 45
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Install smoke suite does not run Setup/Cleanup/Enable/Disable/Uninstall side effects.
+- Verifier execution uses temporary test-only roots under %TEMP%.
