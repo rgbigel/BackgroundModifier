@@ -2,8 +2,9 @@
 #  Module:      BootIdentity.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-#  Version:     5.000
+#  Version:     6.0.1
 #  Changelog:
+#      6.0.1  --------  Delegated ESP/BCD identity determination to BootTools atom module.
 #      5.000  --------  Introduced BCD--------based bootloader--------path resolution; restored Diskpart A1/Variant-------1;
 #                 added full ESP correlation rules; added BootLoaderPath to State.json.
 #      4.004  --------  Refined ESP label handling; removed temp--------file Diskpart capture; pipeline only.
@@ -29,6 +30,7 @@ $ModuleRoot = Join-Path $RepoRootResolved "Modules"
 Import-Module (Join-Path $ModuleRoot "LoggingTools.psm1")
 Import-Module (Join-Path $ModuleRoot "ConfigTools.psm1")
 Import-Module (Join-Path $ModuleRoot "TimeTools.psm1")
+Import-Module (Join-Path $ModuleRoot "BootTools.psm1")
 Import-Module (Join-Path $ModuleRoot "BackgroundStateMgr.psm1")
 Import-Module (Join-Path $ModuleRoot "SystemTools.psm1")
 Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1")
@@ -73,64 +75,23 @@ try {
     Write-Log -Path $Log -Message "Collected OS and System identity."
 
     # =============================================================================================
-    #  EFI PARTITION ENUMERATION  (BootEntryManager tactic)
+    #  ESP/BCD IDENTITY SNAPSHOT
     # =============================================================================================
 
-    $efiGuid = "{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}"
-    $efiPartitionsRaw = Get-Partition -ErrorAction Stop |
-        Where-Object { $_.GptType -eq $efiGuid } |
-        Sort-Object DiskNumber, PartitionNumber
-
-    $EfiPartitions = @()
-
-    foreach ($partition in $efiPartitionsRaw) {
-        $volume = $null
-        try {
-            $volume = $partition | Get-Volume -ErrorAction Stop
-        }
-        catch {
-            $volume = $null
-        }
-
-        $EfiPartitions += [ordered]@{
-            DiskNumber        = $partition.DiskNumber
-            PartitionNumber   = $partition.PartitionNumber
-            PartitionTypeGuid = $partition.GptType
-            PartitionType     = $partition.Type
-            IsSystem          = [bool]$partition.IsSystem
-            IsBoot            = [bool]$partition.IsBoot
-            VolumeLabel       = if ($volume) { [string]$volume.FileSystemLabel } else { $null }
-            DriveLetter       = if ($volume -and $volume.DriveLetter) { [string]$volume.DriveLetter } else { $null }
-            FileSystemType    = if ($volume) { [string]$volume.FileSystemType } else { $null }
-        }
+    $espSnapshot = Get-EspIdentitySnapshot
+    if (-not $espSnapshot.All -or $espSnapshot.All.Count -eq 0) {
+        Write-Log -Path $Log -Message "No EFI partitions detected." -Level "ERROR"
+    }
+    else {
+        Write-Log -Path $Log -Message "Enumerated and correlated EFI partitions."
     }
 
-    Write-Log -Path $Log -Message "Enumerated and correlated EFI partitions."
-
-    # --- Determine active ESP from partition metadata.
-    $ActiveEsp = $EfiPartitions | Where-Object { $_.IsSystem } | Select-Object -First 1
-    if (-not $ActiveEsp) {
-        $ActiveEsp = $EfiPartitions | Select-Object -First 1
+    if (-not $espSnapshot.Active.DiskNumber) {
+        Write-Log -Path $Log -Message "No active ESP was selected." -Level "ERROR"
     }
 
-    if (-not $ActiveEsp) {
-        Write-Log -Path $Log -Message "No active ESP with label 'System' found." -Level "ERROR"
-    }
-
-    # =============================================================================================
-    #  BCD BOOTLOADER PATH RESOLUTION
-    # =============================================================================================
-
-    $Bcd = bcdedit /enum "{current}" | Out-String
-
-    $Device = ($Bcd -split "`r?`n" | Select-String "^\s*device\s+").ToString().Split()[-1]
-    $Path   = ($Bcd -split "`r?`n" | Select-String "^\s*path\s+").ToString().Split()[-1]
-
-    $BootLoaderPath = $null
-
-    if ($Device -and $Path) {
-        $BootLoaderPath = "$Device$Path"
-        Write-Log -Path $Log -Message "Resolved bootloader path: $BootLoaderPath"
+    if ($espSnapshot.Active.BootLoaderPath) {
+        Write-Log -Path $Log -Message "Resolved bootloader path: $($espSnapshot.Active.BootLoaderPath)"
     }
     else {
         Write-Log -Path $Log -Message "Could not resolve bootloader path." -Level "ERROR"
@@ -140,31 +101,10 @@ try {
     #  WRITE STATE.JSON
     # =============================================================================================
 
-    $ActiveEspState = [ordered]@{
-        DiskNumber      = $null
-        PartitionNumber = $null
-        VolumeLabel     = $null
-        DriveLetter     = $null
-        BootLoaderPath  = $BootLoaderPath
-    }
-
-    if ($ActiveEsp) {
-        $ActiveEspState = [ordered]@{
-            DiskNumber      = $ActiveEsp.DiskNumber
-            PartitionNumber = $ActiveEsp.PartitionNumber
-            VolumeLabel     = $ActiveEsp.VolumeLabel
-            DriveLetter     = $ActiveEsp.DriveLetter
-            BootLoaderPath  = $BootLoaderPath
-        }
-    }
-
     $State = [ordered]@{
         OS      = $OsInfo
         System  = $SystemInfo
-        ESP     = [ordered]@{
-            All    = $EfiPartitions
-            Active = $ActiveEspState
-        }
+        ESP     = $espSnapshot
     }
 
     $statePath = Join-Path $SystemRoot "State.json"

@@ -485,6 +485,29 @@ Verified changes:
    - `reports/live-phase3-prelogon-20260601_02.txt`
    - `reports/module-test-summary-20260601_21.txt`
 
+### 34. ESP/BCD functionality isolated as BootTools atom module (2026-06-01)
+
+Verified changes:
+
+1. Implemented `Modules/BootTools.psm1` as the dedicated ESP/BCD atom with reusable functions:
+   - `Get-EspPartitions`
+   - `Get-ActiveEspPartition`
+   - `Get-BootLoaderPathFromCurrentBcd`
+   - `Get-EspIdentitySnapshot`
+2. Refactored `Source/BootIdentity.ps1` to consume BootTools snapshot output instead of in-script ESP/BCD logic.
+3. Added dedicated module tests:
+   - `Tests/Modules/BootTools.Tests.ps1`
+4. Updated implementation documentation to align with the atomized design:
+   - `Docs/Implementation.md`
+5. Live Phase 3 pre-logon validation remains successful after atom extraction:
+   - `D:\OneDrive\cmd\BackgroundModifier-BootIdentityTest.ps1` exit code `0`
+   - `C:\BackgroundMotives\system\State.json` retains populated ESP fields
+6. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+7. Test run result: `Passed: 80`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+8. Added reports:
+   - `reports/live-phase3-prelogon-20260601_03.txt`
+   - `reports/module-test-summary-20260601_22.txt`
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

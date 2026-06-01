@@ -1,0 +1,21 @@
+BackgroundModifier live phase test
+Date: 2026-06-01
+Phase: 3 (Runtime Stage A - Pre-Logon)
+Branch: backup/local-snapshot-20260601_140543
+
+Refactor objective:
+- Isolate ESP/BCD identity determination as a reusable atom module.
+
+Applied design:
+- Implemented BootTools.psm1 with:
+  - Get-EspPartitions
+  - Get-ActiveEspPartition
+  - Get-BootLoaderPathFromCurrentBcd
+  - Get-EspIdentitySnapshot
+- BootIdentity.ps1 now composes state using BootTools snapshot output.
+
+Validation:
+- Live cmd entry run: D:\OneDrive\cmd\BackgroundModifier-BootIdentityTest.ps1
+- Process exit code: 0
+- State file: C:\BackgroundMotives\system\State.json updated successfully
+- ESP fields remain populated (multiple EFI partitions + active ESP)
