@@ -289,6 +289,20 @@ Verified changes:
 5. Test run result: `Passed: 62`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 6. Added run summary report: `reports/module-test-summary-20260601_10.txt`.
 
+### 21. Uninstall cleanup-path mocked execution extension (2026-06-01)
+
+Verified changes:
+
+1. Extended mocked execution suite:
+   - `Tests/Install/InstallScripts.Execution.Tests.ps1`
+2. Added uninstall cleanup-path behavior checks in default mode:
+   - existing cmd entry points are removed when present
+   - existing runtime links under `SolutionCode` are removed when present
+   - runtime data remains retained without `-RemoveRuntimeData`
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 63`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_11.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

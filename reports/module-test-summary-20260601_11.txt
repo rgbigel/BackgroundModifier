@@ -1,0 +1,27 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New uninstall cleanup-path mocked execution coverage:
+- Tests/Install/InstallScripts.Execution.Tests.ps1
+  - Uninstall.ps1 removes existing cmd entries in default mode
+  - Uninstall.ps1 removes existing runtime links in default mode
+  - Runtime data remains retained when RemoveRuntimeData is not set
+
+Combined results:
+- Total: 63
+- Passed: 63
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- All uninstall-sensitive operations are mocked in this execution test.
+- No real cmd/runtime deletions are performed.
