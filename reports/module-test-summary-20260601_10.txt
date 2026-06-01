@@ -1,0 +1,26 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New verifier asset failure-path smoke coverage:
+- Tests/Install/InstallScripts.Smoke.Tests.ps1
+  - BackgroundInstallationVerifier fails when a required base asset is missing
+  - Exit-path behavior validated via child PowerShell process
+
+Combined results:
+- Total: 62
+- Passed: 62
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Verification runs use temporary runtime/cmd roots under %TEMP%.
+- No production runtime or cmd links are modified.
