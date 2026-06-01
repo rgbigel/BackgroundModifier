@@ -237,6 +237,20 @@ Verified changes:
 4. Test run result: `Passed: 57`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_06.txt`.
 
+### 17. Uninstall mocked execution extension (2026-06-01)
+
+Verified changes:
+
+1. Extended mocked execution suite:
+   - `Tests/Install/InstallScripts.Execution.Tests.ps1`
+2. Added side-effect-free uninstall behavior checks:
+   - default uninstall path keeps runtime data when `-RemoveRuntimeData` is not provided
+   - uninstall executes teardown operations (`Unregister-ScheduledTask` and `Remove-NoBlur`)
+   - explicit `-RemoveRuntimeData` path removes runtime root only when it exists
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 59`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_07.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

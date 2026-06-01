@@ -1,0 +1,27 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New mocked uninstall execution coverage:
+- Tests/Install/InstallScripts.Execution.Tests.ps1
+  - Uninstall.ps1 default behavior keeps runtime data when RemoveRuntimeData is not set
+  - Uninstall.ps1 calls teardown operations (task unregister + no-blur removal)
+  - Uninstall.ps1 removes runtime root only when RemoveRuntimeData is set and root exists
+
+Combined results:
+- Total: 59
+- Passed: 59
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Privileged and destructive operations are mocked.
+- No real runtime-root deletion or scheduled-task mutation is performed by these tests.

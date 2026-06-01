@@ -83,4 +83,51 @@ Describe "Install script mocked execution" {
             Assert-MockCalled Enable-ScheduledTask -ParameterFilter { $TaskName -eq "BackgroundModifier-BootIdentity" } -Exactly 1 -Scope It
         }
     }
+
+    Context "Uninstall.ps1" {
+        It "runs teardown calls and keeps runtime data by default" {
+            $scriptPath = Join-Path $installRoot "Uninstall.ps1"
+            $runtimeRoot = Join-Path $env:TEMP ("BM_UninstallRuntime_" + [guid]::NewGuid().ToString("N"))
+            $cmdRoot = Join-Path $env:TEMP ("BM_UninstallCmd_" + [guid]::NewGuid().ToString("N"))
+
+            Mock Import-Module {}
+            Mock Set-Flags { [pscustomobject]@{ DebugMode = $false; TraceMode = $false } }
+            Mock Require-Admin {}
+            Mock Unregister-ScheduledTask {}
+            Mock Remove-NoBlur {}
+            Mock Test-Path { $false }
+            Mock Remove-Item {}
+            Mock Get-ChildItem { @() }
+
+            { & $scriptPath -RuntimeRoot $runtimeRoot -CmdRoot $cmdRoot } | Should Not Throw
+
+            Assert-MockCalled Require-Admin -Exactly 1 -Scope It
+            Assert-MockCalled Unregister-ScheduledTask -Exactly 2 -Scope It
+            Assert-MockCalled Remove-NoBlur -Exactly 1 -Scope It
+            Assert-MockCalled Remove-Item -Exactly 0 -Scope It
+        }
+
+        It "removes runtime root when RemoveRuntimeData is set and root exists" {
+            $scriptPath = Join-Path $installRoot "Uninstall.ps1"
+            $runtimeRoot = Join-Path $env:TEMP ("BM_UninstallRuntime_" + [guid]::NewGuid().ToString("N"))
+            $cmdRoot = Join-Path $env:TEMP ("BM_UninstallCmd_" + [guid]::NewGuid().ToString("N"))
+
+            Mock Import-Module {}
+            Mock Set-Flags { [pscustomobject]@{ DebugMode = $false; TraceMode = $false } }
+            Mock Require-Admin {}
+            Mock Unregister-ScheduledTask {}
+            Mock Remove-NoBlur {}
+            Mock Test-Path {
+                if ($LiteralPath -eq $runtimeRoot) { return $true }
+                return $false
+            }
+            Mock Remove-Item {}
+            Mock Get-ChildItem { @() }
+
+            { & $scriptPath -RuntimeRoot $runtimeRoot -CmdRoot $cmdRoot -RemoveRuntimeData } | Should Not Throw
+
+            Assert-MockCalled Remove-Item -Exactly 1 -Scope It
+            Assert-MockCalled Remove-Item -ParameterFilter { $LiteralPath -eq $runtimeRoot -and $Recurse -and $Force } -Exactly 1 -Scope It
+        }
+    }
 }
