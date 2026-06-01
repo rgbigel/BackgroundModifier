@@ -1,0 +1,34 @@
+BackgroundModifier OS single-line fit and Build row validation
+Date: 2026-06-01
+
+Scope:
+- Fit OS value on a single line when it physically fits panel width.
+- Add Build row directly below OS row.
+
+Code updates:
+- Modules/RenderTools.psm1
+  - Switched from conservative fixed-width character estimate to average measured character width for table width capacity.
+  - Added pixel-aware per-row chunk fitting using MeasureString before wrapping.
+  - Result: avoids premature wrapping and keeps near-fit OS values on one line.
+- Source/BackgroundRenderer.ps1
+  - Added Build row immediately below OS.
+  - Build value source priority:
+    - HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion (CurrentBuildNumber + UBR)
+    - State.json OS.BuildNumber fallback
+    - Environment build fallback
+
+Validation:
+- Tests/Modules/RenderTools.Tests.ps1
+  - Passed: 3
+  - Failed: 0
+- Live render command:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+  - Exit code: 0
+
+Visual confirmation from rendered Desktop.jpg:
+- OS line shown on one row.
+- Build row present directly under OS.
+- Example shown: Build | 29595.1000
+
+Notes:
+- Accent color behavior retained and unchanged.

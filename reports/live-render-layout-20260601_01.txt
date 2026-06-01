@@ -1,0 +1,25 @@
+BackgroundModifier live render layout test
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Requested visual changes:
+- Move overlay text panel to right-hand side
+- Double text size
+
+Applied changes:
+- Modules/RenderTools.psm1
+  - panel X anchored to right side
+  - title font increased from 28 to 56
+  - body font increased from 18 to 36
+  - line spacing increased for readability
+
+Validation:
+- Tests/Modules/RenderTools.Tests.ps1: Passed 3, Failed 0
+- D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t: exit code 0
+- Updated rendered outputs:
+  - C:\BackgroundMotives\rendered\Logon.jpg
+  - C:\BackgroundMotives\rendered\Desktop.jpg
+
+ESP drive-letter observation:
+- Current EFI partitions on this host have blank DriveLetter and GUID volume access paths.
+- This is compatible with current.json/State.json storing blank DriveLetter.

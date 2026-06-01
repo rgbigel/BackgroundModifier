@@ -1,13 +1,13 @@
-## Requirements.md (review stage)
+﻿## Requirements.md (review stage)
 
-Version: 6.0.0 (Consolidated)  
+$16.0.0 (Consolidated)  
 Runtime Profile: `default`  
 Author: Rolf Bercht  
 
-> “BackgroundModifier is a PowerShell‑based solution that generates background images for both the Windows logon screen and the desktop.”  
+> â€œBackgroundModifier is a PowerShellâ€‘based solution that generates background images for both the Windows logon screen and the desktop.â€  
 > 
 
-> “The solution follows the implementation methods, styles, and rules defined in the Implementation document, where these support fulfilling the functional requirements.”
+> â€œThe solution follows the implementation methods, styles, and rules defined in the Implementation document, where these support fulfilling the functional requirements.â€
 
 
 ---
@@ -15,7 +15,7 @@ Author: Rolf Bercht
 ## 1. Requirements and Scope
 
 **Primary goal of the Requirements of the Solution:**  
-Generate a unified, information‑rich background for **Windows logon** and **Desktop** background screens, encoding:
+Generate a unified, informationâ€‘rich background for **Windows logon** and **Desktop** background screens, encoding:
 
 - OS version and update level  
 - System identity and boot/logon times  
@@ -26,8 +26,8 @@ Generate a unified, information‑rich background for **Windows logon** and **De
 
 - Deterministic, reproducible behavior  
 - Clear separation of **source** vs. **runtime**  
-- Git‑friendly, no runtime artifacts in the repo  
-- Minimal, modular, tool‑based implementation 
+- Gitâ€‘friendly, no runtime artifacts in the repo  
+- Minimal, modular, toolâ€‘based implementation 
 - supports installation, debugging and logging 
 - Explicit, documented entry points via symlinks for simplified user access to exposed functionality.
 
@@ -105,3 +105,4 @@ Detailed end-user phase/time-flow behavior is maintained in `Architecture.md`.
 - Minor, non-breaking changes increment the patch number (for example: `6.0.1`, `6.0.2`).
 - Redesign-level changes increment the minor or major version as needed (for example: `6.1.0`, `7.0.0`).
 - Module headers and documentation versions must be updated together with the repository version.
+

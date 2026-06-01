@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      check-and-report.ps1
 #  Path:        .\scripts
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
@@ -84,3 +84,4 @@ $reportPath = Join-Path $reportDir 'code-checks.txt'
 Write-Output "Done. Reports:"
 Write-Output " - $reportPath"
 Write-Output " - $pssaPath"
+

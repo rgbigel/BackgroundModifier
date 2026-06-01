@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      Disable.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     6.0.0
+$16.0.0
 #  Changelog:
 #      6.0.0  --------  Added explicit disable operation for scheduled automation.
 # =================================================================================================
@@ -27,7 +27,7 @@ Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 $flags = Set-Flags -T:$t -D:$d
 $DebugMode = $flags.DebugMode
 
-Write-Host "=== BackgroundModifier Disable (v6.0.0) ==="
+$16.0.0) ==="
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 
 Require-Admin
@@ -57,3 +57,4 @@ foreach ($taskName in $taskNames) {
 }
 
 Write-Host "[OK] Disable operation completed. Tasks disabled: $disabledCount"
+

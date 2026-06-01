@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      ValidationTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Purpose:     Deterministic validation helpers for parameters, paths, configs, and workflow-critical preconditions.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (validation utilities)
@@ -54,3 +54,4 @@ function Test-NumberRange {
     return $true
 }
     Export-ModuleMember -Function *
+

@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      Constants.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Purpose:     Centralized constant paths and directory definitions for all components.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (path constants)
@@ -15,3 +15,4 @@ $Global:AssetsRoot  = Join-Path $Global:RootPath "assets"
 $Global:RenderRoot  = Join-Path $Global:RootPath "rendered"
 $Global:SystemRoot  = Join-Path $Global:RootPath "system"
 Export-ModuleMember -Function *
+

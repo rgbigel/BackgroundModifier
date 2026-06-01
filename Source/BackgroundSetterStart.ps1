@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      BackgroundSetterStart.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (logon autorun orchestrator)
 # =================================================================================================
@@ -40,7 +40,7 @@ $flags = Set-Flags -T:$t -D:$d
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
-Write-Host "=== BackgroundModifier Logon Autorun Orchestrator (v5.000) ==="
+$16.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled" }
@@ -70,3 +70,4 @@ catch {
     Write-Host "[X] Logon orchestration failed: $($_.Exception.Message)"
     exit 1
 }
+

@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      ImageTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Purpose:     Additional image-related helpers used by renderer and installer.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (image rendering)
@@ -48,3 +48,4 @@ function Get-ImageSize {
     return $size
 }
     Export-ModuleMember -Function *
+

@@ -1,0 +1,29 @@
+BackgroundModifier Boot Ldr slash-fold + continuation visibility validation
+Date: 2026-06-01
+
+Scope:
+- Ensure long Boot Ldr path values fold even when no spaces are present.
+- Prefer split points at backslash (`\`) and show continuation with small indent.
+- Ensure folded continuation line is visible in panel.
+
+Code updates:
+- Modules/RenderTools.psm1
+  - Draw-stage fold now considers split points by:
+    - space
+    - backslash
+  - Continuation line prefix now includes a small additional indent after delimiter.
+  - Increased maximum panel height cap and reduced line spacing via font-based row height.
+  - Raised table start position slightly to preserve room for final folded rows.
+
+Validation:
+- Tests/Modules/RenderTools.Tests.ps1
+  - Passed: 3
+  - Failed: 0
+- Live render command:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+  - Exit code: 0
+
+Visual outcome:
+- Boot Ldr row now folds to a continuation line.
+- Split occurs at path separator and continuation is indented.
+- Continuation line is visible (no bottom clipping).

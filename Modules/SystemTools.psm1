@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      SystemTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
@@ -10,7 +10,7 @@
 <# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\SystemTools.psm1
   Module:     SystemTools.psm1
-  Version:    5.000
+$16.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -45,3 +45,4 @@ function Get-ComputerName {
     return $env:COMPUTERNAME
 }
 Export-ModuleMember -Function *
+

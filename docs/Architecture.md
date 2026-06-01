@@ -1,6 +1,6 @@
-# Architecture.md
+﻿# Architecture.md
 
-Version: 6.0.0
+$16.0.0
 Profile: default
 Author: Rolf Bercht
 

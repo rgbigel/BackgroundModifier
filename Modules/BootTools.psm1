@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      BootTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     6.0.1
+$16.0.0
 #  Changelog:
 #      6.0.1  --------  Implemented EFI/ESP detection atom and BCD bootloader resolution helpers.
 #      5.000  --------  Initial module creation for Consolidated Architecture (boot identity and ESP detection)
@@ -127,3 +127,4 @@ function Get-EspIdentitySnapshot {
 }
 
 Export-ModuleMember -Function Get-EspPartitions, Get-ActiveEspPartition, Get-BootLoaderPathFromCurrentBcd, Get-EspIdentitySnapshot
+

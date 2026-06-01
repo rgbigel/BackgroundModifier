@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      BackgroundSetter.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (wallpaper application)
 # =================================================================================================
@@ -49,7 +49,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setter (v1.001) ==="
+$16.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -100,3 +100,4 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+

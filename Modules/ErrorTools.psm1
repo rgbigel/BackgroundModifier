@@ -1,11 +1,11 @@
-<# ============================================================================================
+﻿<# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\ErrorTools.psm1
   Module:     ErrorTools.psm1
-  Version:    1.001
+$16.0.0
   Author:     Rolf Bercht
 
   Purpose:
-      Centralized, deterministic error‑handling helpers.
+      Centralized, deterministic errorâ€‘handling helpers.
       Ensures consistent formatting, predictable exit behavior,
       and clean separation between error signalling and logging.
 
@@ -42,3 +42,4 @@ function Fail-IfFalse {
         Throw-Error $Message
     }
 }
+

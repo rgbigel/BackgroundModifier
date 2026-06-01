@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      BootIdentity.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-#  Version:     6.0.1
+$16.0.0
 #  Changelog:
 #      6.0.1  --------  Delegated ESP/BCD identity determination to BootTools atom module.
 #      5.000  --------  Introduced BCD--------based bootloader--------path resolution; restored Diskpart A1/Variant-------1;
@@ -118,3 +118,4 @@ catch {
     Write-Host "[X] BootIdentity failed: $($_.Exception.Message)"
     exit 1
 }
+

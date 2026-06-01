@@ -1,0 +1,38 @@
+BackgroundModifier render behavior update validation
+Date: 2026-06-01
+
+Scope:
+- Remove hard cutoff marker from table output and avoid value truncation.
+- Shorten OS value text as requested.
+- Add Boot and Logon rows with requested labels.
+- Omit ESP Drive row when value is empty.
+
+Code updates:
+- Modules/RenderTools.psm1
+  - Removed truncation loop that appended '~'.
+  - Added width-aware table value wrapping into continuation rows.
+  - Table values are wrapped across lines instead of being cut off.
+- Source/BackgroundRenderer.ps1
+  - OS value normalization:
+    - Microsoft -> MS
+    - Windows 11 -> W11
+  - Renamed Run row to Logon.
+  - Added Boot row from OS.LastBootUpTime parsing when available.
+  - ESP Drive row now added only when non-empty.
+
+Validation:
+- Tests/Modules/RenderTools.Tests.ps1
+  - Passed: 3
+  - Failed: 0
+- Live render command:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+  - Exit code: 0
+
+Live output confirmations:
+- Base source Desktop -> C:\BackgroundMotives\assets\DesktopBase.jpg
+- Base source Logon   -> C:\BackgroundMotives\assets\LogonBase.jpg
+- Rendered output files written successfully.
+
+Notes:
+- No hard truncation marker is emitted by renderer after this change.
+- Value overflow handling is now line-wrap based.

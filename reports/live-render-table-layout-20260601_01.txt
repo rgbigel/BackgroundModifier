@@ -1,0 +1,33 @@
+BackgroundModifier live render table-layout validation
+Date: 2026-06-01
+
+Scope:
+- Validate right-side table rendering path
+- Validate dynamic key/value column-width resolution
+- Validate reusable table format persistence in State.json
+
+Execution:
+- Command: powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+- Result: exit code 0
+
+Observed runtime output:
+- Rendering completed successfully.
+- Rendered outputs:
+  - C:\BackgroundMotives\rendered\Logon.jpg
+  - C:\BackgroundMotives\rendered\Desktop.jpg
+- Config persistence message:
+  - [OK] Config saved -> C:\BackgroundMotives\system\State.json
+
+Observed State.json update:
+- Meta.RenderTableFormat.KeyWidth = 13
+- Meta.RenderTableFormat.ValueWidth = 41
+- Meta.RenderTableFormat.UpdatedAt present
+
+Module validation:
+- Tests/Modules/RenderTools.Tests.ps1
+- Passed: 3
+- Failed: 0
+
+Notes:
+- Table formatting now uses fixed key/value columns and truncation marker for overwide lines to keep text within panel bounds.
+- Stored column widths are reused by subsequent renders through State.json metadata.

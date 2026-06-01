@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      TranscriptTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  --------  Reconciled module purpose; added transcript path/start/stop helpers
 # =================================================================================================
@@ -58,3 +58,4 @@ function Stop-ToolTranscript {
 }
 
 Export-ModuleMember -Function Get-TranscriptPath, Start-ToolTranscript, Stop-ToolTranscript
+

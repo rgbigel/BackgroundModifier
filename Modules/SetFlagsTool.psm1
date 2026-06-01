@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      SetFlagsTool.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  --------  Reconciled module purpose; added command-line flag parsing via Set-Flags
 # =================================================================================================
@@ -38,3 +38,4 @@ function Set-Flags {
 }
 
 Export-ModuleMember -Function Set-Flags
+

@@ -1,0 +1,27 @@
+BackgroundModifier ESP/EFI combined-row rendering validation
+Date: 2026-06-01
+
+Scope:
+- Replace separate ESP Disk/Partition/Label rows with one combined row.
+- Combined value format: DxPy (Label)
+- Field label: ESP/EFI
+
+Code update:
+- Source/BackgroundRenderer.ps1
+  - Added combined value build logic:
+    - espId = D{DiskNumber}P{PartitionNumber}
+    - combined value = "{espId} ({VolumeLabel})" when both available
+    - fallback to available component when one is missing
+  - Row list changed:
+    - removed: ESP Dsk, ESP Part, ESP Lbl
+    - added: ESP/EFI
+
+Validation:
+- Live render command:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+- Exit code: 0
+- Output confirms successful render and config persistence.
+
+Notes:
+- Render source guard remains active (assets-only base images).
+- Accent color behavior unchanged.

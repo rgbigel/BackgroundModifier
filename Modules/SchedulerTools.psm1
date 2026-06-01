@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      SchedulerTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
@@ -10,7 +10,7 @@
 <# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\SchedulerTools.psm1
   Module:     SchedulerTools.psm1
-  Version:    5.000
+$16.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -64,3 +64,4 @@ function Test-BackgroundTask {
     return ($task -ne $null)
 }
 Export-ModuleMember -Function *
+

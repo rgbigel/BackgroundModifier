@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      PathTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Purpose:     Small helpers for safe path creation and validation.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (path utilities)
@@ -24,3 +24,4 @@ function Join-Safe {
     return (Join-Path $Base $Child)
 }
     Export-ModuleMember -Function *
+

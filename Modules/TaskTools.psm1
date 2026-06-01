@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      TaskTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
@@ -10,7 +10,7 @@
 <# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\TaskTools.psm1
   Module:     TaskTools.psm1
-  Version:    5.000
+$16.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -39,3 +39,4 @@ function Invoke-TaskStep {
     }
 }
     Export-ModuleMember -Function *
+

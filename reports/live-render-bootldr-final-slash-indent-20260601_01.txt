@@ -1,0 +1,26 @@
+BackgroundModifier Boot Ldr final slash-indent correction
+Date: 2026-06-01
+
+Scope:
+- Correct Boot Ldr continuation split to occur at single backslash boundary.
+- Preserve continuation indentation without repeated table delimiter.
+
+Root cause:
+- Slash split detection searched for a double-backslash token instead of a single backslash character.
+- Result: slash split was never selected; break occurred by width fallback inside token.
+
+Fix:
+- Modules/RenderTools.psm1
+  - Updated split detection token to single backslash.
+  - Retained continuation prefix as space-indented value-column continuation.
+
+Validation:
+- Live render command:
+  - powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+  - Exit code: 0
+
+Visual verification:
+- Boot Ldr now renders as:
+  - first line ending at `...\system32`
+  - continuation line starts with indent + `\winload.efi`
+- Matches requested fold form.

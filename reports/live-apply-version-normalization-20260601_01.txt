@@ -1,0 +1,30 @@
+BackgroundModifier apply + global version normalization
+Date: 2026-06-01
+
+Scope:
+- Apply pending rendered backgrounds.
+- Normalize all component version markers to 6.0.0.
+
+Apply stage:
+- Command:
+  powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-ApplyTest.ps1 -t
+- Result:
+  - Applied logon and desktop backgrounds successfully
+  - Wallpaper applied
+  - Exit code: 0
+
+Version normalization:
+- Targeted files:
+  - *.ps1, *.psm1, *.md
+- Normalized markers:
+  - Header-style `Version:` values in PowerShell components
+  - Runtime banner versions in `Write-Host "=== ... (v...) ==="`
+  - Markdown `Version:` lines
+- Verification checks after normalization:
+  - BAD_HDR=0
+  - BAD_BANNER=0
+  - BAD_MD=0
+
+Outcome:
+- Pending apply completed.
+- Repository version markers aligned to 6.0.0 across components.

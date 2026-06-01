@@ -1,6 +1,6 @@
-# ModuleDocumentation
+﻿# ModuleDocumentation
 
-Version: 1.000
+$16.0.0
 Profile: default
 Author: Rolf Bercht
 
@@ -22,9 +22,9 @@ This document defines the module-level documentation contract for the Background
 
 The repository documentation hierarchy is:
 
-1. `Requirements.md` — expected functionality the solution must provide.
-2. `Implementation.md` — how requirements are implemented or are to be implemented.
-3. `ModuleDocumentation.md` — module-level documentation and module boundaries.
+1. `Requirements.md` â€” expected functionality the solution must provide.
+2. `Implementation.md` â€” how requirements are implemented or are to be implemented.
+3. `ModuleDocumentation.md` â€” module-level documentation and module boundaries.
 
 `ModuleDocumentation.md` must remain aligned with both `Requirements.md` and `Implementation.md`.
 
@@ -91,3 +91,4 @@ This addendum captures the currently approved contract direction for extracting 
 ### Compatibility Baseline
 
 - Timestamp format for all module contracts is `yyyyMMdd_HHmmss`.
+

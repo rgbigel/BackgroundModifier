@@ -1,6 +1,6 @@
-Implementation.md
-BackgroundModifier – Implementation Guide  
-Version: 6.0.0
+﻿Implementation.md
+BackgroundModifier â€“ Implementation Guide  
+$16.0.0
 Profile: default
 Author: Rolf Bercht
 
@@ -17,7 +17,7 @@ Implementation ownership rule (2026-05-29):
 - This includes file/folder paths, task naming, command invocations, module loading, scheduling, and deployment/install behavior.
 - Requirements-level documents may reference only atom/class contracts, not runtime wiring specifics.
 
-Implementation.md defines coding conventions, module structure, logging behavior, JSON handling, rendering rules, wallpaper application, scheduled task configuration, symlink rules, and error‑handling patterns.
+Implementation.md defines coding conventions, module structure, logging behavior, JSON handling, rendering rules, wallpaper application, scheduled task configuration, symlink rules, and errorâ€‘handling patterns.
 
 1. Module Header Format
 Every .ps1 and .psm1 file must begin with the following header:
@@ -95,7 +95,7 @@ Does not change behavior.
 3.3 Trace Mode (-t)
 Implies debug mode.
 
-Adds step‑by‑step trace entries to logs.
+Adds stepâ€‘byâ€‘step trace entries to logs.
 
 Used for deep debugging.
 
@@ -115,13 +115,13 @@ Meta
 
 4.### Module Header Requirements
 
-Every `.ps1` and `.psm1` file must begin with a fixed‑layout header block.
+Every `.ps1` and `.psm1` file must begin with a fixedâ€‘layout header block.
 
-- `Module:` — the exact file name including extension.
-- `Path:` — the relative directory path **without** the file name and **without** a trailing backslash.
-- `Author:` — always `Rolf Bercht` unless explicitly changed.
-- `Version:` — current module version using semantic versioning (e.g., `6.0.0`).
-- `Changelog:` — up to four predecessor versions, newest first, each with a short description.
+- `Module:` â€” the exact file name including extension.
+- `Path:` â€” the relative directory path **without** the file name and **without** a trailing backslash.
+- `Author:` â€” always `Rolf Bercht` unless explicitly changed.
+- `Version:` â€” current module version using semantic versioning (e.g., `6.0.0`).
+- `Changelog:` â€” up to four predecessor versions, newest first, each with a short description.
 - Header must be wrapped in a 100% fixed, aligned, monospaced block using `#` and `=` exactly as shown.
 
 Example (authoritative):
@@ -132,12 +132,12 @@ Example (authoritative):
     #  Author:      Rolf Bercht
    #  Version:     6.0.0
     #  Changelog:
-   #      6.0.0  –  Introduced BCD‑based bootloader‑path resolution; restored Diskpart A1/Variant 1;
+   #      6.0.0  â€“  Introduced BCDâ€‘based bootloaderâ€‘path resolution; restored Diskpart A1/Variantâ€¯1;
     #                 added full ESP correlation rules; added BootLoaderPath to State.json.
-    #      4.004  –  Refined ESP label handling; removed temp‑file Diskpart capture; pipeline only.
-    #      4.003  –  Corrected partition/volume correlation; enforced GUID‑based ESP detection.
-    #      4.002  –  Added deterministic logging and strict error handling.
-    #      4.001  –  Initial 4.x series structure and module boundary cleanup.
+    #      4.004  â€“  Refined ESP label handling; removed tempâ€‘file Diskpart capture; pipeline only.
+    #      4.003  â€“  Corrected partition/volume correlation; enforced GUIDâ€‘based ESP detection.
+    #      4.002  â€“  Added deterministic logging and strict error handling.
+    #      4.001  â€“  Initial 4.x series structure and module boundary cleanup.
     # =================================================================================================
 
 
@@ -233,21 +233,21 @@ and represent the intended architectural design:
 
 | Module | Purpose | Used By | Status |
 |--------|---------|---------|--------|
-| BootTools.psm1 | ESP and boot identity detection (Get-Partition/Get-Volume, BCD) | BootIdentity.ps1 | ✓ Implemented |
-| SystemTools.psm1 | OS and system information collection | BootIdentity.ps1 | ✓ Implemented |
-| TimeTools.psm1 | UTC timestamp generation | BootIdentity.ps1, BackgroundRenderer.ps1 | ✓ Implemented |
-| ConfigTools.psm1 | Deterministic JSON I/O for State.json | All phases | ✓ Implemented |
-| LoggingTools.psm1 | Centralized append-only logging | BackgroundRenderer.ps1, others | ✓ Implemented |
-| ValidationTools.psm1 | Parameter, path, and config validation | BackgroundRenderer.ps1 | ✓ Implemented |
-| ErrorTools.psm1 | Deterministic error handling and reporting | BackgroundRenderer.ps1 | ✓ Implemented |
-| RenderTools.psm1 | Image composition and text field rendering | BackgroundRenderer.ps1 | ✓ Implemented |
-| ImageTools.psm1 | Image manipulation and file I/O | BackgroundRenderer.ps1 | ✓ Implemented |
-| WallpaperTools.psm1 | P/Invoke wallpaper application (SystemParametersInfo) | BackgroundSetter.ps1 | ✓ Implemented |
-| SchedulerTools.psm1 | Scheduled task creation and registration | Setup.ps1 | ✓ Implemented |
-| TaskTools.psm1 | COM wrappers for scheduled task manipulation | Setup.ps1, Cleanup.ps1 | ✓ Implemented |
-| CleanupTools.psm1 | Log rotation and temp file cleanup | Cleanup.ps1 | ✓ Implemented |
-| BackgroundStateMgr.psm1 | Apply rendered images to desktop/logon screens | BackgroundSetter.ps1 | ✓ Implemented |
-| BackgroundNoBlurReg.psm1 | Registry rules to disable blur on logon screen | BackgroundSetter.ps1 | ✓ Implemented |
+| BootTools.psm1 | ESP and boot identity detection (Get-Partition/Get-Volume, BCD) | BootIdentity.ps1 | âœ“ Implemented |
+| SystemTools.psm1 | OS and system information collection | BootIdentity.ps1 | âœ“ Implemented |
+| TimeTools.psm1 | UTC timestamp generation | BootIdentity.ps1, BackgroundRenderer.ps1 | âœ“ Implemented |
+| ConfigTools.psm1 | Deterministic JSON I/O for State.json | All phases | âœ“ Implemented |
+| LoggingTools.psm1 | Centralized append-only logging | BackgroundRenderer.ps1, others | âœ“ Implemented |
+| ValidationTools.psm1 | Parameter, path, and config validation | BackgroundRenderer.ps1 | âœ“ Implemented |
+| ErrorTools.psm1 | Deterministic error handling and reporting | BackgroundRenderer.ps1 | âœ“ Implemented |
+| RenderTools.psm1 | Image composition and text field rendering | BackgroundRenderer.ps1 | âœ“ Implemented |
+| ImageTools.psm1 | Image manipulation and file I/O | BackgroundRenderer.ps1 | âœ“ Implemented |
+| WallpaperTools.psm1 | P/Invoke wallpaper application (SystemParametersInfo) | BackgroundSetter.ps1 | âœ“ Implemented |
+| SchedulerTools.psm1 | Scheduled task creation and registration | Setup.ps1 | âœ“ Implemented |
+| TaskTools.psm1 | COM wrappers for scheduled task manipulation | Setup.ps1, Cleanup.ps1 | âœ“ Implemented |
+| CleanupTools.psm1 | Log rotation and temp file cleanup | Cleanup.ps1 | âœ“ Implemented |
+| BackgroundStateMgr.psm1 | Apply rendered images to desktop/logon screens | BackgroundSetter.ps1 | âœ“ Implemented |
+| BackgroundNoBlurReg.psm1 | Registry rules to disable blur on logon screen | BackgroundSetter.ps1 | âœ“ Implemented |
 
 Note: Both `BackgroundStateMgr.psm1` and `BackgroundNoBlurReg.psm1` have been added to `Source/Modules` and are present in the codebase. Please verify their behavior through the install/test workflows and update implementation details in this document if required.
 
@@ -382,7 +382,7 @@ All errors must be logged.
 
 Fatal errors must stop execution.
 
-Non‑fatal errors must warn and continue where safe.
+Nonâ€‘fatal errors must warn and continue where safe.
 
 BootIdentity must never crash the system startup task.
 
@@ -397,9 +397,9 @@ All scripts must be idempotent where possible.
 
 All timestamps must use UTC unless otherwise required.
 
-Open Question: Should Renderer support high‑DPI scaling?
+Open Question: Should Renderer support highâ€‘DPI scaling?
 
-12. Function Reference Coverage (Docs ↔ Code)
+12. Function Reference Coverage (Docs â†” Code)
 The following function inventory is documented to establish explicit reference coverage between implementation modules and documentation.
 
 - BootTools.psm1: `Get-EspPartitions`, `Get-ActiveEspPartition`, `Get-BootLoaderPathFromCurrentBcd`, `Get-EspIdentitySnapshot`

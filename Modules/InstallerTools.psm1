@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      InstallerTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Purpose:     Shared helper functions used by installation and setup scripts.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (installation utilities)
@@ -29,3 +29,4 @@ function Copy-Safe {
     Copy-Item -Path $Source -Destination $Destination -Force
 }
     Export-ModuleMember -Function *
+

@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      LoggingTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     5.000
+$16.0.0
 #  Purpose:     Deterministic, append--------only logging helpers used across all modules.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (advanced logging)
@@ -50,3 +50,4 @@ function Write-LogTrace {
     }
 }
     Export-ModuleMember -Function *
+

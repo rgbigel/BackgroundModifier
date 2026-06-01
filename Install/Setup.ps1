@@ -1,8 +1,8 @@
-# =================================================================================================
+﻿# =================================================================================================
 #  Module:      Setup.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     6.0.0
+$16.0.0
 #  Changelog:
 #      6.0.0  --------  Added cmd entry-point provisioning and verifier alignment.
 #      5.000  --------  Initial module creation for Consolidated Architecture (installer)
@@ -50,7 +50,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setup Installer (v6.0.0) ==="
+$16.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -187,3 +187,4 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+

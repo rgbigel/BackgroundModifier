@@ -1,0 +1,33 @@
+BackgroundModifier render source guard + rerender validation
+Date: 2026-06-01
+
+Scope:
+- Enforce renderer base-image sourcing from assets root only.
+- Reject system/rendered roots as base-image inputs.
+- Execute a fresh live render.
+
+Code update:
+- Source/BackgroundRenderer.ps1
+  - Added path guard checks before rendering:
+    - Base paths must be under C:\BackgroundMotives\assets
+    - Base paths must not be under C:\BackgroundMotives\system or C:\BackgroundMotives\rendered
+  - Added explicit runtime logging of resolved base source paths.
+
+Execution:
+- Command: powershell -NoProfile -ExecutionPolicy Bypass -File D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t
+- Exit code: 0
+
+Observed output:
+- [OK] Base source Desktop -> C:\BackgroundMotives\assets\DesktopBase.jpg
+- [OK] Base source Logon   -> C:\BackgroundMotives\assets\LogonBase.jpg
+- [OK] Rendered text overlay -> C:\BackgroundMotives\rendered\Logon.jpg
+- [OK] Rendered text overlay -> C:\BackgroundMotives\rendered\Desktop.jpg
+
+Artifact times:
+- C:\BackgroundMotives\assets\DesktopBase.jpg  LastWriteTime: 2025-11-11 09:18:56
+- C:\BackgroundMotives\assets\LogonBase.jpg    LastWriteTime: 2025-11-11 09:19:00
+- C:\BackgroundMotives\rendered\Desktop.jpg    LastWriteTime: 2026-06-01 18:14:43
+- C:\BackgroundMotives\rendered\Logon.jpg      LastWriteTime: 2026-06-01 18:14:43
+
+Conclusion:
+- Renderer now uses assets base images every run and completed a new render successfully.

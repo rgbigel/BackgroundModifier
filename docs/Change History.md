@@ -531,6 +531,221 @@ Verified changes:
    - `reports/live-phase4-logon-20260601_01.txt`
    - `reports/module-test-summary-20260601_23.txt`
 
+### 36. Render overlay placement and size update; ESP drive-letter handling note (2026-06-01)
+
+Verified changes:
+
+1. Updated render overlay layout in `Modules/RenderTools.psm1`:
+   - panel placement moved to right-hand side
+   - title/body text sizes doubled for higher visibility
+   - line spacing adjusted to match enlarged text
+2. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+3. EFI drive-letter observation captured during this wave:
+   - current EFI partitions on this host have blank `DriveLetter` and GUID volume access paths
+   - blank `DriveLetter` remains a valid runtime state representation for ESP entries
+4. Added report:
+   - `reports/live-render-layout-20260601_01.txt`
+
+### 37. Render table layout, dynamic column sizing, and reusable JSON format persistence (2026-06-01)
+
+Verified changes:
+
+1. Updated renderer table input/output contract in `Source/BackgroundRenderer.ps1`:
+   - switched overlay payload from free-form lines to structured key/value rows
+   - included ESP identity fields in table rows (`Disk`, `Partition`, `Label`, `Drive`, `Boot Loader`)
+   - imported `ConfigTools.psm1` and persisted resolved table widths into `State.json` under `Meta.RenderTableFormat`
+2. Updated render atom in `Modules/RenderTools.psm1`:
+   - added table-row rendering mode with deterministic `Field | Value` output
+   - resolved `KeyWidth` and `ValueWidth` from longest observed row content, with optional reuse from persisted format
+   - enforced panel-width fit by truncating overwide rendered lines before draw to prevent right-edge overflow
+3. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+   - `State.json` write confirmed with `Meta.RenderTableFormat` containing `KeyWidth` and `ValueWidth`
+4. Added report:
+   - `reports/live-render-table-layout-20260601_01.txt`
+
+### 38. Renderer base-source enforcement (assets-only) and fresh render validation (2026-06-01)
+
+Verified changes:
+
+1. Updated `Source/BackgroundRenderer.ps1` to enforce base-image source invariants:
+   - resolved base-image paths must be under `C:\BackgroundMotives\assets`
+   - resolved base-image paths must not be under `C:\BackgroundMotives\system` or `C:\BackgroundMotives\rendered`
+   - renderer exits with explicit failure message when invariant is violated
+2. Added explicit runtime logging of resolved base-source paths for desktop/logon before rendering.
+3. Executed live render via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) after guard update:
+   - exit code `0`
+   - output confirmed sources:
+     - `C:\BackgroundMotives\assets\DesktopBase.jpg`
+     - `C:\BackgroundMotives\assets\LogonBase.jpg`
+4. Added report:
+   - `reports/live-render-assets-source-20260601_01.txt`
+
+### 39. Render no-cutoff table values and label/row updates (2026-06-01)
+
+Verified changes:
+
+1. Updated `Modules/RenderTools.psm1` table rendering behavior:
+   - removed cutoff logic that truncated long lines and appended `~`
+   - added width-aware value wrapping into continuation rows to avoid truncation
+2. Updated `Source/BackgroundRenderer.ps1` table row content rules:
+   - OS value normalization applied:
+     - `Microsoft` -> `MS`
+     - `Windows 11` -> `W11`
+   - renamed row label `Run` to `Logon`
+   - added `Boot` row sourced from `OS.LastBootUpTime` parsing when available
+   - `ESP Drive` row is now included only when drive value is non-empty
+3. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+4. Added report:
+   - `reports/live-render-nowrap-labels-20260601_01.txt`
+
+### 40. Field/value width rebalance and title/OS width target rule (2026-06-01)
+
+Verified changes:
+
+1. Updated `Source/BackgroundRenderer.ps1` to bias table layout toward wider values:
+   - shortened field labels (`ESP Dsk`, `ESP Part`, `ESP Lbl`, `Boot Ldr`, `ESP Drv`) to reduce field-column width pressure
+2. Updated render title text to include version marker:
+   - `BackgroundModifier V6.0.0 Logon`
+   - `BackgroundModifier V6.0.0 Desktop`
+3. Added width-target computation rule before render call:
+   - target total characters set to `max(title length with version, OS row length)`
+   - `KeyWidth`/`ValueWidth` passed through `TableFormat` from that target
+4. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+5. Added report:
+   - `reports/live-render-width-bias-20260601_01.txt`
+
+### 41. Desktop title shortening and asset-accent text color (2026-06-01)
+
+Verified changes:
+
+1. Updated first-line desktop title text in `Source/BackgroundRenderer.ps1`:
+   - desktop title now omits the `Desktop` suffix (`BackgroundModifier V6.0.0`)
+2. Added asset-driven text color selection:
+   - introduced `Get-AssetAccentColor` helper in `Source/BackgroundRenderer.ps1`
+   - helper samples the right-bottom asset area and derives orange accent RGB when available
+   - fallback color is applied when no valid orange sample is detected
+3. Extended `Modules/RenderTools.psm1`:
+   - `Render-TextOverlay` now accepts `-TextColor` and applies it to title/body text rendering
+4. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+5. Added report:
+   - `reports/live-render-title-color-20260601_01.txt`
+
+### 42. OS single-line fit tuning and Build row insertion (2026-06-01)
+
+Verified changes:
+
+1. Updated `Modules/RenderTools.psm1` table width logic to reduce premature wrapping:
+   - replaced overly conservative single-character width estimate with measured average character width
+   - added pixel-aware row chunk fitting via `MeasureString` before value wrapping
+2. Updated `Source/BackgroundRenderer.ps1` row set:
+   - added `Build` row immediately below `OS`
+   - build value sourced from registry (`CurrentBuildNumber.UBR`) with state/environment fallback
+3. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+4. Visual result verified on rendered desktop image:
+   - OS line renders on a single row
+   - Build row is present directly below OS
+5. Added report:
+   - `reports/live-render-os-buildline-20260601_01.txt`
+
+### 43. ESP/EFI combined identity row format (2026-06-01)
+
+Verified changes:
+
+1. Updated `Source/BackgroundRenderer.ps1` ESP display model:
+   - replaced separate `ESP Dsk`, `ESP Part`, and `ESP Lbl` rows with one row labeled `ESP/EFI`
+   - combined row value now renders as `DxPy (Label)` when both parts are available
+   - fallback behavior uses available component when either ID or label is missing
+2. Validation executed:
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+3. Added report:
+   - `reports/live-render-esp-efi-combined-20260601_01.txt`
+
+### 44. Fixed-column overflow folding for long trailing values (2026-06-01)
+
+Verified changes:
+
+1. Updated `Modules/RenderTools.psm1` draw-stage behavior for table lines:
+   - retained fixed column widths as computed/persisted
+   - added pixel-width overflow check before draw
+   - overwide table line values are folded into continuation rows instead of overflowing
+2. Continuation-line alignment preserves table structure:
+   - first line keeps the original key prefix
+   - continuation lines render with blank key area plus delimiter (` | `)
+3. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+4. Added report:
+   - `reports/live-render-fixed-columns-fold-lastline-20260601_01.txt`
+
+### 45. Boot Ldr slash-based fold and continuation visibility tuning (2026-06-01)
+
+Verified changes:
+
+1. Updated `Modules/RenderTools.psm1` fold split logic:
+   - overwide table values now split at the latest `space` or `\` within fit range
+   - this enables path-value folds even when no spaces are present
+2. Updated continuation-line formatting:
+   - continuation rows include a small additional indent after the table delimiter to mark folding
+3. Updated vertical layout capacity for visible continuation rows:
+   - increased panel height cap
+   - switched to font-based line spacing (tighter than fixed 68px)
+   - adjusted table start position to preserve space for bottom-row folds
+4. Validation executed:
+   - `Tests/Modules/RenderTools.Tests.ps1` passed (`3/3`)
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+5. Visual result verified:
+   - `Boot Ldr` value folds to continuation line with visible indent and without clipping
+6. Added report:
+   - `reports/live-render-bootldr-slashfold-20260601_01.txt`
+
+### 46. Boot Ldr final single-backslash split correction (2026-06-01)
+
+Verified changes:
+
+1. Corrected slash split detection in `Modules/RenderTools.psm1`:
+   - split-point scan now matches a single backslash character
+   - previous token did not match runtime path content, preventing slash-based fold selection
+2. Retained continuation formatting model:
+   - no repeated delimiter on continuation line
+   - indented continuation starts with the folded path segment (`\winload.efi`)
+3. Validation executed:
+   - live render run via cmd entry point (`BackgroundModifier-RenderTest.ps1 -t`) returned exit code `0`
+4. Visual result verified:
+   - `Boot Ldr` folds at `...\system32`
+   - continuation line shows indented `\winload.efi`
+5. Added report:
+   - `reports/live-render-bootldr-final-slash-indent-20260601_01.txt`
+
+### 47. Pending apply execution and global version normalization to 6.0.0 (2026-06-01)
+
+Verified changes:
+
+1. Applied pending rendered outputs through live apply entry point:
+   - `BackgroundModifier-ApplyTest.ps1 -t`
+   - apply stage completed successfully (exit code `0`)
+2. Normalized version markers across repository components to `6.0.0`:
+   - PowerShell header `Version:` lines (`*.ps1`, `*.psm1`)
+   - runtime banner versions in `Write-Host "=== ... (v...) ==="`
+   - markdown `Version:` document headers
+3. Post-normalization verification checks:
+   - non-`6.0.0` PowerShell header count: `0`
+   - non-`6.0.0` runtime banner count: `0`
+   - non-`6.0.0` markdown version-header count: `0`
+4. Added report:
+   - `reports/live-apply-version-normalization-20260601_01.txt`
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
