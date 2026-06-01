@@ -1,41 +1,86 @@
+<!--
+Components are conceptual parts of the solution. 
+They describe responsibilities, behavior, and interactions in the SYSTEM → USER execution pipeline loop.
+
+The Bootmgr Solution is composed of independent components.  
+Each component is implemented by one or more PowerShell modules (PS-modules) located in Source\, Modules\, or Install\.
+Components are not PowerShell modules (PS-Modules are named .psm1), scripts (.ps1). 
+-->
 Readme.md
-Bootmgr Solution
+
+# Bootmgr Solution — Overview
+
 Deterministic Multi‑Boot Identity, Overlays, and Diagnostics for Windows
-The Bootmgr Solution is a modular, stateless, fully documented toolkit for generating deterministic boot identity overlays, enforcing crisp lock screen rendering, and performing forensic diagnostics across multi‑boot Windows environments. It is designed for long‑term maintainability, reproducibility, and architectural clarity.
-The solution avoids unreliable hacks, avoids persistent state files, and relies exclusively on explicit inputs, deterministic logic, and reproducible outputs.
+
+The Bootmgr Solution is a modular stateful, fully documented toolkit for generating deterministic boot identity overlays, enforcing crisp lock screen rendering, and performing forensic diagnostics across multi‑boot Windows environments. It is designed for safe installation by the end-user, long‑term maintainability, reproducibility, and architectural clarity.
+
+The solution avoids unreliable hacks, has exactly one persistent state file, and relies exclusively on explicit inputs, deterministic logic, and reproducible outputs.
 
 ✨ Key Features
+- Data concerning physical disk structure is obtained by querying DISKPART and interpreting the output.
 - Synthetic ESP ID
-A deterministic, label‑independent identifier for EFI System Partitions, stable across firmware updates, drive letter changes, and imaging workflows.
+A deterministic, volume-label‑dependent identifier for EFI System Partitions, stable across firmware updates, drive letter existance or changes, and imaging workflows.
 - Deterministic Overlays
 PowerShell‑native rendering of lock screen and desktop overlays containing boot identity, ESP ID, and optional metadata.
 - Crisp Lock Screen Enforcement
 Registry enforcement to prevent Windows from blurring or recompressing lock screen images.
 - Forensic Diagnostics
 Comprehensive snapshot of ESPs, BCD stores, Secure Boot state, firmware metadata, and localized Windows Security UI mapping.
-- Stateless Architecture
-No state.json, no incremental deltas. Every module is self‑contained and produces deterministic outputs.
-- GitHub‑Ready Documentation
-Each module includes version headers, synopsis, architectural notes, changelog, and extensibility hooks.
 
-📦 Module Architecture
-The Bootmgr Solution is composed of independent modules. Each module:
-- Lives in its own directory
+**Solution Memory**  
+A JSON data structure that is created, loaded, and updated across executions.  
+It is generated or amended during the elevated SYSTEM stage and consumed/amended during the user‑session stage.  
+Solution Memory persists across runs and is reused by all stages on subsequent executions.
+
+
+Each functional component of the solution operates independently and produces deterministic outputs based solely on its inputs.
+
+Note: “Component” refers to conceptual solution parts, not PowerShell components (.ps1, .psm1).
+
+- GitHub‑Ready Documentation
+Components are documented in Docs\.
+Each PS-module includes version headers, synopsis, architectural notes, changelog, and extensibility hooks.
+
+## Documentation Model (Authoritative)
+
+Authoritative Documentation Hierarchy
+
+1. Requirements (Requirements.md)
+   - Describes the expected functionality the solution must provide.
+   - May reference Implementation.md in rare cases to support understanding of implementation principles.
+   - Uses Architecture.md for end-user flow context where useful.
+
+2. Architecture (Architecture.md)
+   - End-user view of the solution.
+   - Describes phase/time-flow behavior across preparation, install, pre-logon, logon, runtime tests, and disable/uninstall.
+
+3. Implementation (Implementation.md)
+   - Describes how the Requirements are or will be implemented.
+   - Focuses on design decisions, patterns, and technical realization.
+   - May reference ModuleDocumentation.md for detailed component-level behavior.
+
+4. Component Documentation (ModuleDocumentation.md)
+   - New, dedicated file.
+   - Describes components, their responsibilities, interfaces, and interactions.
+   - Serves as the detailed technical reference for the implementation.
+
+📦 Component Architecture
+The Bootmgr Solution is composed of independent components. 
+The components are implemented as PS-modules (Directories: Source\, Modules\, Install\) in PowerShell.
+The term "module" is used as short-hand notation for PS-Module where the distinction is obvious.
+Anything affected at runtime may only use the Solution Memory (folder BackgroundMotives\). 
+
+In accordance with the individual type, each PS-module
+- Lives in its type-specific directory
 - Contains a version header, synopsis, architectural notes, changelog, and extensibility hooks
 - Produces a single log file per invocation, overwritten each run
 - Accepts explicit inputs only
 - Produces explicit outputs only
-- Never relies on persistent state
+- supports testing and verification
+- checks for warnings, errors and abort-level results whereever this is possible.
+
 Module Overview
-|  |  |  |  | 
-|  |  |  |  | 
-|  |  |  |  | 
-|  |  |  |  | 
-|  |  |  |  | 
-|  |  |  |  | 
-|  |  |  |  | 
-
-
+See Implementation.md
 
 🔍 Synthetic ESP ID — Rationale & Design
 Windows provides no stable, label‑independent identifier for EFI System Partitions. Labels are mutable. Drive letters are unstable. Firmware paths change. GUIDs are not guaranteed.
@@ -78,72 +123,45 @@ The diagnostics module captures:
 - Localized Windows Security UI mapping (e.g., German → English)
 This enables reproducible troubleshooting across systems and languages.
 
-📁 Directory Layout
-Bootmgr-Solution/
+📁 Directory Layout (in GIT Repository)
+BackgroundModifier/
 │
+├─ Docs\
+|   ├─ README.md
+│   ├─ Requirements.md
+│   ├─ Implementation.md
+│   └─ ...
+|
+├─ Install\
+│   ├─ Setup.ps1
+│   ├─ ... see Implementation.md
+│   └─ 
+├─ Source/
+│   ├─ BootIdentity.ps1
+│   ├─ ... see Implementation.md
+│   └─ 
 ├─ Modules/
-│   ├─ BootIdentity/
-│   ├─ Overlay-LockScreen/
-│   ├─ Overlay-Desktop/
-│   ├─ Registry-Enforce/
-│   ├─ Diagnostics/
-│   └─ Orchestrator/
-│
-├─ Logs/
-│   ├─ BootIdentity.log
-│   ├─ Overlay-LockScreen.log
-│   ├─ Overlay-Desktop.log
-│   ├─ Registry-Enforce.log
-│   └─ Diagnostics.log
-│
-├─ Output/
-│   ├─ LockScreen/
-│   └─ Desktop/
-│
-└─ README.md
+│   ├─ BackgroundNoBlurReg.psm1
+│   ├─ ... see Implementation.md
+│   └─ 
+└─
 
-
-
-🔧 Extensibility Hooks
-Each module exposes hooks for:
-- Additional metadata fields
-- Alternate overlay layouts
-- Custom color schemes
-- Alternate ESP ID derivation strategies
-- Future Python migration
-These hooks are documented in each module’s header.
-
-🐍 Migration Path to Python
-The architecture is intentionally designed for a clean transition to Python:
-- Stateless modules map directly to Python scripts
-- Logging conventions map to Python’s logging module
-- Overlay rendering can migrate to Pillow
-- ESP enumeration can migrate to pywin32 or WMI
-- Orchestrator can become a Python dispatcher with argparse
-A full migration guide will be added once the first Python prototype is ready.
-
-📜 License
-To be defined by the repository owner.
-
-🤝 Contributing
-Contributions are welcome.
-Please follow the module conventions:
-- Deterministic logic
-- Stateless design
-- Per‑module logging
-- Version headers
-- Architectural notes
-- Changelogs
-- Extensibility hooks
-
-🧭 Roadmap
-- Python migration
-- Optional GUI wrapper
-- Automated lock screen deployment
-- Cross‑platform ESP enumeration (Linux + Windows)
-- Overlay theme packs
-
-If you'd like, I can now generate:
-- A CHANGELOG.md
-- A docs/architecture.md
-- A module template for all scripts
+📁 Directory Layout (Solution Memory)
+|
+├─ BackgroundMotives
+|   ├─ Assets
+|   |  ├─ LogonBase.jpg
+|   |  ├─ DesktopBase.jpg
+|   ├─ Logs
+|   │   ├─ BootIdentity.log
+│   |   ├─ Overlay-LockScreen.log
+│   |   ├─ Overlay-Desktop.log
+│   |   ├─ <component>-<timestamp>.log
+|   |   └─ ...
+|   ├─ Rendered
+|   |   ├─ LogonScreen.jpg
+|   |   |  DesktopScreen.jpg
+|   ├─ SolutionCode
+|   |   |  ... symlinks, see Implementation.md
+|   |   └─ ...
+|   └─ State.json

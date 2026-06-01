@@ -1,15 +1,15 @@
 # =================================================================================================
 #  Module:      BackgroundNoBlurReg.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Added registry helper functions to manage logon background blur behavior
+#      5.000  --------  Added registry helper functions to manage logon background blur behavior
 # =================================================================================================
 
 function Set-NoBlur {
-    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI"
-    $regName = "DisableLogonBackgroundImage"
+    $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
+    $regName = "DisableAcrylicBackgroundOnLogon"
     $regValue = 1
 
     # Check if the registry key exists
@@ -17,13 +17,13 @@ function Set-NoBlur {
         New-Item -Path $regPath -Force | Out-Null
     }
 
-    # Set the registry value to disable the blur effect
+    # Set the policy value to disable acrylic blur while keeping background image enabled
     Set-ItemProperty -Path $regPath -Name $regName -Value $regValue -Force
 }
 
 function Remove-NoBlur {
-    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI"
-    $regName = "DisableLogonBackgroundImage"
+    $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
+    $regName = "DisableAcrylicBackgroundOnLogon"
 
     # Check if the registry key exists and remove it
     if (Test-Path $regPath) {

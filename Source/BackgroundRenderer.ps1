@@ -4,7 +4,7 @@
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (background rendering)
+#      5.000  --------  Initial module creation for Consolidated Architecture (background rendering)
 # =================================================================================================
 
 param(
@@ -12,7 +12,7 @@ param(
     [switch]$d
 )
 
-$ModuleRoot = Join-Path $PSScriptRoot "Modules"
+$ModuleRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "Modules"
 $prev = $WarningPreference
 $WarningPreference = "SilentlyContinue"
 
@@ -25,6 +25,7 @@ Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
 
 $WarningPreference = $prev
 
@@ -37,7 +38,7 @@ $AssetsRoot  = $Global:AssetsRoot
 $RenderRoot  = $Global:RenderRoot
 
 if ($TraceMode) {
-    $timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
+    $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
     $TranscriptPath = Join-Path $LogRoot "Renderer_$timestamp.log"
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
@@ -72,11 +73,46 @@ Write-Host "[OK] Base assets present"
 Write-Host "--- Rendering images ---"
 
 try {
-    Copy-Item -Path $LogonBase -Destination $OutputLogon -Force
-    Write-Host "[OK] Rendered logon image -> $OutputLogon"
+    if (-not (Test-Path -LiteralPath $RenderRoot)) {
+        New-Item -Path $RenderRoot -ItemType Directory -Force | Out-Null
+    }
 
-    Copy-Item -Path $DesktopBase -Destination $OutputDesktop -Force
-    Write-Host "[OK] Rendered desktop image -> $OutputDesktop"
+    $stateFile = Join-Path $Global:RootPath "State.json"
+    $osText = "OS: $([System.Environment]::OSVersion.VersionString)"
+    $hostText = "Host: $env:COMPUTERNAME"
+    $userText = "User: $env:USERNAME"
+    $stampText = "Run: $((Get-Date).ToString('yyyyMMdd_HHmmss'))"
+
+    if (Test-Path -LiteralPath $stateFile) {
+        try {
+            $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
+            if ($state -and $state.OS -and $state.OS.Caption) {
+                $osText = "OS: $($state.OS.Caption)"
+            }
+            if ($state -and $state.System -and $state.System.ComputerName) {
+                $hostText = "Host: $($state.System.ComputerName)"
+            }
+            if ($state -and $state.UserInfo -and $state.UserInfo.UserName) {
+                $userText = "User: $($state.UserInfo.UserName)"
+            }
+            if ($state -and $state.Meta -and $state.Meta.LastRunInfo) {
+                $stampText = "Run: $($state.Meta.LastRunInfo)"
+            }
+        }
+        catch {
+            Write-Host "[WARN] State.json unreadable, using live environment fields."
+        }
+    }
+
+    $lines = @(
+        $osText,
+        $hostText,
+        $userText,
+        $stampText
+    )
+
+    Render-TextOverlay -BaseImage $LogonBase -OutputPath $OutputLogon -Title "BackgroundModifier Logon" -Lines $lines
+    Render-TextOverlay -BaseImage $DesktopBase -OutputPath $OutputDesktop -Title "BackgroundModifier Desktop" -Lines $lines
 }
 catch {
     Write-Host "[X] Rendering failed: $($_.Exception.Message)"

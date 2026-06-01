@@ -1,8 +1,10 @@
 # =================================================================================================
 #  Module:      TaskTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
+#  Changelog:
+#      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
 
 <# ============================================================================================
@@ -12,7 +14,7 @@
   Author:     Rolf Bercht
 
   Purpose:
-      Internal helpers for task‑oriented orchestration steps.
+      Internal helpers for task-oriented orchestration steps.
       Currently minimal by design, reserved for future workflow expansion.
 
    Change Log:

@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      LoggingTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
-#  Purpose:     Deterministic, append‑only logging helpers used across all modules.
+#  Purpose:     Deterministic, append--------only logging helpers used across all modules.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (advanced logging)
+#      5.000  --------  Initial module creation for Consolidated Architecture (advanced logging)
 # =================================================================================================
 
 function Write-Log {

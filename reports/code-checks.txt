@@ -1,0 +1,8 @@
+Header check results:
+All files contain Module/Path/Author/Version headers.
+
+Export checks (.psm1):
+All .psm1 files contain Export-ModuleMember.
+
+Functions not referenced in docs:
+No unreferenced functions found.

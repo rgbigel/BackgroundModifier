@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      ImageTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Purpose:     Additional image-related helpers used by renderer and installer.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (image rendering)
+#      5.000  --------  Initial module creation for Consolidated Architecture (image rendering)
 # =================================================================================================
 
 function Test-Image {

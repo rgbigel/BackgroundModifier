@@ -1,8 +1,10 @@
 # =================================================================================================
 #  Module:      TimeTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
+#  Changelog:
+#      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
 
 <# ============================================================================================
@@ -12,8 +14,8 @@
   Author:     Rolf Bercht
 
   Purpose:
-      Deterministic helpers for timestamp generation, run‑ID creation,
-      and time‑based workflow utilities.
+      Deterministic helpers for timestamp generation, run-ID creation,
+      and time-based workflow utilities.
 
    Change Log:
        Version 1.001 27.02.26 16:16

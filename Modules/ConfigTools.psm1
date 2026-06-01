@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      ConfigTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
-#  Purpose:     Deterministic loading and saving of module‑wide configuration files; isolates config I/O.
+#  Purpose:     Deterministic loading and saving of module--------wide configuration files; isolates config I/O.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (JSON/config I/O)
+#      5.000  --------  Initial module creation for Consolidated Architecture (JSON/config I/O)
 # =================================================================================================
 
 function Load-Config {

@@ -4,26 +4,27 @@
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Introduced BCD‑based bootloader‑path resolution; restored Diskpart A1/Variant 1;
+#      5.000  --------  Introduced BCD--------based bootloader--------path resolution; restored Diskpart A1/Variant-------1;
 #                 added full ESP correlation rules; added BootLoaderPath to State.json.
-#      4.004  –  Refined ESP label handling; removed temp‑file Diskpart capture; pipeline only.
-#      4.003  –  Corrected partition/volume correlation; enforced GUID‑based ESP detection.
-#      4.002  –  Added deterministic logging and strict error handling.
-#      4.001  –  Initial 4.x series structure and module boundary cleanup.
+#      4.004  --------  Refined ESP label handling; removed temp--------file Diskpart capture; pipeline only.
+#      4.003  --------  Corrected partition/volume correlation; enforced GUID--------based ESP detection.
+#      4.002  --------  Added deterministic logging and strict error handling.
+#      4.001  --------  Initial 4.x series structure and module boundary cleanup.
 # =================================================================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 # -------------------------------------------------------------------------------------------------
-#  MODULE IMPORTS  (Root: .\Source\Modules)
+#  MODULE IMPORTS  (Root: .\Modules)
 # -------------------------------------------------------------------------------------------------
-Import-Module "$PSScriptRoot\Modules\LoggingTools.psm1"
-Import-Module "$PSScriptRoot\Modules\ConfigTools.psm1"
-Import-Module "$PSScriptRoot\Modules\TimeTools.psm1"
-Import-Module "$PSScriptRoot\Modules\BackgroundStateMgr.psm1"
-Import-Module "$PSScriptRoot\Modules\SystemTools.psm1"
-Import-Module "$PSScriptRoot\Modules\ErrorTools.psm1"
+$ModuleRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "Modules"
+Import-Module (Join-Path $ModuleRoot "LoggingTools.psm1")
+Import-Module (Join-Path $ModuleRoot "ConfigTools.psm1")
+Import-Module (Join-Path $ModuleRoot "TimeTools.psm1")
+Import-Module (Join-Path $ModuleRoot "BackgroundStateMgr.psm1")
+Import-Module (Join-Path $ModuleRoot "SystemTools.psm1")
+Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1")
 
 # -------------------------------------------------------------------------------------------------
 #  START LOG

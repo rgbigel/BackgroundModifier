@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      ValidationTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Purpose:     Deterministic validation helpers for parameters, paths, configs, and workflow-critical preconditions.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (validation utilities)
+#      5.000  --------  Initial module creation for Consolidated Architecture (validation utilities)
 # =================================================================================================
 
 function Test-PathRequired {

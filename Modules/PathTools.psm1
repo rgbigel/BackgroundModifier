@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      PathTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Purpose:     Small helpers for safe path creation and validation.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (path utilities)
+#      5.000  --------  Initial module creation for Consolidated Architecture (path utilities)
 # =================================================================================================
 
 function Ensure-Path {

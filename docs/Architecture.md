@@ -50,6 +50,8 @@ What happens:
 1. The solution is installed and runtime structure is configured.
 2. Runtime orchestration is configured for startup and logon behavior.
 3. Installation checks verify prerequisites and setup consistency.
+4. Operational entry points are provisioned in `D:\OneDrive\cmd` by default.
+5. Testing entry points are provisioned only when explicitly enabled.
 
 What the user sees/does:
 
@@ -66,7 +68,7 @@ After installation/configuration, the user can expect these solution artifacts a
 3. Rendered output images produced by runtime stages.
 4. Runtime diagnostics/log files for troubleshooting.
 5. Startup/logon automation configuration used to run the stage flow.
-6. Verification and test routines that can be executed post-install.
+6. Verification routines and optional test routines that can be executed post-install.
 
 User-facing interpretation:
 
@@ -152,23 +154,38 @@ Disable behavior:
 2. Disable should stop startup/logon execution flow.
 3. Disable state should be reversible without a full reinstall.
 
+Enable behavior:
+
+1. Re-enables previously disabled startup/logon execution flow.
+2. Does not require reinstall.
+3. Does not imply cleanup or uninstall actions.
+
 Uninstall behavior:
 
 1. Removes solution automation/configuration.
 2. Removes installed solution artifacts according to uninstall scope.
 3. Preserves or removes runtime data according to explicit user choice.
+4. Never removes or modifies repository source on `D:`.
 
 Cleanup relationship:
 
 1. Cleanup is a maintenance operation and is distinct from uninstall.
 2. Cleanup can remove stale logs/outputs while keeping the solution active.
 3. Uninstall removes solution execution capabilities; cleanup alone does not.
+4. Disable/enable controls automation state only and does not remove artifacts.
 
 User choice model for uninstall scope:
 
 1. Keep diagnostics and state for later analysis.
 2. Remove diagnostics and state for a full removal.
 3. Keep base assets when the user plans later re-installation.
+
+Operational entry-point model:
+
+1. Canonical source remains in repository paths on `D:`.
+2. Runtime data remains in `C:\BackgroundMotives`.
+3. User operational entry points are exposed in `D:\OneDrive\cmd` as links.
+4. Test entry points are optional and enabled explicitly.
 
 ## 9. Cross-Document Consistency Rules
 

@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      InstallerTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Purpose:     Shared helper functions used by installation and setup scripts.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (installation utilities)
+#      5.000  --------  Initial module creation for Consolidated Architecture (installation utilities)
 # =================================================================================================
 
 function Test-Admin {

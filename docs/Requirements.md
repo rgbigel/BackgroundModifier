@@ -87,11 +87,14 @@ Contract rules:
 
 The user-visible flow is defined at use-case level:
 
-1. Install and verify prerequisites.
+1. Verify prerequisites, then install.
 2. Collect startup identity snapshot automatically.
 3. Render and apply desktop/logon backgrounds at user logon.
 4. Diagnose issues using logs and verification tooling.
 5. Re-run update/repair routines safely without destructive side effects.
+6. Disable or re-enable solution automation without uninstalling.
+7. Use operational entry points from `D:\OneDrive\cmd`; include testing entry points only when explicitly enabled.
+8. Uninstall without any modification of repository source/docs.
 
 Detailed procedural flow (task names, triggers, symlink strategy, runtime folder design) is implementation-owned and maintained in `Implementation.md`.
 Detailed end-user phase/time-flow behavior is maintained in `Architecture.md`.

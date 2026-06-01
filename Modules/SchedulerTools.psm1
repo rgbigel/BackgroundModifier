@@ -1,8 +1,10 @@
 # =================================================================================================
 #  Module:      SchedulerTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
+#  Changelog:
+#      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
 
 <# ============================================================================================
@@ -16,7 +18,7 @@
       used by the BackgroundModifier automation workflow.
 
    Change Log:
-       5.000  –  Initial module creation for Consolidated Architecture (scheduled tasks)
+       5.000  -  Initial module creation for Consolidated Architecture (scheduled tasks)
 ============================================================================================ #>
 
 function Register-BackgroundTask {

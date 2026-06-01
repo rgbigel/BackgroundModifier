@@ -1,10 +1,10 @@
 # =================================================================================================
 #  Module:      TranscriptTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Reconciled module purpose; added transcript path/start/stop helpers
+#      5.000  --------  Reconciled module purpose; added transcript path/start/stop helpers
 # =================================================================================================
 
 function Get-TranscriptPath {
@@ -23,7 +23,7 @@ function Get-TranscriptPath {
         New-Item -Path $transcriptRoot -ItemType Directory -Force | Out-Null
     }
 
-    $stamp = (Get-Date).ToString('yyyy-MM-dd_HH-mm-ss')
+    $stamp = (Get-Date).ToString('yyyyMMdd_HHmmss')
     return (Join-Path $transcriptRoot ("{0}_{1}.log" -f $Prefix, $stamp))
 }
 

@@ -4,7 +4,7 @@
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (wallpaper application)
+#      5.000  --------  Initial module creation for Consolidated Architecture (wallpaper application)
 # =================================================================================================
 
 param(
@@ -12,7 +12,7 @@ param(
     [switch]$d
 )
 
-$ModuleRoot = Join-Path $PSScriptRoot "Modules"
+$ModuleRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "Modules"
 $prev = $WarningPreference
 $WarningPreference = "SilentlyContinue"
 
@@ -25,6 +25,7 @@ Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "WallpaperTools.psm1") -Force
 
 $WarningPreference = $prev
 
@@ -36,7 +37,7 @@ $RenderRoot = $Global:RenderRoot
 $SystemRoot = $Global:SystemRoot
 
 if ($TraceMode) {
-    $timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
+    $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
     $TranscriptPath = Join-Path $Global:LogRoot "Setter_$timestamp.log"
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
@@ -76,6 +77,8 @@ try {
 
     Copy-Item -Path $RenderedDesktop -Destination $SystemDesktop -Force
     Write-Host "[OK] Applied desktop background -> $SystemDesktop"
+
+    Set-Wallpaper -ImagePath $SystemDesktop
 }
 catch {
     Write-Host "[X] Failed to apply backgrounds: $($_.Exception.Message)"

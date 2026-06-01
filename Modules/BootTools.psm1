@@ -1,10 +1,10 @@
 # =================================================================================================
 #  Module:      BootTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (boot identity and ESP detection)
+#      5.000  --------  Initial module creation for Consolidated Architecture (boot identity and ESP detection)
 # =================================================================================================
 
 # Module placeholder for boot identity and EFI/ESP detection

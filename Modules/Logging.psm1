@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      Logging.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Purpose:     Minimal logging helpers for consistent, deterministic output.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (logging utilities)
+#      5.000  --------  Initial module creation for Consolidated Architecture (logging utilities)
 # =================================================================================================
 
 function Write-LogInfo {

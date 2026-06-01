@@ -1,8 +1,10 @@
 # =================================================================================================
 #  Module:      SystemTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
+#  Changelog:
+#      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
 
 <# ============================================================================================
@@ -12,9 +14,9 @@
   Author:     Rolf Bercht
 
   Purpose:
-      Minimal, deterministic system‑level helpers.
+      Minimal, deterministic system-level helpers.
       Reserved for environment checks, OS capability detection,
-      and future expansion of system‑integration logic.
+      and future expansion of system-integration logic.
 
    Change Log:
        Version 1.001 27.02.26 16:18

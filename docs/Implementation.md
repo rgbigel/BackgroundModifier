@@ -493,6 +493,9 @@ This section maps implementation/runtime mechanics to the top-level user use cas
 15.1 Install and Verify Prerequisites
 - Runtime layout creation, symlink creation, and task registration are implementation-owned.
 - Asset verification and installer validation steps are implementation-owned.
+- `D:\OneDrive\cmd` operational entry links are installer-owned by default.
+- Testing entry links are opt-in via setup parameter `-IncludeTestLinks`.
+- When `-IncludeTestLinks` is not set, setup removes existing test entry links from `D:\OneDrive\cmd`.
 
 15.2 Collect Startup Identity Snapshot
 - Startup-stage runtime trigger and execution context are implementation-owned.
@@ -545,6 +548,14 @@ This section defines the implementation-owned runtime test surface corresponding
 1. Disable turns off startup/logon execution triggers.
 2. Disable keeps runtime data by default.
 3. Disable must be reversible by re-enabling execution triggers.
+4. Operational entry point: `Install/Disable.ps1`.
+
+17.1a Enable
+
+1. Enable restores startup/logon execution triggers previously disabled.
+2. Enable does not perform reinstall.
+3. Enable does not imply cleanup/uninstall behavior.
+4. Operational entry point: `Install/Enable.ps1`.
 
 17.2 Cleanup
 
@@ -557,9 +568,37 @@ This section defines the implementation-owned runtime test surface corresponding
 1. Uninstall removes execution automation and solution configuration wiring.
 2. Uninstall scope supports explicit retention/removal choices for runtime data.
 3. Uninstall must report final scope summary to the user (what was removed vs retained).
+4. Uninstall must never remove or mutate repository source/docs/git metadata.
+5. Operational entry point: `Install/Uninstall.ps1`.
 
 17.4 Safety Rules
 
 1. Disable, cleanup, and uninstall operations must be idempotent where feasible.
 2. Each operation must emit deterministic logs and completion status.
 3. Destructive scope must require explicit user confirmation parameters.
+
+18. Known Legacy Malfunction and Remedy (2026-06-01)
+
+Issue observed in legacy flow:
+
+1. Desktop/logon output could appear as plain black background with no text.
+
+Root cause chain:
+
+1. Renderer stage copied base images but did not draw text overlays.
+2. Logon orchestrator script was a placeholder and did not execute render/apply stages.
+3. No-blur helper set a registry value that disabled logon background image display.
+4. Desktop apply flow did not explicitly invoke wallpaper API in the execution path.
+
+Remedy implemented:
+
+1. Renderer now performs explicit text overlay drawing onto output images.
+2. Logon orchestrator now executes render, policy, and apply stages in sequence.
+3. No-blur helper now uses acrylic-blur policy (keeps background image enabled).
+4. Setter now invokes wallpaper apply API after image deployment.
+
+Validation expectations after remedy:
+
+1. Rendered images exist and contain textual overlays.
+2. Desktop wallpaper is updated during apply stage.
+3. Logon image remains visible while blur is disabled.

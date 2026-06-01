@@ -3,6 +3,8 @@
 #  Path:        .\scripts
 #  Author:      Rolf Bercht
 #  Version:     5.000
+#  Changelog:
+#      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
 
 $repoRoot = Split-Path -Parent $PSScriptRoot

@@ -1,8 +1,10 @@
 # =================================================================================================
 #  Module:      SummaryTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
+#  Changelog:
+#      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
 
 <# ============================================================================================
@@ -12,7 +14,7 @@
   Author:     Rolf Bercht
 
   Purpose:
-      Small helpers for consistent end‑of‑run summaries.
+      Small helpers for consistent end-of-run summaries.
 
    Change Log:
        Version 1.001 27.02.26 15:54

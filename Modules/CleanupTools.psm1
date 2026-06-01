@@ -1,11 +1,11 @@
 # =================================================================================================
 #  Module:      CleanupTools.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
-#  Purpose:     Centralized cleanup helpers for removing temporary files, old logs, and ensuring deterministic post‑run hygiene.
+#  Purpose:     Centralized cleanup helpers for removing temporary files, old logs, and ensuring deterministic post--------run hygiene.
 #  Changelog:
-#      5.000  –  Initial module creation for Consolidated Architecture (cleanup utilities)
+#      5.000  --------  Initial module creation for Consolidated Architecture (cleanup utilities)
 # =================================================================================================
 
 function Remove-OldLogs {

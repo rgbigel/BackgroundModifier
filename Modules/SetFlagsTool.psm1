@@ -1,10 +1,10 @@
 # =================================================================================================
 #  Module:      SetFlagsTool.psm1
-#  Path:        .\Source\Modules
+#  Path:        .\Modules
 #  Author:      Rolf Bercht
 #  Version:     5.000
 #  Changelog:
-#      5.000  –  Reconciled module purpose; added command-line flag parsing via Set-Flags
+#      5.000  --------  Reconciled module purpose; added command-line flag parsing via Set-Flags
 # =================================================================================================
 
 function Set-Flags {
