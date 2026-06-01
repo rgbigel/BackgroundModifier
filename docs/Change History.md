@@ -341,6 +341,19 @@ Verified changes:
 4. Test run result: `Passed: 67`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_14.txt`.
 
+### 25. Verifier missing cmd-root failure-path extension (2026-06-01)
+
+Verified changes:
+
+1. Extended verifier smoke suite:
+   - `Tests/Install/InstallScripts.Smoke.Tests.ps1`
+2. Added failure-path coverage for missing cmd root:
+   - verifier fails when cmd root directory does not exist
+3. Implemented failure-path validation via child PowerShell process to safely assert exit behavior.
+4. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+5. Test run result: `Passed: 68`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+6. Added run summary report: `reports/module-test-summary-20260601_15.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
