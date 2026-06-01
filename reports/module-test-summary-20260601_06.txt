@@ -1,0 +1,28 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New mocked execution coverage:
+- Tests/Install/InstallScripts.Execution.Tests.ps1
+  - Disable.ps1: verifies admin gate, per-task lookup count, per-task disable call count
+  - Disable.ps1: missing-task branch validates skip behavior
+  - Enable.ps1: verifies admin gate, per-task lookup count, per-task enable call count
+  - Enable.ps1: missing-task branch validates skip behavior
+
+Combined results:
+- Total: 57
+- Passed: 57
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Scheduled-task and privilege-sensitive operations are fully mocked.
+- No real task registration/state changes are performed by this suite.

@@ -222,6 +222,21 @@ Verified changes:
 4. Test run result: `Passed: 53`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_05.txt`.
 
+### 16. Install mocked execution test wave (2026-06-01)
+
+Verified changes:
+
+1. Added mocked execution suite:
+   - `Tests/Install/InstallScripts.Execution.Tests.ps1`
+2. Added side-effect-free behavior checks for task-control scripts:
+   - `Disable.ps1`: admin-gate call, expected task lookup calls, expected disable calls
+   - `Disable.ps1`: missing-task branch executes skip path
+   - `Enable.ps1`: admin-gate call, expected task lookup calls, expected enable calls
+   - `Enable.ps1`: missing-task branch executes skip path
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 57`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_06.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
