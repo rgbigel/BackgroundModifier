@@ -41,6 +41,26 @@ Describe "Install script mocked execution" {
             Assert-MockCalled Disable-ScheduledTask -Exactly 1 -Scope It
             Assert-MockCalled Disable-ScheduledTask -ParameterFilter { $TaskName -eq "BackgroundModifier-BootIdentity" } -Exactly 1 -Scope It
         }
+
+        It "continues when disable command fails for one task" {
+            $scriptPath = Join-Path $installRoot "Disable.ps1"
+
+            Mock Import-Module {}
+            Mock Set-Flags { [pscustomobject]@{ DebugMode = $false; TraceMode = $false } }
+            Mock Require-Admin {}
+            Mock Get-ScheduledTask { [pscustomobject]@{ TaskName = $TaskName } }
+            Mock Disable-ScheduledTask {
+                if ($TaskName -eq "BackgroundModifier-BootIdentity") {
+                    throw "disable failed"
+                }
+            }
+
+            { & $scriptPath } | Should Not Throw
+
+            Assert-MockCalled Get-ScheduledTask -Exactly 2 -Scope It
+            Assert-MockCalled Disable-ScheduledTask -Exactly 2 -Scope It
+            Assert-MockCalled Disable-ScheduledTask -ParameterFilter { $TaskName -eq "BackgroundModifier-Autorun" } -Exactly 1 -Scope It
+        }
     }
 
     Context "Enable.ps1" {
