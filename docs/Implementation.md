@@ -1,6 +1,6 @@
 Implementation.md
 BackgroundModifier – Implementation Guide  
-Version: 5.000
+Version: 6.0.0
 Profile: default
 Author: Rolf Bercht
 
@@ -30,7 +30,7 @@ Code
     Version: <Semantic version>
     Author: Rolf Bercht
     Synopsis: <Short description>
-    Architecture: Requirements v5.000
+   Architecture: Requirements v6.0.0
 
     Notes:
         - <Architectural notes>
@@ -120,7 +120,7 @@ Every `.ps1` and `.psm1` file must begin with a fixed‑layout header block.
 - `Module:` — the exact file name including extension.
 - `Path:` — the relative directory path **without** the file name and **without** a trailing backslash.
 - `Author:` — always `Rolf Bercht` unless explicitly changed.
-- `Version:` — current module version, using three‑digit major version and three‑digit minor version (e.g., `5.000`).
+- `Version:` — current module version using semantic versioning (e.g., `6.0.0`).
 - `Changelog:` — up to four predecessor versions, newest first, each with a short description.
 - Header must be wrapped in a 100% fixed, aligned, monospaced block using `#` and `=` exactly as shown.
 
@@ -130,9 +130,9 @@ Example (authoritative):
     #  Module:      BootIdentity.ps1
     #  Path:        .\Source
     #  Author:      Rolf Bercht
-    #  Version:     5.000
+   #  Version:     6.0.0
     #  Changelog:
-    #      5.000  –  Introduced BCD‑based bootloader‑path resolution; restored Diskpart A1/Variant 1;
+   #      6.0.0  –  Introduced BCD‑based bootloader‑path resolution; restored Diskpart A1/Variant 1;
     #                 added full ESP correlation rules; added BootLoaderPath to State.json.
     #      4.004  –  Refined ESP label handling; removed temp‑file Diskpart capture; pipeline only.
     #      4.003  –  Corrected partition/volume correlation; enforced GUID‑based ESP detection.
@@ -142,7 +142,7 @@ Example (authoritative):
 
 
 4.2 SchemaVersion
-Meta.SchemaVersion must equal the version of the Requirements document (5.000).
+Meta.SchemaVersion must equal the version of the Requirements document (6.0.0).
 
 4.3 Write Rules
 BootIdentity writes OS/System/ESP/Meta.
@@ -450,9 +450,9 @@ The following function inventory is documented to establish explicit reference c
 - WallpaperTools.psm1: `Set-Wallpaper`
 
 13. Versioning Policy
-- Baseline release is `5.000`.
-- Minor, non-breaking changes increment by `.001` (for example: `5.001`, `5.002`).
-- Redesign-level changes increment by `.100` (for example: `5.100`, `5.200`).
+- Baseline release is `6.0.0`.
+- Minor, non-breaking changes increment the patch number (for example: `6.0.1`, `6.0.2`).
+- Redesign-level changes increment the minor or major version as needed (for example: `6.1.0`, `7.0.0`).
 - Module headers and documentation versions should be kept aligned with the active repository version.
 
 14. Cross-Project Atom Harmonization Snapshot (2026-05-29)
@@ -509,3 +509,57 @@ This section maps implementation/runtime mechanics to the top-level user use cas
 
 Compatibility note:
 - Timestamp format remains `yyyyMMdd_HHmmss` for logs, run IDs, and file-name stamps.
+
+16. Runtime Test Matrix and Re-Run Mechanics (2026-06-01)
+
+This section defines the implementation-owned runtime test surface corresponding to the end-user phase model.
+
+16.1 Test Categories
+
+1. Installation verification tests
+   - Validates setup prerequisites and configuration consistency.
+   - Expected outputs: pass/fail status, remediation hints, log entries.
+2. Startup-stage functional tests
+   - Validates machine/boot identity collection and state persistence.
+   - Expected outputs: updated/shared state fields, stage diagnostics.
+3. Logon-stage functional tests
+   - Validates state enrichment, render outputs, and apply behavior.
+   - Expected outputs: rendered artifacts, apply status, stage diagnostics.
+4. Configuration validation tests
+   - Validates readable/consistent configuration and profile/state coherence.
+   - Expected outputs: validation report and actionable error messages.
+5. Repair/update tests
+   - Validates idempotent re-run behavior for non-destructive recovery.
+   - Expected outputs: stable configuration state and deterministic logs.
+
+16.2 Context Rules
+
+1. Tests are bound to the stage context they validate (startup or logon context).
+2. Re-run operations must not corrupt shared state across stages.
+3. Failed tests must produce deterministic diagnostics with remediation guidance.
+
+17. Disable, Cleanup, and Uninstall Mechanics (2026-06-01)
+
+17.1 Disable
+
+1. Disable turns off startup/logon execution triggers.
+2. Disable keeps runtime data by default.
+3. Disable must be reversible by re-enabling execution triggers.
+
+17.2 Cleanup
+
+1. Cleanup is maintenance-only and does not disable solution execution.
+2. Cleanup removes stale diagnostics/output artifacts according to cleanup policy.
+3. Cleanup does not remove baseline configuration unless explicitly requested.
+
+17.3 Uninstall
+
+1. Uninstall removes execution automation and solution configuration wiring.
+2. Uninstall scope supports explicit retention/removal choices for runtime data.
+3. Uninstall must report final scope summary to the user (what was removed vs retained).
+
+17.4 Safety Rules
+
+1. Disable, cleanup, and uninstall operations must be idempotent where feasible.
+2. Each operation must emit deterministic logs and completion status.
+3. Destructive scope must require explicit user confirmation parameters.

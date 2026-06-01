@@ -1,6 +1,6 @@
 ## Requirements.md (review stage)
 
-Version: 5.000 (Consolidated)  
+Version: 6.0.0 (Consolidated)  
 Runtime Profile: `default`  
 Author: Rolf Bercht  
 
@@ -94,10 +94,11 @@ The user-visible flow is defined at use-case level:
 5. Re-run update/repair routines safely without destructive side effects.
 
 Detailed procedural flow (task names, triggers, symlink strategy, runtime folder design) is implementation-owned and maintained in `Implementation.md`.
+Detailed end-user phase/time-flow behavior is maintained in `Architecture.md`.
 
 ## 5. Versioning Policy
 
-- Baseline release is `5.000`.
-- Minor, non-breaking changes increment by `.001` (for example: `5.001`, `5.002`).
-- Redesign-level changes increment by `.100` (for example: `5.100`, `5.200`).
+- Baseline release is `6.0.0`.
+- Minor, non-breaking changes increment the patch number (for example: `6.0.1`, `6.0.2`).
+- Redesign-level changes increment the minor or major version as needed (for example: `6.1.0`, `7.0.0`).
 - Module headers and documentation versions must be updated together with the repository version.
