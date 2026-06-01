@@ -1,0 +1,22 @@
+BackgroundModifier live phase test
+Date: 2026-06-01
+Phase: 4 (Runtime Stage B - Logon and Post-Logon)
+Branch: backup/local-snapshot-20260601_140543
+
+Issue investigated:
+- Logon stage failed via cmd entry point due non-symlink-safe module/script path resolution.
+
+Applied fixes:
+- Source/BackgroundSetterStart.ps1:
+  - resolved effective script target path for module root and stage script paths
+  - adjusted child script exit checks to treat null LASTEXITCODE as success
+- Source/BackgroundRenderer.ps1:
+  - resolved effective script target path for module root
+  - aligned state input path to C:\BackgroundMotives\system\State.json
+- Source/BackgroundSetter.ps1:
+  - resolved effective script target path for module root
+
+Validation results:
+- D:\OneDrive\cmd\BackgroundModifier-LogonStage.ps1 -t : exit code 0
+- D:\OneDrive\cmd\BackgroundModifier-RenderTest.ps1 -t : exit code 0
+- D:\OneDrive\cmd\BackgroundModifier-ApplyTest.ps1 -t : exit code 0

@@ -12,7 +12,14 @@ param(
     [switch]$d
 )
 
-$ModuleRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "Modules"
+$scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
+$resolvedScriptPath = $PSCommandPath
+if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
+    $resolvedScriptPath = [string]$scriptItem.Target
+}
+$ScriptRootResolved = Split-Path -Parent ([System.IO.Path]::GetFullPath($resolvedScriptPath))
+$RepoRootResolved = Split-Path -Parent $ScriptRootResolved
+$ModuleRoot = Join-Path $RepoRootResolved "Modules"
 $prev = $WarningPreference
 $WarningPreference = "SilentlyContinue"
 
@@ -38,13 +45,13 @@ Write-Host "=== BackgroundModifier Logon Autorun Orchestrator (v5.000) ==="
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled" }
 
-$rendererScript = Join-Path $PSScriptRoot "BackgroundRenderer.ps1"
-$setterScript = Join-Path $PSScriptRoot "BackgroundSetter.ps1"
+$rendererScript = Join-Path $ScriptRootResolved "BackgroundRenderer.ps1"
+$setterScript = Join-Path $ScriptRootResolved "BackgroundSetter.ps1"
 
 try {
     Write-Host "--- Stage: render ---"
     & $rendererScript -t:$t -d:$d
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
         throw "BackgroundRenderer failed with exit code $LASTEXITCODE"
     }
 
@@ -53,7 +60,7 @@ try {
 
     Write-Host "--- Stage: apply ---"
     & $setterScript -t:$t -d:$d
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
         throw "BackgroundSetter failed with exit code $LASTEXITCODE"
     }
 

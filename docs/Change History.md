@@ -508,6 +508,29 @@ Verified changes:
    - `reports/live-phase3-prelogon-20260601_03.txt`
    - `reports/module-test-summary-20260601_22.txt`
 
+### 35. Phase 4 propagation of symlink-safe path model and state-path alignment (2026-06-01)
+
+Verified changes:
+
+1. Applied cmd-symlink-safe module/script root resolution to Phase 4 scripts:
+   - `Source/BackgroundSetterStart.ps1`
+   - `Source/BackgroundRenderer.ps1`
+   - `Source/BackgroundSetter.ps1`
+2. Aligned renderer state input path with Phase 3 output location:
+   - reads `C:\BackgroundMotives\system\State.json`
+3. Fixed logon orchestrator child-script status checks:
+   - explicit non-zero exit codes fail the stage
+   - null `$LASTEXITCODE` on successful script invocation no longer causes false failure
+4. Live Phase 4 validation via cmd entry points succeeded:
+   - `BackgroundModifier-LogonStage.ps1 -t` exit code `0`
+   - `BackgroundModifier-RenderTest.ps1 -t` exit code `0`
+   - `BackgroundModifier-ApplyTest.ps1 -t` exit code `0`
+5. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+6. Test run result: `Passed: 80`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+7. Added reports:
+   - `reports/live-phase4-logon-20260601_01.txt`
+   - `reports/module-test-summary-20260601_23.txt`
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
