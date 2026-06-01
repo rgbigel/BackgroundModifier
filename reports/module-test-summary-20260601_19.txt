@@ -1,0 +1,25 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+Coverage additions in this wave:
+- Install scripts now resolve module/repo roots from the effective script target path when invoked via cmd symbolic links.
+- New regression test in Tests/Install/InstallScripts.Smoke.Tests.ps1 validates verifier execution through a cmd symbolic link.
+
+Combined results:
+- Total: 74
+- Passed: 74
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Install-state validation:
+- Elevated setup completed with -t -IncludeTestLinks.
+- Verifier succeeded from install script and from cmd entry point process execution.

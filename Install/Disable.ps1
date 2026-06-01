@@ -12,7 +12,14 @@ param(
     [switch]$d
 )
 
-$ModuleRoot = Join-Path $PSScriptRoot "..\Modules"
+$scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
+$resolvedScriptPath = $PSCommandPath
+if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
+    $resolvedScriptPath = [string]$scriptItem.Target
+}
+$ScriptRootResolved = Split-Path -Parent ([System.IO.Path]::GetFullPath($resolvedScriptPath))
+$RepoRootResolved = Split-Path -Parent $ScriptRootResolved
+$ModuleRoot = Join-Path $RepoRootResolved "Modules"
 
 Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force

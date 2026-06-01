@@ -405,6 +405,40 @@ Execution outcome:
 4. Added attempt report:
    - `reports/live-install-attempt-20260601_01.txt`
 
+### 30. Elevated live setup install success with test links (2026-06-01)
+
+Execution outcome:
+
+1. Re-ran live install from elevated shell using:
+   - `Install/Setup.ps1 -t -IncludeTestLinks`
+2. Setup completed successfully for default roots:
+   - runtime root: `C:\BackgroundMotives`
+   - cmd root: `D:\OneDrive\cmd`
+3. Verifier completed successfully both ways:
+   - direct install script invocation
+   - installed cmd entry-point process invocation (`BackgroundModifier-Verify.ps1`)
+4. Added success report:
+   - `reports/live-install-attempt-20260601_02.txt`
+
+### 31. Cmd symlink invocation path-resolution fix (2026-06-01)
+
+Verified changes:
+
+1. Fixed install-script module/repo root resolution for cmd-link execution by resolving effective script target path before deriving roots.
+2. Updated install scripts:
+   - `Install/Setup.ps1`
+   - `Install/BackgroundInstallationVerifier.ps1`
+   - `Install/Cleanup.ps1`
+   - `Install/Disable.ps1`
+   - `Install/Enable.ps1`
+   - `Install/Uninstall.ps1`
+3. Added regression test coverage:
+   - `Tests/Install/InstallScripts.Smoke.Tests.ps1`
+   - new case validates verifier success when launched from a cmd symbolic link
+4. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+5. Test run result: `Passed: 74`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+6. Added run summary report: `reports/module-test-summary-20260601_19.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

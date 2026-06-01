@@ -1,0 +1,21 @@
+BackgroundModifier live setup install verification
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Execution context:
+- Elevated shell confirmed (administrator role).
+
+Live install command path:
+- Install/Setup.ps1 -t -IncludeTestLinks
+
+Observed setup outcome:
+- Setup completed successfully.
+- Runtime root provisioned at C:\BackgroundMotives.
+- Cmd entry points created under D:\OneDrive\cmd, including test links.
+
+Verifier outcomes:
+- Install/BackgroundInstallationVerifier.ps1 -t -IncludeTestLinks succeeded.
+- D:\OneDrive\cmd\BackgroundModifier-Verify.ps1 -t -IncludeTestLinks succeeded (process exit code 0).
+
+Notes:
+- A symlink invocation bug was found and fixed in install scripts: module root resolution now uses resolved script target path rather than raw PSScriptRoot when launched from cmd links.

@@ -8,8 +8,14 @@
 #      5.000  --------  Initial module creation for Consolidated Architecture (cleanup utility)
 # =================================================================================================
 
-$RepoRoot    = Split-Path $PSScriptRoot -Parent
-$ModuleRoot  = Join-Path $RepoRoot "Modules"
+$scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
+$resolvedScriptPath = $PSCommandPath
+if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
+    $resolvedScriptPath = [string]$scriptItem.Target
+}
+$ScriptRootResolved = Split-Path -Parent ([System.IO.Path]::GetFullPath($resolvedScriptPath))
+$RepoRoot = Split-Path $ScriptRootResolved -Parent
+$ModuleRoot = Join-Path $RepoRoot "Modules"
 
 # Runtime root is explicitly outside the repo
 $RuntimeRoot = "C:\BackgroundMotives"
