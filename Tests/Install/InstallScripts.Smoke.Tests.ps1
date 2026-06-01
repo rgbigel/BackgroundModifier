@@ -230,4 +230,96 @@ Describe "Install script smoke tests" {
             }
         }
     }
+
+    It "BackgroundInstallationVerifier fails when an operational cmd entry is missing" {
+        $runtimeRoot = Join-Path $env:TEMP ("BM_VerifierRuntime_" + [guid]::NewGuid().ToString("N"))
+        $cmdRoot = Join-Path $env:TEMP ("BM_VerifierCmd_" + [guid]::NewGuid().ToString("N"))
+
+        $folders = @(
+            (Join-Path $runtimeRoot "logs"),
+            (Join-Path $runtimeRoot "assets"),
+            (Join-Path $runtimeRoot "rendered"),
+            (Join-Path $runtimeRoot "system"),
+            $cmdRoot
+        )
+
+        $cmdEntries = @(
+            "BackgroundModifier-Setup.ps1",
+            "BackgroundModifier-Verify.ps1",
+            "BackgroundModifier-Cleanup.ps1",
+            "BackgroundModifier-Disable.ps1",
+            "BackgroundModifier-Enable.ps1"
+        )
+
+        try {
+            foreach ($folder in $folders) {
+                New-Item -ItemType Directory -Path $folder -Force | Out-Null
+            }
+
+            Set-Content -Path (Join-Path $runtimeRoot "assets\DesktopBase.jpg") -Value "x" -Encoding UTF8
+            Set-Content -Path (Join-Path $runtimeRoot "assets\LogonBase.jpg") -Value "x" -Encoding UTF8
+
+            foreach ($entry in $cmdEntries) {
+                Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
+            }
+
+            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot
+            $LASTEXITCODE | Should Be 1
+        }
+        finally {
+            if (Test-Path -LiteralPath $runtimeRoot) {
+                Remove-Item -LiteralPath $runtimeRoot -Recurse -Force
+            }
+            if (Test-Path -LiteralPath $cmdRoot) {
+                Remove-Item -LiteralPath $cmdRoot -Recurse -Force
+            }
+        }
+    }
+
+    It "BackgroundInstallationVerifier fails when a required runtime folder is missing" {
+        $runtimeRoot = Join-Path $env:TEMP ("BM_VerifierRuntime_" + [guid]::NewGuid().ToString("N"))
+        $cmdRoot = Join-Path $env:TEMP ("BM_VerifierCmd_" + [guid]::NewGuid().ToString("N"))
+
+        $folders = @(
+            (Join-Path $runtimeRoot "logs"),
+            (Join-Path $runtimeRoot "assets"),
+            (Join-Path $runtimeRoot "system"),
+            $cmdRoot
+        )
+
+        $cmdEntries = @(
+            "BackgroundModifier-Setup.ps1",
+            "BackgroundModifier-Verify.ps1",
+            "BackgroundModifier-Cleanup.ps1",
+            "BackgroundModifier-Disable.ps1",
+            "BackgroundModifier-Enable.ps1",
+            "BackgroundModifier-Uninstall.ps1"
+        )
+
+        try {
+            foreach ($folder in $folders) {
+                New-Item -ItemType Directory -Path $folder -Force | Out-Null
+            }
+
+            Set-Content -Path (Join-Path $runtimeRoot "assets\DesktopBase.jpg") -Value "x" -Encoding UTF8
+            Set-Content -Path (Join-Path $runtimeRoot "assets\LogonBase.jpg") -Value "x" -Encoding UTF8
+
+            foreach ($entry in $cmdEntries) {
+                Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
+            }
+
+            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot
+            $LASTEXITCODE | Should Be 1
+        }
+        finally {
+            if (Test-Path -LiteralPath $runtimeRoot) {
+                Remove-Item -LiteralPath $runtimeRoot -Recurse -Force
+            }
+            if (Test-Path -LiteralPath $cmdRoot) {
+                Remove-Item -LiteralPath $cmdRoot -Recurse -Force
+            }
+        }
+    }
 }
