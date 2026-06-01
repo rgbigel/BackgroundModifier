@@ -158,49 +158,31 @@ All JSON reads must use ConfigTools.
 
 Missing fields must be treated as errors unless explicitly allowed.
 
-4.5 ### ESP Detection (Diskpart-Based)
+4.5 ### ESP Detection (BootTools Atom)
 
-BootIdentity uses Diskpart to enumerate and identify all EFI System Partitions.
+BootIdentity delegates ESP detection to `BootTools.psm1`.
 
-1. Enumerate partitions per disk:
-
-   diskpart /s "<script>" | Out-String
-
-   Script:
-       list disk
-       select disk <n>
-       list partition
-
-   - Parse DiskNumber, PartitionNumber, PartitionTypeGuid.
-   - Identify EFI partitions by the standard EFI System Partition GUID.
-
-2. Enumerate all volumes:
-
-   diskpart /s "<script>" | Out-String
-
-   Script:
-       list volume
-
-   - Parse VolumeNumber, VolumeLabel, DriveLetter, DiskNumber, PartitionNumber.
-   - EFI partitions usually have no drive letter; parsing must tolerate blank fields.
-
-3. Correlate partitions from step 1 with volumes from step 2 using DiskNumber + PartitionNumber.
-
-4. Store all EFI partitions in State.json with:
-   - DiskNumber
-   - PartitionNumber
-   - PartitionTypeGuid
-   - VolumeLabel
-   - DriveLetter
-
-5. Determine the active ESP by VolumeLabel = "System".
-   - All other EFI partitions are “Hidden”.
-
-6. Capture Diskpart output via pipeline, not temporary files.
+1. `BootTools.Get-EspPartitions` enumerates partitions using `Get-Partition`.
+2. EFI partitions are identified by GPT type:
+   - `{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}`
+3. Each EFI partition is correlated with `Get-Volume` metadata.
+4. State payload for each EFI entry includes:
+   - `DiskNumber`
+   - `PartitionNumber`
+   - `PartitionTypeGuid`
+   - `PartitionType`
+   - `IsSystem`
+   - `IsBoot`
+   - `VolumeLabel`
+   - `DriveLetter`
+   - `FileSystemType`
+5. `BootTools.Get-ActiveEspPartition` selects active ESP deterministically:
+   - prefers `IsSystem = true`
+   - falls back to first EFI partition in sorted order
 
 4.6 ### Bootloader Path Resolution (BCD-Based)
 
-BootIdentity determines the EFI bootloader used for the current boot from the active BCD entry.
+BootIdentity delegates BCD parsing to `BootTools.Get-BootLoaderPathFromCurrentBcd`.
 
 1. Query the active boot entry:
 
@@ -210,11 +192,7 @@ BootIdentity determines the EFI bootloader used for the current boot from the ac
    - device (must match the active ESP)
    - path (relative EFI file path, e.g. \EFI\Microsoft\Boot\bootmgfw.efi)
 
-3. Combine:
-   - the active ESP’s resolved filesystem root
-   - the BCD path
-
-   into a full path to the bootloader file.
+3. Combine `device + path` into `ESP.Active.BootLoaderPath`.
 
 4. Write this to State.json under:
    ESP.Active.BootLoaderPath
@@ -255,7 +233,7 @@ and represent the intended architectural design:
 
 | Module | Purpose | Used By | Status |
 |--------|---------|---------|--------|
-| BootTools.psm1 | ESP and boot identity detection (Diskpart, BCD) | BootIdentity.ps1 | ✓ Implemented |
+| BootTools.psm1 | ESP and boot identity detection (Get-Partition/Get-Volume, BCD) | BootIdentity.ps1 | ✓ Implemented |
 | SystemTools.psm1 | OS and system information collection | BootIdentity.ps1 | ✓ Implemented |
 | TimeTools.psm1 | UTC timestamp generation | BootIdentity.ps1, BackgroundRenderer.ps1 | ✓ Implemented |
 | ConfigTools.psm1 | Deterministic JSON I/O for State.json | All phases | ✓ Implemented |
@@ -424,7 +402,7 @@ Open Question: Should Renderer support high‑DPI scaling?
 12. Function Reference Coverage (Docs ↔ Code)
 The following function inventory is documented to establish explicit reference coverage between implementation modules and documentation.
 
-- BootIdentity.ps1: `Invoke-Diskpart`
+- BootTools.psm1: `Get-EspPartitions`, `Get-ActiveEspPartition`, `Get-BootLoaderPathFromCurrentBcd`, `Get-EspIdentitySnapshot`
 - BackgroundNoBlurReg.psm1: `Set-NoBlur`, `Remove-NoBlur`
 - BackgroundStateMgr.psm1: `Get-BackgroundState`, `Update-BackgroundState`, `Clear-BackgroundState`
 - CleanupTools.psm1: `Remove-OldLogs`, `Clear-RenderFolder`
