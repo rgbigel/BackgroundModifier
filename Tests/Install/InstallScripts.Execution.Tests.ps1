@@ -147,6 +147,30 @@ Describe "Install script mocked execution" {
             Assert-MockCalled Remove-Item -Exactly 0 -Scope It
         }
 
+        It "continues when task unregister fails" {
+            $scriptPath = Join-Path $installRoot "Uninstall.ps1"
+            $runtimeRoot = Join-Path $env:TEMP ("BM_UninstallRuntime_" + [guid]::NewGuid().ToString("N"))
+            $cmdRoot = Join-Path $env:TEMP ("BM_UninstallCmd_" + [guid]::NewGuid().ToString("N"))
+
+            Mock Import-Module {}
+            Mock Set-Flags { [pscustomobject]@{ DebugMode = $false; TraceMode = $false } }
+            Mock Require-Admin {}
+            Mock Unregister-ScheduledTask {
+                if ($TaskName -eq "BackgroundModifier-BootIdentity") {
+                    throw "unregister failed"
+                }
+            }
+            Mock Remove-NoBlur {}
+            Mock Test-Path { $false }
+            Mock Remove-Item {}
+            Mock Get-ChildItem { @() }
+
+            { & $scriptPath -RuntimeRoot $runtimeRoot -CmdRoot $cmdRoot } | Should Not Throw
+
+            Assert-MockCalled Unregister-ScheduledTask -Exactly 2 -Scope It
+            Assert-MockCalled Remove-NoBlur -Exactly 1 -Scope It
+        }
+
         It "removes runtime root when RemoveRuntimeData is set and root exists" {
             $scriptPath = Join-Path $installRoot "Uninstall.ps1"
             $runtimeRoot = Join-Path $env:TEMP ("BM_UninstallRuntime_" + [guid]::NewGuid().ToString("N"))
