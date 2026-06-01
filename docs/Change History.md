@@ -165,6 +165,19 @@ Verified changes:
 3. Test run result: `Passed: 21`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 4. Added run summary report: `reports/module-test-summary-20260601_01.txt`.
 
+### 12. Additional module test wave (2026-06-01)
+
+Verified changes:
+
+1. Added module tests:
+   - `Tests/Modules/BackgroundNoBlurReg.Tests.ps1`
+   - `Tests/Modules/Constants.Tests.ps1`
+   - `Tests/Modules/RenderTools.Tests.ps1`
+2. Corrected `BackgroundNoBlurReg` test mocks to module scope (`-ModuleName`) to avoid real registry access.
+3. Executed full `Tests/Modules` suite with Pester (v3.4.0).
+4. Test run result: `Passed: 29`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_02.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
