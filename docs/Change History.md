@@ -178,6 +178,18 @@ Verified changes:
 4. Test run result: `Passed: 29`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_02.txt`.
 
+### 13. Core-mode and summary module test wave (2026-06-01)
+
+Verified changes:
+
+1. Added module tests:
+   - `Tests/Modules/ModeTools.Tests.ps1`
+   - `Tests/Modules/SetFlagsTool.Tests.ps1`
+   - `Tests/Modules/SummaryTools.Tests.ps1`
+2. Executed full `Tests/Modules` suite with Pester (v3.4.0).
+3. Test run result: `Passed: 40`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+4. Added run summary report: `reports/module-test-summary-20260601_03.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

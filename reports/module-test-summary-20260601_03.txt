@@ -1,0 +1,33 @@
+BackgroundModifier module-level test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Expanded test scope (Tests/Modules):
+- BackgroundNoBlurReg.Tests.ps1
+- CleanupTools.Tests.ps1
+- Constants.Tests.ps1
+- InstallerTools.Tests.ps1
+- ModeTools.Tests.ps1
+- PathTools.Tests.ps1
+- RenderTools.Tests.ps1
+- SetFlagsTool.Tests.ps1
+- SummaryTools.Tests.ps1
+- TimeTools.Tests.ps1
+- TranscriptTools.Tests.ps1
+- Validation.Tests.ps1
+- ValidationTools.Tests.ps1
+
+Results:
+- Total: 40
+- Passed: 40
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- InstallerTools tests do not run setup/install scripts.
+- BackgroundNoBlurReg tests use module-scoped Pester mocks for registry calls.
+- File-system side effects are isolated to temporary folders.
