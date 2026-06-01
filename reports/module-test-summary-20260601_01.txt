@@ -1,0 +1,26 @@
+BackgroundModifier module-level test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Test scope (Tests/Modules):
+- TranscriptTools.Tests.ps1
+- TimeTools.Tests.ps1
+- PathTools.Tests.ps1
+- InstallerTools.Tests.ps1
+- CleanupTools.Tests.ps1
+- Validation.Tests.ps1
+- ValidationTools.Tests.ps1
+
+Results:
+- Total: 21
+- Passed: 21
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Notes:
+- InstallerTools tests perform no real installation actions.
+- ValidationTools tests intentionally trigger error-path returns; host output contains expected [ERROR] lines while tests remain pass.

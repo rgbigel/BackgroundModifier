@@ -140,6 +140,31 @@ Verified changes:
 3. Corrected `Source/BootIdentity.ps1` module import root from `Source\Modules` to top-level `Modules` to align with v6 repository layout.
 4. Parser validation passed after the above updates.
 
+### 10. Module-level test baseline (2026-06-01)
+
+Verified changes:
+
+1. Added initial module test scaffold under `Tests/Modules`.
+2. Added test files:
+   - `Tests/Modules/TranscriptTools.Tests.ps1`
+   - `Tests/Modules/TimeTools.Tests.ps1`
+   - `Tests/Modules/PathTools.Tests.ps1`
+3. Executed module tests with Pester (v3.4.0 in environment).
+4. Test run result: `Passed: 8`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+
+### 11. Expanded module-level test matrix (2026-06-01)
+
+Verified changes:
+
+1. Added module tests:
+   - `Tests/Modules/InstallerTools.Tests.ps1`
+   - `Tests/Modules/CleanupTools.Tests.ps1`
+   - `Tests/Modules/Validation.Tests.ps1`
+   - `Tests/Modules/ValidationTools.Tests.ps1`
+2. Executed full `Tests/Modules` suite with Pester (v3.4.0).
+3. Test run result: `Passed: 21`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+4. Added run summary report: `reports/module-test-summary-20260601_01.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:
