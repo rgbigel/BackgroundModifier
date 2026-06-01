@@ -366,6 +366,18 @@ Verified changes:
 4. Test run result: `Passed: 69`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 5. Added run summary report: `reports/module-test-summary-20260601_16.txt`.
 
+### 27. Uninstall no-blur failure-handling execution extension (2026-06-01)
+
+Verified changes:
+
+1. Extended mocked execution suite:
+   - `Tests/Install/InstallScripts.Execution.Tests.ps1`
+2. Added error-path behavior check for policy teardown:
+   - `Uninstall.ps1` continues execution when `Remove-NoBlur` throws
+3. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+4. Test run result: `Passed: 70`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+5. Added run summary report: `reports/module-test-summary-20260601_17.txt`.
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

@@ -1,0 +1,26 @@
+BackgroundModifier test summary
+Date: 2026-06-01
+Branch: backup/local-snapshot-20260601_140543
+
+Test runner:
+- Pester 3.4.0
+
+Scope included:
+- Tests/Modules
+- Tests/Install
+
+New uninstall Remove-NoBlur failure-handling coverage:
+- Tests/Install/InstallScripts.Execution.Tests.ps1
+  - Uninstall.ps1 continues when Remove-NoBlur throws
+  - Remaining uninstall flow continues through retention path
+
+Combined results:
+- Total: 70
+- Passed: 70
+- Failed: 0
+- Skipped: 0
+- Pending: 0
+
+Safety notes:
+- Registry-sensitive operations are mocked.
+- No real policy/registry mutations are performed.
