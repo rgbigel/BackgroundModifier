@@ -18,7 +18,14 @@ $ErrorActionPreference = "Stop"
 # -------------------------------------------------------------------------------------------------
 #  MODULE IMPORTS  (Root: .\Modules)
 # -------------------------------------------------------------------------------------------------
-$ModuleRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "Modules"
+$scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
+$resolvedScriptPath = $PSCommandPath
+if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
+    $resolvedScriptPath = [string]$scriptItem.Target
+}
+$ScriptRootResolved = Split-Path -Parent ([System.IO.Path]::GetFullPath($resolvedScriptPath))
+$RepoRootResolved = Split-Path -Parent $ScriptRootResolved
+$ModuleRoot = Join-Path $RepoRootResolved "Modules"
 Import-Module (Join-Path $ModuleRoot "LoggingTools.psm1")
 Import-Module (Join-Path $ModuleRoot "ConfigTools.psm1")
 Import-Module (Join-Path $ModuleRoot "TimeTools.psm1")
@@ -26,10 +33,20 @@ Import-Module (Join-Path $ModuleRoot "BackgroundStateMgr.psm1")
 Import-Module (Join-Path $ModuleRoot "SystemTools.psm1")
 Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1")
 
+$RuntimeRoot = "C:\BackgroundMotives"
+$LogRoot = Join-Path $RuntimeRoot "logs"
+$SystemRoot = Join-Path $RuntimeRoot "system"
+if (-not (Test-Path -LiteralPath $LogRoot)) {
+    New-Item -ItemType Directory -Path $LogRoot -Force | Out-Null
+}
+if (-not (Test-Path -LiteralPath $SystemRoot)) {
+    New-Item -ItemType Directory -Path $SystemRoot -Force | Out-Null
+}
+
 # -------------------------------------------------------------------------------------------------
 #  START LOG
 # -------------------------------------------------------------------------------------------------
-$Log = Start-Log -Name "BootIdentity"
+$Log = Join-Path $LogRoot ("BootIdentity_{0}.log" -f (Get-RunTimestamp))
 
 try {
 
@@ -53,7 +70,7 @@ try {
         Model        = $cs.Model
     }
 
-    Write-Log $Log "Collected OS and System identity."
+    Write-Log -Path $Log -Message "Collected OS and System identity."
 
     # =============================================================================================
     #  DISKPART ESP ENUMERATION  (A1 + Variant 1)
@@ -73,8 +90,10 @@ try {
 
     # --- Step 1: list disk
     $DiskList = Invoke-Diskpart @("list disk")
-    $DiskNumbers = ($DiskList -split "`r?`n" | Select-String "Disk\s+\d+").Matches.Value |
-                   ForEach-Object { ($_ -replace "\D","") }
+    $DiskNumbers = @(
+        [regex]::Matches($DiskList, "Disk\s+(\d+)") |
+        ForEach-Object { $_.Groups[1].Value }
+    ) | Select-Object -Unique
 
     $Partitions = @()
 
@@ -134,13 +153,13 @@ try {
         }
     }
 
-    Write-Log $Log "Enumerated and correlated EFI partitions."
+    Write-Log -Path $Log -Message "Enumerated and correlated EFI partitions."
 
     # --- Step 4: determine active ESP
     $ActiveEsp = $EfiPartitions | Where-Object { $_.VolumeLabel -eq "System" } | Select-Object -First 1
 
     if (-not $ActiveEsp) {
-        Write-Log $Log "No active ESP with label 'System' found." "Error"
+        Write-Log -Path $Log -Message "No active ESP with label 'System' found." -Level "ERROR"
     }
 
     # =============================================================================================
@@ -163,38 +182,51 @@ try {
         }
 
         $BootLoaderPath = Join-Path $root $Path.TrimStart("\")
-        Write-Log $Log "Resolved bootloader path: $BootLoaderPath"
+        Write-Log -Path $Log -Message "Resolved bootloader path: $BootLoaderPath"
     }
     else {
-        Write-Log $Log "Could not resolve bootloader path." "Error"
+        Write-Log -Path $Log -Message "Could not resolve bootloader path." -Level "ERROR"
     }
 
     # =============================================================================================
     #  WRITE STATE.JSON
     # =============================================================================================
 
+    $ActiveEspState = [ordered]@{
+        DiskNumber      = $null
+        PartitionNumber = $null
+        VolumeLabel     = $null
+        DriveLetter     = $null
+        BootLoaderPath  = $BootLoaderPath
+    }
+
+    if ($ActiveEsp) {
+        $ActiveEspState = [ordered]@{
+            DiskNumber      = $ActiveEsp.DiskNumber
+            PartitionNumber = $ActiveEsp.PartitionNumber
+            VolumeLabel     = $ActiveEsp.VolumeLabel
+            DriveLetter     = $ActiveEsp.DriveLetter
+            BootLoaderPath  = $BootLoaderPath
+        }
+    }
+
     $State = [ordered]@{
         OS      = $OsInfo
         System  = $SystemInfo
         ESP     = [ordered]@{
             All    = $EfiPartitions
-            Active = [ordered]@{
-                DiskNumber      = $ActiveEsp.DiskNumber
-                PartitionNumber = $ActiveEsp.PartitionNumber
-                VolumeLabel     = $ActiveEsp.VolumeLabel
-                DriveLetter     = $ActiveEsp.DriveLetter
-                BootLoaderPath  = $BootLoaderPath
-            }
+            Active = $ActiveEspState
         }
     }
 
-    Write-StateJson -Data $State -Log $Log
-    Write-Log $Log "BootIdentity completed."
+    $statePath = Join-Path $SystemRoot "State.json"
+    Save-Config -Path $statePath -Config $State
+    Write-Log -Path $Log -Message "State.json written: $statePath"
+    Write-Log -Path $Log -Message "BootIdentity completed."
 
 }
 catch {
-    Write-ErrorLog $Log $_
-}
-finally {
-    Stop-Log $Log
+    Write-Log -Path $Log -Message $_.Exception.Message -Level "ERROR"
+    Write-Host "[X] BootIdentity failed: $($_.Exception.Message)"
+    exit 1
 }

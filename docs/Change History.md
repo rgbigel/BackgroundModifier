@@ -439,6 +439,30 @@ Verified changes:
 5. Test run result: `Passed: 74`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
 6. Added run summary report: `reports/module-test-summary-20260601_19.txt`.
 
+### 32. Phase-ordered pre-logon live test and BootIdentity hardening (2026-06-01)
+
+Execution outcome:
+
+1. Ran Phase 3 pre-logon entry point from installed cmd link:
+   - `D:\OneDrive\cmd\BackgroundModifier-BootIdentityTest.ps1`
+2. Initial run exposed execution blockers in `Source/BootIdentity.ps1`:
+   - cmd-symlink module-root resolution mismatch
+   - references to legacy helper calls not available in current module set
+3. Applied BootIdentity fixes:
+   - resolved effective script target path before deriving module root
+   - replaced legacy logging/state helper usage with available module-backed operations
+   - corrected disk number parsing to avoid invalid match access
+   - added null-safe Active ESP serialization for state output
+4. Re-ran live Phase 3 test successfully:
+   - process exit code `0`
+   - state file created: `C:\BackgroundMotives\system\State.json`
+   - BootIdentity log written under `C:\BackgroundMotives\logs`
+5. Executed combined suite across `Tests/Modules` and `Tests/Install` with Pester (v3.4.0).
+6. Test run result: `Passed: 74`, `Failed: 0`, `Skipped: 0`, `Pending: 0`.
+7. Added reports:
+   - `reports/live-phase3-prelogon-20260601_01.txt`
+   - `reports/module-test-summary-20260601_20.txt`
+
 ## Current Working Tree Snapshot (at write time)
 
 Working tree includes modified/new/deleted paths associated with the consistency migration, including:

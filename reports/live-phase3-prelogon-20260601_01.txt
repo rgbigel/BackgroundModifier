@@ -1,0 +1,25 @@
+BackgroundModifier live phase test
+Date: 2026-06-01
+Phase: 3 (Runtime Stage A - Pre-Logon)
+Branch: backup/local-snapshot-20260601_140543
+
+Target entry point:
+- D:\OneDrive\cmd\BackgroundModifier-BootIdentityTest.ps1
+
+Initial result:
+- Failed via cmd symlink due module-root resolution and legacy helper mismatches in Source/BootIdentity.ps1.
+
+Fixes applied:
+- Resolve effective script target path for module-root derivation under symlink invocation.
+- Replace missing legacy helper calls (Start-Log / Write-StateJson / Write-ErrorLog / Stop-Log) with available module-backed logging/config writes.
+- Hardening updates in disk parsing and null-safe Active ESP serialization.
+
+Final result:
+- Process exit code: 0
+- State file created: C:\BackgroundMotives\system\State.json
+- Latest BootIdentity log created in: C:\BackgroundMotives\logs
+
+Observed state fields:
+- OS.Caption present
+- System.ComputerName present
+- ESP.Active.BootLoaderPath present (empty in this run)
