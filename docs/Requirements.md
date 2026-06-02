@@ -31,6 +31,11 @@ Generate a unified, informationâ€‘rich background for **Windows logon** and
 - supports installation, debugging and logging 
 - Explicit, documented entry points via symlinks for simplified user access to exposed functionality.
 
+### PowerShell Import Verb-Warning Policy (2026-06-02)
+
+- Internal module imports that intentionally retain legacy/non-approved verb names must use `Import-Module -DisableNameChecking` to avoid runtime warning noise in user-facing operational flows.
+- This suppression applies to all active repository scripts that import affected internal modules.
+
 ### Cross-Project Reuse Policy (2026-05-29)
 
 - Reusable capabilities are to be structured as globally usable `.psm1` modules.

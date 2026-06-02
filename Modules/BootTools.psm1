@@ -416,7 +416,12 @@ function Get-EspIdentitySnapshot {
 	}
 
 	$active = Get-ActiveEspPartition -EfiPartitions $EfiPartitions
-	$activeByHint = $EfiPartitions | Where-Object { $_.IsActiveHint -eq $true } | Select-Object -First 1
+	$activeByHint = $EfiPartitions |
+		Where-Object {
+			$hasHintProperty = $_.PSObject -and $_.PSObject.Properties -and $_.PSObject.Properties.Match('IsActiveHint').Count -gt 0
+			$hasHintProperty -and $_.IsActiveHint -eq $true
+		} |
+		Select-Object -First 1
 	if ($activeByHint) {
 		$active = $activeByHint
 	}
@@ -433,6 +438,26 @@ function Get-EspIdentitySnapshot {
 
 	$normalizedAll = @()
 	foreach ($partition in $EfiPartitions) {
+		$partitionTypeGuid = $null
+		if ($partition.PSObject -and $partition.PSObject.Properties -and $partition.PSObject.Properties.Match('PartitionTypeGuid').Count -gt 0) {
+			$partitionTypeGuid = $partition.PartitionTypeGuid
+		}
+
+		$partitionType = $null
+		if ($partition.PSObject -and $partition.PSObject.Properties -and $partition.PSObject.Properties.Match('PartitionType').Count -gt 0) {
+			$partitionType = $partition.PartitionType
+		}
+
+		$isBoot = $false
+		if ($partition.PSObject -and $partition.PSObject.Properties -and $partition.PSObject.Properties.Match('IsBoot').Count -gt 0) {
+			$isBoot = [bool]$partition.IsBoot
+		}
+
+		$fileSystemType = $null
+		if ($partition.PSObject -and $partition.PSObject.Properties -and $partition.PSObject.Properties.Match('FileSystemType').Count -gt 0) {
+			$fileSystemType = $partition.FileSystemType
+		}
+
 		$isActive = $false
 		if ($active -and $partition.DiskNumber -eq $active.DiskNumber -and $partition.PartitionNumber -eq $active.PartitionNumber) {
 			$isActive = $true
@@ -441,14 +466,14 @@ function Get-EspIdentitySnapshot {
 		$normalizedAll += [ordered]@{
 			DiskNumber        = $partition.DiskNumber
 			PartitionNumber   = $partition.PartitionNumber
-			PartitionTypeGuid = $partition.PartitionTypeGuid
-			PartitionType     = $partition.PartitionType
+			PartitionTypeGuid = $partitionTypeGuid
+			PartitionType     = $partitionType
 			IsSystem          = [bool]$partition.IsSystem
-			IsBoot            = [bool]$partition.IsBoot
+			IsBoot            = $isBoot
 			IsActive          = $isActive
 			VolumeLabel       = $partition.VolumeLabel
 			DriveLetter       = $partition.DriveLetter
-			FileSystemType    = $partition.FileSystemType
+			FileSystemType    = $fileSystemType
 		}
 	}
 

@@ -32,7 +32,7 @@ Import-Module (Join-Path $ModuleRoot "Logging.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "TranscriptTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "PathTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -DisableNameChecking -Force
 Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force

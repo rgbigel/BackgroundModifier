@@ -21,11 +21,9 @@ $RepoRootResolved = Split-Path -Parent $ScriptRootResolved
 $ModuleRoot = Join-Path $RepoRootResolved "Modules"
 
 Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 
-$flags = Set-Flags -T:$t
-$TraceMode = $flags.TraceMode
-$DebugMode = $flags.DebugMode
+$TraceMode = [bool]$t
+$DebugMode = [bool]$t
 
 Write-Host "=== BackgroundModifier Enable.ps1 (v6.0.0) ==="
 if ($DebugMode) { Write-Host "Debug mode enabled" }

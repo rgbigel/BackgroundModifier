@@ -28,12 +28,12 @@ $ScriptRootResolved = Split-Path -Parent ([System.IO.Path]::GetFullPath($resolve
 $RepoRootResolved = Split-Path -Parent $ScriptRootResolved
 $ModuleRoot = Join-Path $RepoRootResolved "Modules"
 Import-Module (Join-Path $ModuleRoot "LoggingTools.psm1")
-Import-Module (Join-Path $ModuleRoot "ConfigTools.psm1")
+Import-Module (Join-Path $ModuleRoot "ConfigTools.psm1") -DisableNameChecking
 Import-Module (Join-Path $ModuleRoot "TimeTools.psm1")
 Import-Module (Join-Path $ModuleRoot "BootTools.psm1")
 Import-Module (Join-Path $ModuleRoot "BackgroundStateMgr.psm1")
 Import-Module (Join-Path $ModuleRoot "SystemTools.psm1")
-Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1")
+Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -DisableNameChecking
 
 $RuntimeRoot = "C:\BootOpsHub"
 $LogRoot = Join-Path $RuntimeRoot "logs"

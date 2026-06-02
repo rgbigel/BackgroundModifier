@@ -219,8 +219,8 @@ Describe "Install script mocked execution" {
             $runtimeRoot = Join-Path $env:TEMP ("BM_UninstallRuntime_" + [guid]::NewGuid().ToString("N"))
             $cmdRoot = Join-Path $env:TEMP ("BM_UninstallCmd_" + [guid]::NewGuid().ToString("N"))
 
-            $cmdEntry1 = Join-Path $cmdRoot "BackgroundModifier-Setup.ps1"
-            $cmdEntry2 = Join-Path $cmdRoot "BackgroundModifier-Verify.ps1"
+            $cmdEntry1 = Join-Path $cmdRoot "BackgroundModifier_Install.cmd"
+            $cmdEntry2 = Join-Path $cmdRoot "BackgroundModifier.cmd"
             $solutionCodeRoot = Join-Path $runtimeRoot "SolutionCode"
             $runtimeLink = Join-Path $solutionCodeRoot "BootIdentity.ps1"
 

@@ -16,7 +16,7 @@ Describe "Cleanup script execution" {
 
         { & $scriptPath } | Should Not Throw
 
-        Assert-MockCalled Import-Module -Exactly 1 -Scope It
+        Assert-MockCalled Import-Module -Exactly 2 -Scope It
         Assert-MockCalled Clear-RenderFolder -Exactly 1 -Scope It
         Assert-MockCalled Remove-OldLogs -Exactly 1 -Scope It
     }
