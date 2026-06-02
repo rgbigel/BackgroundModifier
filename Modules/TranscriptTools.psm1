@@ -2,7 +2,7 @@
 #  Module:      TranscriptTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  --------  Reconciled module purpose; added transcript path/start/stop helpers
 # =================================================================================================
@@ -15,7 +15,7 @@ function Get-TranscriptPath {
     )
 
     if ([string]::IsNullOrWhiteSpace($LogRoot)) {
-        $LogRoot = 'C:\BackgroundMotives\logs'
+        $LogRoot = 'C:\BootOpsHub\logs'
     }
 
     $transcriptRoot = Join-Path $LogRoot 'transcripts'
@@ -58,4 +58,5 @@ function Stop-ToolTranscript {
 }
 
 Export-ModuleMember -Function Get-TranscriptPath, Start-ToolTranscript, Stop-ToolTranscript
+
 

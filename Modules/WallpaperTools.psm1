@@ -2,7 +2,7 @@
 #  Module:      WallpaperTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
@@ -10,7 +10,7 @@ $16.0.0
 <# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\WallpaperTools.psm1
   Module:     WallpaperTools.psm1
-$16.0.0
+  Version:    6.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -52,4 +52,5 @@ function Set-Wallpaper {
     }
 }
     Export-ModuleMember -Function *
+
 

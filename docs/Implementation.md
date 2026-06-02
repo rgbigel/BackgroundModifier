@@ -1,6 +1,6 @@
 ﻿Implementation.md
 BackgroundModifier â€“ Implementation Guide  
-$16.0.0
+6.0.0
 Profile: default
 Author: Rolf Bercht
 
@@ -75,7 +75,7 @@ All errors must be logged via LoggingTools.
 
 3. Logging, Debugging, and Tracing
 3.1 Logging
-All modules must log to C:\BackgroundMotives\logs.
+All modules must log to C:\BootOpsHub\logs.
 
 Log file naming convention:
 
@@ -165,7 +165,11 @@ BootIdentity delegates ESP detection to `BootTools.psm1`.
 1. `BootTools.Get-EspPartitions` enumerates partitions using `Get-Partition`.
 2. EFI partitions are identified by GPT type:
    - `{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}`
-3. Each EFI partition is correlated with `Get-Volume` metadata.
+3. Each EFI partition is enriched from multiple sources in order:
+   - `Get-Volume` (when metadata is mounted and available)
+   - batched `diskpart` `detail partition` parsing
+   - `fsutil fsinfo volumeinfo` using partition access paths
+4. Deterministic fallbacks are applied only when all live sources are empty.
 4. State payload for each EFI entry includes:
    - `DiskNumber`
    - `PartitionNumber`
@@ -176,17 +180,22 @@ BootIdentity delegates ESP detection to `BootTools.psm1`.
    - `VolumeLabel`
    - `DriveLetter`
    - `FileSystemType`
+   - `IsActive`
 5. `BootTools.Get-ActiveEspPartition` selects active ESP deterministically:
-   - prefers `IsSystem = true`
+   - prefers DiskPart active hint when available
+   - else prefers `IsSystem = true`
    - falls back to first EFI partition in sorted order
 
 4.6 ### Bootloader Path Resolution (BCD-Based)
 
 BootIdentity delegates BCD parsing to `BootTools.Get-BootLoaderPathFromCurrentBcd`.
 
-1. Query the active boot entry:
+1. Query BCD with ordered candidates:
 
-   bcdedit /enum {current}
+   - `bcdedit /enum {current}`
+   - `bcdedit /enum {default}`
+   - `bcdedit /enum {bootmgr}`
+   - fallback parse from `bcdedit /enum all`
 
 2. Extract:
    - device (must match the active ESP)
@@ -233,7 +242,7 @@ and represent the intended architectural design:
 
 | Module | Purpose | Used By | Status |
 |--------|---------|---------|--------|
-| BootTools.psm1 | ESP and boot identity detection (Get-Partition/Get-Volume, BCD) | BootIdentity.ps1 | âœ“ Implemented |
+| BootTools.psm1 | ESP identity detection (Get-Partition + DiskPart + fsutil) and BCD bootloader parsing | BootIdentity.ps1 | âœ“ Implemented |
 | SystemTools.psm1 | OS and system information collection | BootIdentity.ps1 | âœ“ Implemented |
 | TimeTools.psm1 | UTC timestamp generation | BootIdentity.ps1, BackgroundRenderer.ps1 | âœ“ Implemented |
 | ConfigTools.psm1 | Deterministic JSON I/O for State.json | All phases | âœ“ Implemented |
@@ -354,11 +363,11 @@ Trigger: At user logon
 
 User: Interactive user
 
-Action: Run BackgroundSetterStart.ps1 via symlink
+Action: Run BackgroundApply.ps1 via symlink
 
 9. Symlink Creation Rules
 9.1 Required Symlinks
-C:\BackgroundMotives\SolutionCode\ must contain:
+C:\BootOpsHub\SolutionCode\ must contain:
 
 BootIdentity.ps1
 
@@ -366,25 +375,15 @@ BackgroundRenderer.ps1
 
 BackgroundSetter.ps1
 
-BackgroundSetterStart.ps1
+BackgroundApply.ps1
 
-BackgroundInstallationVerifier.ps1
+Verifyer.ps1
 
 Operational `D:\OneDrive\cmd` links must contain:
 
-BackgroundModifier-AdminShell.ps1
+BackgroundModifier_Install.cmd
 
-BackgroundModifier-Setup.ps1
-
-BackgroundModifier-Verify.ps1
-
-BackgroundModifier-Cleanup.ps1
-
-BackgroundModifier-Disable.ps1
-
-BackgroundModifier-Enable.ps1
-
-BackgroundModifier-Uninstall.ps1
+BackgroundModifier.cmd
 
 9.2 Rules
 No real code may exist in SolutionCode.
@@ -443,7 +442,7 @@ The following function inventory is documented to establish explicit reference c
 5. `/?`, `/H`, and `-Help` are help-only invocations and must not trigger self-elevation.
 6. Help-only invocations emit usage text and return exit code `0`.
 7. `-h` is accepted as a help alias for the help detector.
-8. `Setup.ps1`, `BackgroundInstallationVerifier.ps1`, and `Uninstall.ps1` accept short-form aliases for path/link parameters (`-c`, `-r`, `-i`) where applicable.
+8. `Setup.ps1`, `Verifyer.ps1`, and `Uninstall.ps1` accept short-form aliases for path/link parameters (`-c`, `-r`) where applicable.
 9. Debug/trace runs pause before script exit so elevated console windows remain open for inspection.
 - SetFlagsTool.psm1: `Set-Flags`
 - SummaryTools.psm1: `Show-Summary`
@@ -499,9 +498,10 @@ This section maps implementation/runtime mechanics to the top-level user use cas
 15.1 Install and Verify Prerequisites
 - Runtime layout creation, symlink creation, and task registration are implementation-owned.
 - Asset verification and installer validation steps are implementation-owned.
-- `D:\OneDrive\cmd` operational entry links are installer-owned by default.
-- Testing entry links are opt-in via setup parameter `-IncludeTestLinks`.
-- When `-IncludeTestLinks` is not set, setup removes existing test entry links from `D:\OneDrive\cmd`.
+- `D:\OneDrive\cmd` exposes two installer-owned launchers: `BackgroundModifier_Install.cmd` and `BackgroundModifier.cmd`.
+- `BackgroundModifier.cmd` is menu-only and routes elevated actions.
+- Source-level actions are integrated into the menu UX.
+- Apply is conditionally shown only after Setter problems; successful Setter runs Apply automatically.
 
 15.2 Collect Startup Identity Snapshot
 - Startup-stage runtime trigger and execution context are implementation-owned.

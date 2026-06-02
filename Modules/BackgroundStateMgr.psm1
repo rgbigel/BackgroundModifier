@@ -2,7 +2,7 @@
 #  Module:      BackgroundStateMgr.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  --------  Added state management functions for reading/updating/clearing State.json
 # =================================================================================================
@@ -50,4 +50,5 @@ function Clear-BackgroundState {
 }
 
 Export-ModuleMember -Function Get-BackgroundState, Update-BackgroundState, Clear-BackgroundState
+
 

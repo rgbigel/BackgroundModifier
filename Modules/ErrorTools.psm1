@@ -1,7 +1,7 @@
 ﻿<# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\ErrorTools.psm1
   Module:     ErrorTools.psm1
-$16.0.0
+#  Version:     6.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -42,4 +42,5 @@ function Fail-IfFalse {
         Throw-Error $Message
     }
 }
+
 

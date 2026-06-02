@@ -2,14 +2,13 @@
 #  Module:      BackgroundSetter.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (wallpaper application)
 # =================================================================================================
 
 param(
-    [switch]$t,
-    [switch]$d
+    [switch]$t
 )
 
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
@@ -36,7 +35,7 @@ Import-Module (Join-Path $ModuleRoot "WallpaperTools.psm1") -Force
 
 $WarningPreference = $prev
 
-$flags = Set-Flags -T:$t -D:$d
+$flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
@@ -49,7 +48,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-$16.0.0) ==="
+Write-Host "=== BackgroundModifier BackgroundSetter.ps1 (v6.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -100,4 +99,5 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+
 

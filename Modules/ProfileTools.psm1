@@ -2,7 +2,7 @@
 #  Module:      ProfileTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Purpose:     Centralized helpers for reading, writing, and validating operator profiles.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (profile utilities)
@@ -50,4 +50,5 @@ function Test-ProfileValid {
     return $true
 }
 Export-ModuleMember -Function *
+
 

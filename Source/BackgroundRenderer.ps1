@@ -2,14 +2,13 @@
 #  Module:      BackgroundRenderer.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (background rendering)
 # =================================================================================================
 
 param(
-    [switch]$t,
-    [switch]$d
+    [switch]$t
 )
 
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
@@ -34,10 +33,11 @@ Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ConfigTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "BootTools.psm1") -Force
 
 $WarningPreference = $prev
 
-$flags = Set-Flags -T:$t -D:$d
+$flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
@@ -51,7 +51,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-$16.0.0) ==="
+Write-Host "=== BackgroundModifier BackgroundRenderer.ps1 (v6.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -287,6 +287,28 @@ try {
         $espEfiValue = $espLabelValue
     }
 
+    if ([string]::IsNullOrWhiteSpace($espBootLoaderValue)) {
+        try {
+            $espBootLoaderValue = [string](Get-BootLoaderPathFromCurrentBcd)
+        }
+        catch {
+            $espBootLoaderValue = ""
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($espBootLoaderValue)) {
+        $defaultBootLoaderPath = "\\EFI\\Microsoft\\Boot\\bootmgfw.efi"
+        if (-not [string]::IsNullOrWhiteSpace($espDriveValue)) {
+            $espBootLoaderValue = ("{0}:{1}" -f $espDriveValue, $defaultBootLoaderPath)
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($espId)) {
+            $espBootLoaderValue = ("ESP {0}{1}" -f $espId, $defaultBootLoaderPath)
+        }
+        else {
+            $espBootLoaderValue = $defaultBootLoaderPath
+        }
+    }
+
     $tableRows = @(
         [ordered]@{ Key = "OS"; Value = $osValue },
         [ordered]@{ Key = "Build"; Value = $buildValue },
@@ -302,11 +324,23 @@ try {
         $tableRows += [ordered]@{ Key = "ESP Drv"; Value = $espDriveValue }
     }
 
+    $logonUserValue = if ([string]::IsNullOrWhiteSpace($userValue)) { "(last)" } else { "(last) $userValue" }
+    $logonTableRows = @(
+        $tableRows | ForEach-Object {
+            if ([string]$_.Key -eq "User") {
+                [ordered]@{ Key = "User"; Value = $logonUserValue }
+            }
+            else {
+                $_
+            }
+        }
+    )
+
     $renderTitleLogon = "BackgroundModifier V6.0.0 Logon"
     $renderTitleDesktop = "BackgroundModifier V6.0.0"
     $accentColor = Get-AssetAccentColor -ImagePath $DesktopBase
 
-    $targetKeyWidth = ($tableRows | ForEach-Object { [string]$_.Key } | Measure-Object -Maximum Length).Maximum
+    $targetKeyWidth = ($logonTableRows | ForEach-Object { [string]$_.Key } | Measure-Object -Maximum Length).Maximum
     if (-not $targetKeyWidth) { $targetKeyWidth = 5 }
 
     $titleTargetChars = [Math]::Max($renderTitleLogon.Length, $renderTitleDesktop.Length)
@@ -317,7 +351,7 @@ try {
     $tableFormat["KeyWidth"] = [int]$targetKeyWidth
     $tableFormat["ValueWidth"] = [int]$targetValueWidth
 
-    $resolvedFormat = Render-TextOverlay -BaseImage $LogonBase -OutputPath $OutputLogon -Title $renderTitleLogon -TableRows $tableRows -TableFormat $tableFormat -TextColor $accentColor
+    $resolvedFormat = Render-TextOverlay -BaseImage $LogonBase -OutputPath $OutputLogon -Title $renderTitleLogon -TableRows $logonTableRows -TableFormat $tableFormat -TextColor $accentColor
     Render-TextOverlay -BaseImage $DesktopBase -OutputPath $OutputDesktop -Title $renderTitleDesktop -TableRows $tableRows -TableFormat @{
         KeyWidth = $resolvedFormat.KeyWidth
         ValueWidth = $resolvedFormat.ValueWidth
@@ -350,4 +384,5 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+
 

@@ -4,7 +4,7 @@ $installRoot = Join-Path $repoRoot "Install"
 Describe "Install script smoke tests" {
     $installScripts = @(
         "Setup.ps1",
-        "BackgroundInstallationVerifier.ps1",
+        "Verifyer.ps1",
         "Cleanup.ps1",
         "Disable.ps1",
         "Enable.ps1",
@@ -27,7 +27,7 @@ Describe "Install script smoke tests" {
     }
 
     It "Verifier defines IncludeTestLinks parameter" {
-        $path = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+        $path = Join-Path $installRoot "Verifyer.ps1"
         $text = Get-Content -LiteralPath $path -Raw
         $text | Should Match '\[switch\]\$IncludeTestLinks'
     }
@@ -71,7 +71,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             { & $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot } | Should Not Throw
         }
         finally {
@@ -121,7 +121,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             { & $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot -IncludeTestLinks } | Should Not Throw
         }
         finally {
@@ -174,7 +174,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             New-Item -Path $linkPath -ItemType SymbolicLink -Value $verifier -Force | Out-Null
 
             & powershell -NoProfile -ExecutionPolicy Bypass -File $linkPath -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot -IncludeTestLinks
@@ -226,7 +226,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot -IncludeTestLinks
             $LASTEXITCODE | Should Be 1
         }
@@ -273,7 +273,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot
             $LASTEXITCODE | Should Be 1
         }
@@ -319,7 +319,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot
             $LASTEXITCODE | Should Be 1
         }
@@ -365,7 +365,7 @@ Describe "Install script smoke tests" {
                 Set-Content -Path (Join-Path $cmdRoot $entry) -Value "x" -Encoding UTF8
             }
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot
             $LASTEXITCODE | Should Be 1
         }
@@ -398,7 +398,7 @@ Describe "Install script smoke tests" {
             Set-Content -Path (Join-Path $runtimeRoot "assets\DesktopBase.jpg") -Value "x" -Encoding UTF8
             Set-Content -Path (Join-Path $runtimeRoot "assets\LogonBase.jpg") -Value "x" -Encoding UTF8
 
-            $verifier = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+            $verifier = Join-Path $installRoot "Verifyer.ps1"
             & powershell -NoProfile -ExecutionPolicy Bypass -File $verifier -CmdRoot $cmdRoot -RuntimeRoot $runtimeRoot
             $LASTEXITCODE | Should Be 1
         }

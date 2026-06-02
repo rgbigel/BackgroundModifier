@@ -1,6 +1,6 @@
 ﻿## Requirements.md (review stage)
 
-$16.0.0 (Consolidated)  
+6.0.0 (Consolidated)  
 Runtime Profile: `default`  
 Author: Rolf Bercht  
 

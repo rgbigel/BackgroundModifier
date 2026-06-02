@@ -8,8 +8,7 @@
 # =================================================================================================
 
 param(
-    [switch]$t,
-    [switch]$d
+    [switch]$t
 )
 
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
@@ -24,7 +23,7 @@ $ModuleRoot = Join-Path $RepoRootResolved "Modules"
 Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 
-$flags = Set-Flags -T:$t -D:$d
+$flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
@@ -35,9 +34,8 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Enable.ps1 help" -UsageLines @(
-        "Usage: Enable.ps1 [-t] [-d]",
+        "Usage: Enable.ps1 [-t]",
         "  -t: Trace mode (implies debug mode for richer diagnostics).",
-        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
         "Use /?, /H, or -Help to show this message.",
         "Requires administrator privileges."
     )
@@ -73,4 +71,5 @@ foreach ($taskName in $taskNames) {
 Write-Host "[OK] Enable operation completed. Tasks enabled: $enabledCount"
 
 Wait-ForInstallerExit -Pause:($DebugMode -or $TraceMode) -Message "Enable completed. Press Enter to exit..."
+
 

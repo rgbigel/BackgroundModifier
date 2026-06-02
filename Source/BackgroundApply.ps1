@@ -1,5 +1,5 @@
 ﻿# =================================================================================================
-#  Module:      BackgroundSetterStart.ps1
+#  Module:      BackgroundApply.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
 #  Version:     6.0.0
@@ -39,7 +39,7 @@ $flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
-Write-Host "=== BackgroundModifier BackgroundSetterStart.ps1 (v6.0.0) ==="
+Write-Host "=== BackgroundModifier BackgroundApply.ps1 (v6.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled" }
@@ -50,8 +50,9 @@ $setterScript = Join-Path $ScriptRootResolved "BackgroundSetter.ps1"
 try {
     Write-Host "--- Stage: render ---"
     & $rendererScript -t:$t
-    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
-        throw "BackgroundRenderer failed with exit code $LASTEXITCODE"
+    $rendererInvocationSucceeded = $?
+    if (-not $rendererInvocationSucceeded) {
+        throw "BackgroundRenderer failed"
     }
 
     Write-Host "--- Stage: no-blur policy ---"
@@ -59,8 +60,9 @@ try {
 
     Write-Host "--- Stage: apply ---"
     & $setterScript -t:$t
-    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
-        throw "BackgroundSetter failed with exit code $LASTEXITCODE"
+    $setterInvocationSucceeded = $?
+    if (-not $setterInvocationSucceeded) {
+        throw "BackgroundSetter failed"
     }
 
     Write-Host "[OK] Logon orchestration completed"

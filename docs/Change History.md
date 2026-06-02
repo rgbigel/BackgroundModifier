@@ -800,3 +800,21 @@ Verified changes:
    - `Wait-ForInstallerExit`
 3. Debug/trace runs now pause before exit so elevated console windows remain visible.
 4. Updated installer tests to cover alias presence and pause helper wiring.
+
+### 43. Verifier migration, source-orchestrator consolidation, and repository-wide consistency sweep (2026-06-02)
+
+Verified changes:
+
+1. Migrated verifier entry script naming from `Install/BackgroundInstallationVerifier.ps1` to `Install/Verifyer.ps1`.
+2. Updated install and scheduling wiring to invoke the new verifier path and aligned command-entry checks accordingly.
+3. Added/retained `Source/BackgroundApply.ps1` as the active render/policy/apply orchestrator path and aligned stage-success checks to PowerShell invocation success semantics.
+4. Repaired malformed header/version artifacts in active PowerShell files and fixed broken banner text in logon/start scripts.
+5. Normalized repository version marker consistency in active code/doc headers to `6.0.0` where malformed tokens remained.
+6. Completed ESP/boot identity hardening updates in active pipeline modules/scripts:
+   - `Modules/BootTools.psm1`
+   - `Source/BootIdentity.ps1`
+   including deterministic ESP metadata enrichment and resilient boot-loader path resolution behavior.
+7. Updated architecture/implementation/readme/requirements documentation to reflect current runtime model and operational behavior boundaries.
+8. Validation evidence for this wave:
+   - parser/diagnostic checks on touched code files passed
+   - focused Pester sanity suites passed (`InstallScripts.Orchestration`, `InstallerTools`)

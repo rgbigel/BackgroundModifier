@@ -1,6 +1,6 @@
 ﻿# Architecture.md
 
-$16.0.0
+6.0.0
 Profile: default
 Author: Rolf Bercht
 
@@ -51,7 +51,7 @@ What happens:
 2. Runtime orchestration is configured for startup and logon behavior.
 3. Installation checks verify prerequisites and setup consistency.
 4. Operational entry points are provisioned in `D:\OneDrive\cmd` by default.
-5. Testing entry points are provisioned only when explicitly enabled.
+5. The operational UX is menu-driven through a single elevated admin shell.
 
 What the user sees/does:
 
@@ -68,7 +68,7 @@ After installation/configuration, the user can expect these solution artifacts a
 3. Rendered output images produced by runtime stages.
 4. Runtime diagnostics/log files for troubleshooting.
 5. Startup/logon automation configuration used to run the stage flow.
-6. Verification routines and optional test routines that can be executed post-install.
+6. Verification and maintenance routines that can be executed post-install.
 
 User-facing interpretation:
 
@@ -85,6 +85,7 @@ What happens under the hood (user-level explanation):
 1. Machine and boot identity data is collected.
 2. Shared state is created or updated with startup-stage data.
 3. Stage-level diagnostics/logging are recorded.
+4. Partition identity metadata and EFI partition details are gathered from partition APIs with DiskPart/fsutil enrichment, while bootloader path identity is resolved from BCD.
 
 What the user should know:
 
@@ -183,11 +184,12 @@ User choice model for uninstall scope:
 Operational entry-point model:
 
 1. Canonical source remains in repository paths on `D:`.
-2. Runtime data remains in `C:\BackgroundMotives`.
-3. User operational entry points are exposed in `D:\OneDrive\cmd` as links.
-4. Test entry points are optional and enabled explicitly.
-5. `BackgroundModifier-AdminShell.ps1` is provided as an operational helper to open an elevated shell at the cmd root.
-6. `Setup.ps1` may self-relaunch through UAC when started from a non-elevated shell.
+2. Runtime data defaults to `C:\BootOpsHub`.
+3. User operational entry points in `D:\OneDrive\cmd` are `BackgroundModifier_Install.cmd` and `BackgroundModifier.cmd`.
+4. `BackgroundModifier.cmd` launches a menu-only elevated admin shell for setup, verify, enable/disable, uninstall, cleanup, and source-level actions.
+5. Source actions include BootIdentity, Renderer, Setter, and Apply.
+6. Apply is UX-gated: it runs automatically after successful Setter and is only shown directly after Setter problems.
+7. `Setup.ps1` may self-relaunch through UAC when started from a non-elevated shell.
 
 ## 9. Cross-Document Consistency Rules
 

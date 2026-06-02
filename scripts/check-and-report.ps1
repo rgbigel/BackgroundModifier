@@ -2,7 +2,7 @@
 #  Module:      check-and-report.ps1
 #  Path:        .\scripts
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================

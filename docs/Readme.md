@@ -17,7 +17,9 @@ The Bootmgr Solution is a modular stateful, fully documented toolkit for generat
 The solution avoids unreliable hacks, has exactly one persistent state file, and relies exclusively on explicit inputs, deterministic logic, and reproducible outputs.
 
 ✨ Key Features
-- Data concerning physical disk structure is obtained by querying DISKPART and interpreting the output.
+- Data concerning disk and partition identity is obtained from `Get-Partition` with DiskPart enrichment.
+- Volume label and filesystem metadata are additionally enriched via `fsutil fsinfo volumeinfo` when available.
+- EFI bootloader path identity is resolved from `bcdedit` and kept separate from DiskPart partition numbering.
 - Synthetic ESP ID
 A deterministic, volume-label‑dependent identifier for EFI System Partitions, stable across firmware updates, drive letter existance or changes, and imaging workflows.
 - Deterministic Overlays
@@ -148,7 +150,7 @@ BackgroundModifier/
 
 📁 Directory Layout (Solution Memory)
 |
-├─ BackgroundMotives
+├─ BootOpsHub
 |   ├─ Assets
 |   |  ├─ LogonBase.jpg
 |   |  ├─ DesktopBase.jpg

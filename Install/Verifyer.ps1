@@ -1,5 +1,5 @@
 ﻿# =================================================================================================
-#  Module:      BackgroundInstallationVerifier.ps1
+#  Module:      Verifyer.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
 #  Version:     6.0.0
@@ -10,23 +10,11 @@
 
 param(
     [switch]$t,
-    [switch]$d,
     [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
     [Alias('r')]
-    [string]$RuntimeRoot = "C:\BackgroundMotives",
-    [Alias('i')]
-    [switch]$IncludeTestLinks
+    [string]$RuntimeRoot = "C:\BootOpsHub"
 )
-
-if ($t) {
-    if (-not $PSBoundParameters.ContainsKey('d')) {
-        $d = $true
-    }
-    if (-not $PSBoundParameters.ContainsKey('IncludeTestLinks')) {
-        $IncludeTestLinks = $true
-    }
-}
 
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
 $resolvedScriptPath = $PSCommandPath
@@ -43,6 +31,7 @@ Import-Module (Join-Path $ModuleRoot "Constants.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "Logging.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "TranscriptTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "PathTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
@@ -51,7 +40,7 @@ Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 
 $WarningPreference = $prev
 
-$flags = Set-Flags -T:$t -D:$d
+$flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
@@ -66,7 +55,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier BackgroundInstallationVerifier.ps1 (v6.0.0) ==="
+Write-Host "=== BackgroundModifier Verifyer.ps1 (v6.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -74,11 +63,9 @@ if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started"
 $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
-    Show-InstallerUsage -Title "BackgroundModifier BackgroundInstallationVerifier.ps1 help" -UsageLines @(
-        "Usage: BackgroundInstallationVerifier.ps1 [-t] [-d] [-CmdRoot <path>] [-RuntimeRoot <path>] [-IncludeTestLinks]",
-        "  -t: Trace mode (starts transcript; implies -d and -IncludeTestLinks when not explicitly set).",
-        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
-        "  -IncludeTestLinks (-i): Verify test cmd entry points in addition to operational checks.",
+    Show-InstallerUsage -Title "BackgroundModifier Verifyer.ps1 help" -UsageLines @(
+        "Usage: Verifyer.ps1 [-t] [-CmdRoot <path>] [-RuntimeRoot <path>]",
+        "  -t: Trace mode (starts transcript and enables implied debug behavior).",
         "  -CmdRoot (-c): Folder where cmd entry-point links are validated.",
         "  -RuntimeRoot (-r): Runtime root containing logs/assets/rendered/system folders.",
         "Use /?, /H, or -Help to show this message.",
@@ -93,7 +80,11 @@ $folders = @(
     $LogRoot,
     $AssetsRoot,
     $RenderRoot,
-    $SystemRoot
+    $SystemRoot,
+    (Join-Path $RuntimeRoot "SolutionCode"),
+    (Join-Path $RuntimeRoot "SolutionCode\Source"),
+    (Join-Path $RuntimeRoot "SolutionCode\Modules"),
+    (Join-Path $RuntimeRoot "SolutionCode\Install")
 )
 
 foreach ($folder in $folders) {
@@ -108,15 +99,31 @@ foreach ($folder in $folders) {
 Write-Host "--- Checking required modules ---"
 
 $requiredModules = @(
+    "BackgroundNoBlurReg.psm1",
+    "BackgroundStateMgr.psm1",
+    "BootTools.psm1",
+    "CleanupTools.psm1",
+    "ConfigTools.psm1",
     "Constants.psm1",
+    "ImageTools.psm1",
+    "InstallerTools.psm1",
     "Logging.psm1",
+    "LoggingTools.psm1",
+    "ProfileTools.psm1",
+    "RenderTools.psm1",
+    "SchedulerTools.psm1",
     "TranscriptTools.psm1",
     "PathTools.psm1",
     "ErrorTools.psm1",
     "Validation.psm1",
+    "ValidationTools.psm1",
+    "WallpaperTools.psm1",
     "ModeTools.psm1",
     "SummaryTools.psm1",
-    "SetFlagsTool.psm1"
+    "SetFlagsTool.psm1",
+    "SystemTools.psm1",
+    "TaskTools.psm1",
+    "TimeTools.psm1"
 )
 
 foreach ($mod in $requiredModules) {
@@ -151,13 +158,8 @@ Write-Host "[OK] Base assets present"
 Write-Host "--- Checking operational cmd entry points ---"
 
 $cmdEntries = @(
-    "BackgroundModifier-AdminShell.ps1",
-    "BackgroundModifier-Setup.ps1",
-    "BackgroundModifier-Verify.ps1",
-    "BackgroundModifier-Cleanup.ps1",
-    "BackgroundModifier-Disable.ps1",
-    "BackgroundModifier-Enable.ps1",
-    "BackgroundModifier-Uninstall.ps1"
+    "BackgroundModifier_Install.cmd",
+    "BackgroundModifier.cmd"
 )
 
 foreach ($entry in $cmdEntries) {
@@ -170,28 +172,7 @@ foreach ($entry in $cmdEntries) {
     Write-Host "[OK] $path"
 }
 
-if ($IncludeTestLinks) {
-    Write-Host "--- Checking testing cmd entry points (opt-in) ---"
-    $testCmdEntries = @(
-        "BackgroundModifier-BootIdentityTest.ps1",
-        "BackgroundModifier-RenderTest.ps1",
-        "BackgroundModifier-ApplyTest.ps1",
-        "BackgroundModifier-LogonStage.ps1"
-    )
-
-    foreach ($entry in $testCmdEntries) {
-        $path = Join-Path $CmdRoot $entry
-        if (-not (Test-Path -LiteralPath $path)) {
-            Write-Host "[X] Missing cmd test entry point -> $path"
-            if ($TraceMode) { Stop-Transcript | Out-Null }
-            exit 1
-        }
-        Write-Host "[OK] $path"
-    }
-}
-else {
-    Write-Host "[OK] Test cmd entry point verification skipped (default)."
-}
+Write-Host "[OK] Test cmd entry point verification is menu-driven in current model."
 
 Write-Host "--- Checking operational scheduled tasks ---"
 
@@ -219,4 +200,5 @@ if ($TraceMode) {
 }
 
 Wait-ForInstallerExit -Pause:($TraceMode -or $DebugMode) -Message "Verification completed. Press Enter to exit..."
+
 

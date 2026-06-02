@@ -2,7 +2,7 @@
 #  Module:      Logging.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Purpose:     Minimal logging helpers for consistent, deterministic output.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (logging utilities)
@@ -23,4 +23,5 @@ function Write-LogError {
     Write-Host "[ERROR] $Message"
 }
 Export-ModuleMember -Function *
+
 

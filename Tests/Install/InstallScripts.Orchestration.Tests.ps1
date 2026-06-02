@@ -2,11 +2,11 @@ $repoRoot = Join-Path $PSScriptRoot "..\.."
 $installRoot = Join-Path $repoRoot "Install"
 
 Describe "Install script orchestration contracts" {
-    It "Setup invokes verifier with explicit roots and IncludeTestLinks" {
+    It "Setup invokes verifier with explicit roots and t-only mode contract" {
         $path = Join-Path $installRoot "Setup.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
-        $text | Should Match '& \$verifierScript -t:\$t -d:\$d -CmdRoot \$CmdRoot -RuntimeRoot \$RuntimeRoot -IncludeTestLinks:\$IncludeTestLinks'
+        $text | Should Match '& \$verifierScript -t:\$t -CmdRoot \$CmdRoot -RuntimeRoot \$RuntimeRoot'
     }
 
     It "Setup defines expected operational cmd links" {
@@ -14,13 +14,8 @@ Describe "Install script orchestration contracts" {
         $text = Get-Content -LiteralPath $path -Raw
 
         $expected = @(
-            'BackgroundModifier-AdminShell.ps1',
-            'BackgroundModifier-Setup.ps1',
-            'BackgroundModifier-Verify.ps1',
-            'BackgroundModifier-Cleanup.ps1',
-            'BackgroundModifier-Disable.ps1',
-            'BackgroundModifier-Enable.ps1',
-            'BackgroundModifier-Uninstall.ps1'
+            'BackgroundModifier_Install.cmd',
+            'BackgroundModifier.cmd'
         )
 
         foreach ($entry in $expected) {
@@ -48,30 +43,35 @@ Describe "Install script orchestration contracts" {
         $text | Should Match 'This script self-relaunches with UAC when elevation is required'
     }
 
-    It "AdminShell launcher uses InstallerTools to open an elevated PowerShell session" {
+    It "AdminShell runs as menu-driven elevated action router" {
         $path = Join-Path $installRoot "AdminShell.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
         $text | Should Match 'InstallerTools\.psm1'
-        $text | Should Match 'Start-ElevatedPowerShellSession'
+        $text | Should Match 'if \(-not \(Test-Admin\)\)'
+        $text | Should Match 'Invoke-SelfElevated'
+        $text | Should Match 'BackgroundModifier Action Menu'
+        $text | Should Match 'Select action'
         $text | Should Match 'BackgroundModifier AdminShell\.ps1'
+        $text | Should Match 'BootIdentity\.ps1'
+        $text | Should Match 'BackgroundRenderer\.ps1'
+        $text | Should Match 'BackgroundSetter\.ps1'
+        $text | Should Match 'BackgroundApply\.ps1'
+        $text | Should Match '"B"\s*=\s*@\{\s*Name\s*=\s*"BootIdentity"'
+        $text | Should Match '"R"\s*=\s*@\{\s*Name\s*=\s*"Renderer"'
+        $text | Should Match '"A"\s*=\s*@\{\s*Name\s*=\s*"Setter"'
+        $text | Should Match '"L"\s*=\s*@\{\s*Name\s*=\s*"Apply"'
+        $text | Should Match '\$showApplyAction\s*=\s*\$false'
+        $text | Should Match 'Apply is hidden until Setter reports a problem'
+        $text | Should Match 'Setter completed\. Running Apply automatically'
     }
 
-    It "Setup defines expected test cmd links" {
+    It "Setup keeps test-mode behavior without creating dedicated cmd test links" {
         $path = Join-Path $installRoot "Setup.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
-        $expected = @(
-            'BackgroundModifier-BootIdentityTest.ps1',
-            'BackgroundModifier-RenderTest.ps1',
-            'BackgroundModifier-ApplyTest.ps1',
-            'BackgroundModifier-LogonStage.ps1'
-        )
-
-        foreach ($entry in $expected) {
-            $pattern = [regex]::Escape($entry)
-            $text | Should Match $pattern
-        }
+        $text | Should Match '\[switch\]\$t'
+        $text | Should Match 'BackgroundModifier\.cmd'
     }
 
     It "Setup provisions scheduled automation tasks through SchedulerTools" {
@@ -87,18 +87,19 @@ Describe "Install script orchestration contracts" {
     }
 
     It "Verifier checks operational scheduled tasks" {
-        $path = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+        $path = Join-Path $installRoot "Verifyer.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
         $text | Should Match '\bGet-ScheduledTask\b'
-        $text | Should Match 'BackgroundModifier-AdminShell\.ps1'
+        $text | Should Match 'BackgroundModifier_Install\.cmd'
+        $text | Should Match 'BackgroundModifier\.cmd'
         $text | Should Match 'BackgroundModifier-BootIdentity'
         $text | Should Match 'BackgroundModifier-Autorun'
     }
 
     It "Help text is available on non-elevating scripts" {
         $scripts = @(
-            'BackgroundInstallationVerifier.ps1',
+            'Verifyer.ps1',
             'AdminShell.ps1',
             'Cleanup.ps1'
         )
@@ -113,27 +114,38 @@ Describe "Install script orchestration contracts" {
 
     It "Setup and verifier accept short-form parameter aliases" {
         $setupText = Get-Content -LiteralPath (Join-Path $installRoot 'Setup.ps1') -Raw
-        $verifierText = Get-Content -LiteralPath (Join-Path $installRoot 'BackgroundInstallationVerifier.ps1') -Raw
+        $verifierText = Get-Content -LiteralPath (Join-Path $installRoot 'Verifyer.ps1') -Raw
         $uninstallText = Get-Content -LiteralPath (Join-Path $installRoot 'Uninstall.ps1') -Raw
 
         $setupText | Should Match '\[Alias\(\x27c\x27\)\]'
         $setupText | Should Match '\[Alias\(\x27r\x27\)\]'
-        $setupText | Should Match '\[Alias\(\x27i\x27\)\]'
         $setupText | Should Match '\$CmdRoot'
         $setupText | Should Match '\$RuntimeRoot'
-        $setupText | Should Match '\$IncludeTestLinks'
 
         $verifierText | Should Match '\[Alias\(\x27c\x27\)\]'
         $verifierText | Should Match '\[Alias\(\x27r\x27\)\]'
-        $verifierText | Should Match '\[Alias\(\x27i\x27\)\]'
         $verifierText | Should Match '\$CmdRoot'
         $verifierText | Should Match '\$RuntimeRoot'
-        $verifierText | Should Match '\$IncludeTestLinks'
 
         $uninstallText | Should Match '\[Alias\(\x27c\x27\)\]'
         $uninstallText | Should Match '\[Alias\(\x27r\x27\)\]'
         $uninstallText | Should Match '\$CmdRoot'
         $uninstallText | Should Match '\$RuntimeRoot'
+    }
+
+    It "Install scripts expose t as the only mode switch" {
+        $setupText = Get-Content -LiteralPath (Join-Path $installRoot 'Setup.ps1') -Raw
+        $verifierText = Get-Content -LiteralPath (Join-Path $installRoot 'Verifyer.ps1') -Raw
+        $adminShellText = Get-Content -LiteralPath (Join-Path $installRoot 'AdminShell.ps1') -Raw
+
+        $setupText | Should Match '\[switch\]\$t'
+        $verifierText | Should Match '\[switch\]\$t'
+        $adminShellText | Should Match '\[switch\]\$t'
+
+        $setupText | Should Not Match '\[switch\]\$d'
+        $verifierText | Should Not Match '\[switch\]\$d'
+        $setupText | Should Not Match 'IncludeTestLinks'
+        $verifierText | Should Not Match 'IncludeTestLinks'
     }
 
     It "Disable uses Require-Admin and Disable-ScheduledTask" {
@@ -177,21 +189,13 @@ Describe "Install script orchestration contracts" {
         $text | Should Match '\bRemove-NoBlur\b'
     }
 
-    It "Uninstall cmd cleanup list includes operational and test entry points" {
+    It "Uninstall cmd cleanup list includes only current operational entry points" {
         $path = Join-Path $installRoot "Uninstall.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
         $expected = @(
-            'BackgroundModifier-Setup.ps1',
-            'BackgroundModifier-Verify.ps1',
-            'BackgroundModifier-Cleanup.ps1',
-            'BackgroundModifier-Disable.ps1',
-            'BackgroundModifier-Enable.ps1',
-            'BackgroundModifier-Uninstall.ps1',
-            'BackgroundModifier-BootIdentityTest.ps1',
-            'BackgroundModifier-RenderTest.ps1',
-            'BackgroundModifier-ApplyTest.ps1',
-            'BackgroundModifier-LogonStage.ps1'
+            'BackgroundModifier_Install.cmd',
+            'BackgroundModifier.cmd'
         )
 
         foreach ($entry in $expected) {

@@ -10,23 +10,11 @@
 
 param(
     [switch]$t,
-    [switch]$d,
     [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
     [Alias('r')]
-    [string]$RuntimeRoot = "C:\BackgroundMotives",
-    [Alias('i')]
-    [switch]$IncludeTestLinks
+    [string]$RuntimeRoot = "C:\BootOpsHub"
 )
-
-if ($t) {
-    if (-not $PSBoundParameters.ContainsKey('d')) {
-        $d = $true
-    }
-    if (-not $PSBoundParameters.ContainsKey('IncludeTestLinks')) {
-        $IncludeTestLinks = $true
-    }
-}
 
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
 $resolvedScriptPath = $PSCommandPath
@@ -53,7 +41,7 @@ Import-Module (Join-Path $ModuleRoot "SchedulerTools.psm1") -Force
 
 $WarningPreference = $prev
 
-$flags = Set-Flags -T:$t -D:$d
+$flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
@@ -69,11 +57,9 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Setup.ps1 help" -UsageLines @(
-        "Usage: Setup.ps1 [-t] [-d] [-IncludeTestLinks] [-CmdRoot <path>] [-RuntimeRoot <path>]",
-        "  -t: Trace mode (starts transcript; implies -d and -IncludeTestLinks when not explicitly set).",
-        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
-        "  -IncludeTestLinks (-i): Creates test cmd entry points in addition to operational links.",
-        "  -CmdRoot (-c): Destination folder for operational/test cmd entry-point links.",
+        "Usage: Setup.ps1 [-t] [-CmdRoot <path>] [-RuntimeRoot <path>]",
+        "  -t: Trace mode (starts transcript and enables implied debug/test-link behavior).",
+        "  -CmdRoot (-c): Destination folder for install/menu cmd launchers.",
         "  -RuntimeRoot (-r): Runtime root used for assets, logs, rendered output, and SolutionCode links.",
         "Use /?, /H, or -Help to show this message.",
         "This script self-relaunches with UAC when elevation is required."
@@ -86,9 +72,7 @@ if (-not (Test-Admin)) {
     $elevatedExitCode = Invoke-SelfElevated -ScriptPath $resolvedScriptPath -WorkingDirectory $RepoRootResolved -NamedArguments @{
         CmdRoot = $CmdRoot
         RuntimeRoot = $RuntimeRoot
-        IncludeTestLinks = [bool]$IncludeTestLinks
         t = [bool]$t
-        d = [bool]$d
     }
     exit $elevatedExitCode
 }
@@ -102,6 +86,10 @@ try {
     $Global:AssetsRoot = Join-Path $Global:RootPath "assets"
     $Global:RenderRoot = Join-Path $Global:RootPath "rendered"
     $Global:SystemRoot = Join-Path $Global:RootPath "system"
+    $solutionCodeRoot = Join-Path $Global:RootPath "SolutionCode"
+    $runtimeSourceRoot = Join-Path $solutionCodeRoot "Source"
+    $runtimeModulesRoot = Join-Path $solutionCodeRoot "Modules"
+    $runtimeInstallRoot = Join-Path $solutionCodeRoot "Install"
 
     if ($TraceMode) {
         Ensure-Path -Path $Global:LogRoot | Out-Null
@@ -111,109 +99,212 @@ try {
         $TranscriptStarted = $true
     }
 
-    function New-OrReplaceLink {
+    function New-OrReplaceCmdLauncher {
         param(
-            [string]$Target,
-            [string]$Source
+            [Parameter(Mandatory = $true)]
+            [string]$LauncherPath,
+
+            [Parameter(Mandatory = $true)]
+            [string]$ScriptPath,
+
+            [string[]]$FixedArguments = @()
         )
 
-        if (-not (Test-Path -LiteralPath $Source)) {
-            Write-Host "[WARN] Link source missing: $Source"
+        if (-not (Test-Path -LiteralPath $ScriptPath)) {
+            throw "Launcher target script is missing: $ScriptPath"
+        }
+
+        $scriptPathEscaped = $ScriptPath.Replace('"', '""')
+        $fixedArgumentText = ($FixedArguments | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ' '
+
+        $pwshLine = '    pwsh -NoProfile -ExecutionPolicy Bypass -File "%TARGET_SCRIPT%"'
+        $powershellLine = '    powershell -NoProfile -ExecutionPolicy Bypass -File "%TARGET_SCRIPT%"'
+
+        if (-not [string]::IsNullOrWhiteSpace($fixedArgumentText)) {
+            $pwshLine += (' {0}' -f $fixedArgumentText)
+            $powershellLine += (' {0}' -f $fixedArgumentText)
+        }
+
+        $pwshLine += ' %*'
+        $powershellLine += ' %*'
+
+        $launcherContent = @(
+            '@echo off',
+            'setlocal',
+            ('set "TARGET_SCRIPT={0}"' -f $scriptPathEscaped),
+            'where pwsh >nul 2>nul',
+            'if %ERRORLEVEL% EQU 0 (',
+            $pwshLine,
+            ') else (',
+            $powershellLine,
+            ')',
+            'set "EXITCODE=%ERRORLEVEL%"',
+            'endlocal & exit /b %EXITCODE%'
+        ) -join "`r`n"
+
+        Set-Content -LiteralPath $LauncherPath -Value $launcherContent -Encoding Ascii -Force
+        Write-Host "[OK] Created cmd launcher: $LauncherPath -> $ScriptPath"
+    }
+
+    function Sync-RuntimeFiles {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$SourceRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string]$TargetRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string]$Filter
+        )
+
+        $sourceFull = [System.IO.Path]::GetFullPath($SourceRoot).TrimEnd('\\')
+        $targetFull = [System.IO.Path]::GetFullPath($TargetRoot).TrimEnd('\\')
+
+        if ($sourceFull.Equals($targetFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+            Write-Host "[OK] Runtime path already current (source equals target): $targetFull"
             return
         }
 
-        if (Test-Path -LiteralPath $Target) {
-            Remove-Item -LiteralPath $Target -Force
+        Ensure-Path -Path $TargetRoot | Out-Null
+
+        $sourceItems = @(Get-ChildItem -LiteralPath $SourceRoot -File -Filter $Filter -ErrorAction SilentlyContinue)
+        $sourceNames = @{}
+        foreach ($sourceItem in $sourceItems) {
+            $sourceNames[$sourceItem.Name.ToLowerInvariant()] = $true
         }
 
-        New-Item -Path $Target -ItemType SymbolicLink -Value $Source -Force | Out-Null
-        Write-Host "[OK] Linked $Target -> $Source"
+        $targetItems = @(Get-ChildItem -LiteralPath $TargetRoot -File -Filter $Filter -ErrorAction SilentlyContinue)
+        foreach ($targetItem in $targetItems) {
+            if (-not $sourceNames.ContainsKey($targetItem.Name.ToLowerInvariant())) {
+                Remove-Item -LiteralPath $targetItem.FullName -Force
+                Write-Host "[OK] Removed stale runtime file: $($targetItem.FullName)"
+            }
+        }
+
+        foreach ($sourceItem in $sourceItems) {
+            $targetPath = Join-Path $TargetRoot $sourceItem.Name
+            Copy-Safe -Source $sourceItem.FullName -Destination $targetPath
+            Write-Host "[OK] Copied runtime file: $targetPath"
+        }
     }
 
     Write-Host "--- Preparing runtime folders ---"
-    $solutionCodeRoot = Join-Path $Global:RootPath "SolutionCode"
     Ensure-Path -Path $Global:RootPath | Out-Null
     Ensure-Path -Path $Global:LogRoot | Out-Null
     Ensure-Path -Path $Global:AssetsRoot | Out-Null
     Ensure-Path -Path $Global:RenderRoot | Out-Null
     Ensure-Path -Path $Global:SystemRoot | Out-Null
     Ensure-Path -Path $solutionCodeRoot | Out-Null
+    Ensure-Path -Path $runtimeSourceRoot | Out-Null
+    Ensure-Path -Path $runtimeModulesRoot | Out-Null
+    Ensure-Path -Path $runtimeInstallRoot | Out-Null
     Write-Host "[OK] Runtime folder structure prepared under $($Global:RootPath)"
 
-    Write-Host "--- Checking required assets ---"
-    $desktopBase = Join-Path $Global:AssetsRoot "DesktopBase.jpg"
-    $logonBase = Join-Path $Global:AssetsRoot "LogonBase.jpg"
-    if (-not (Test-Path -LiteralPath $desktopBase)) {
-        Write-Host "[WARN] Missing asset: $desktopBase"
+    $repoRoot = $RepoRootResolved
+    $packageAssetsRoot = Join-Path $repoRoot "assets"
+    $runtimePackageAssetsRoot = Join-Path $solutionCodeRoot "assets"
+    $defaultAssetNames = @("DesktopBase.jpg", "LogonBase.jpg")
+
+    if (Test-Path -LiteralPath $packageAssetsRoot) {
+        Ensure-Path -Path $runtimePackageAssetsRoot | Out-Null
+        foreach ($assetName in $defaultAssetNames) {
+            $assetSource = Join-Path $packageAssetsRoot $assetName
+            if (Test-Path -LiteralPath $assetSource) {
+                $assetPackageTarget = Join-Path $runtimePackageAssetsRoot $assetName
+                Copy-Safe -Source $assetSource -Destination $assetPackageTarget
+                Write-Host "[OK] Packaged default asset: $assetPackageTarget"
+            }
+            else {
+                Write-Host "[WARN] Package default asset not found: $assetSource"
+            }
+        }
     }
     else {
-        Write-Host "[OK] Found asset: $desktopBase"
-    }
-    if (-not (Test-Path -LiteralPath $logonBase)) {
-        Write-Host "[WARN] Missing asset: $logonBase"
-    }
-    else {
-        Write-Host "[OK] Found asset: $logonBase"
+        Write-Host "[WARN] Package assets folder not found: $packageAssetsRoot"
     }
 
-    Write-Host "--- Creating script links in SolutionCode ---"
-    $repoRoot = $RepoRootResolved
-    $links = @(
-        @{ Name = "BootIdentity.ps1"; Source = (Join-Path $repoRoot "Source\BootIdentity.ps1") },
-        @{ Name = "BackgroundRenderer.ps1"; Source = (Join-Path $repoRoot "Source\BackgroundRenderer.ps1") },
-        @{ Name = "BackgroundSetter.ps1"; Source = (Join-Path $repoRoot "Source\BackgroundSetter.ps1") },
-        @{ Name = "BackgroundSetterStart.ps1"; Source = (Join-Path $repoRoot "Source\BackgroundSetterStart.ps1") },
-        @{ Name = "BackgroundInstallationVerifier.ps1"; Source = (Join-Path $repoRoot "Install\BackgroundInstallationVerifier.ps1") }
+    Write-Host "--- Checking required assets ---"
+    foreach ($assetName in $defaultAssetNames) {
+        $runtimeAssetPath = Join-Path $Global:AssetsRoot $assetName
+        if (-not (Test-Path -LiteralPath $runtimeAssetPath)) {
+            $seeded = $false
+            $candidateSources = @(
+                (Join-Path $runtimePackageAssetsRoot $assetName),
+                (Join-Path $packageAssetsRoot $assetName)
+            )
+
+            foreach ($candidateSource in $candidateSources) {
+                if (Test-Path -LiteralPath $candidateSource) {
+                    Copy-Safe -Source $candidateSource -Destination $runtimeAssetPath
+                    Write-Host "[OK] Seeded missing runtime asset: $runtimeAssetPath"
+                    $seeded = $true
+                    break
+                }
+            }
+
+            if (-not $seeded) {
+                Write-Host "[WARN] Missing asset and no package default found: $runtimeAssetPath"
+            }
+        }
+        else {
+            Write-Host "[OK] Found asset: $runtimeAssetPath"
+        }
+    }
+
+    Write-Host "--- Syncing runtime payload (Source/Modules/Install) ---"
+    Sync-RuntimeFiles -SourceRoot (Join-Path $repoRoot "Source") -TargetRoot $runtimeSourceRoot -Filter "*.ps1"
+    Sync-RuntimeFiles -SourceRoot (Join-Path $repoRoot "Modules") -TargetRoot $runtimeModulesRoot -Filter "*.psm1"
+
+    $installPayloadNames = @(
+        "Verifyer.ps1",
+        "Cleanup.ps1",
+        "Enable.ps1",
+        "Disable.ps1",
+        "Uninstall.ps1",
+        "AdminShell.ps1"
     )
 
-    foreach ($item in $links) {
-        $target = Join-Path $solutionCodeRoot $item.Name
-        New-OrReplaceLink -Target $target -Source $item.Source
+    $expectedRuntimeInstallNames = @{}
+    foreach ($installName in $installPayloadNames) {
+        $expectedRuntimeInstallNames[$installName.ToLowerInvariant()] = $true
+    }
+
+    foreach ($installName in $installPayloadNames) {
+        $sourcePath = Join-Path $repoRoot (Join-Path "Install" $installName)
+        $targetPath = Join-Path $runtimeInstallRoot $installName
+        if (-not (Test-Path -LiteralPath $sourcePath)) {
+            throw "Required install payload script is missing: $sourcePath"
+        }
+        Copy-Safe -Source $sourcePath -Destination $targetPath
+        Write-Host "[OK] Copied runtime install script: $targetPath"
+    }
+
+    Write-Host "--- Cleaning redundant SolutionCode root links ---"
+    $redundantSolutionEntries = @(
+        "BootIdentity.ps1",
+        "BackgroundRenderer.ps1",
+        "BackgroundSetter.ps1",
+        "BackgroundApply.ps1",
+        "Verifyer.ps1"
+    )
+
+    foreach ($entryName in $redundantSolutionEntries) {
+        $entryPath = Join-Path $solutionCodeRoot $entryName
+        if (Test-Path -LiteralPath $entryPath) {
+            Remove-Item -LiteralPath $entryPath -Force
+            Write-Host "[OK] Removed redundant SolutionCode entry link: $entryPath"
+        }
     }
 
     Write-Host "--- Creating operational entry points in cmd ---"
     Ensure-Path -Path $CmdRoot | Out-Null
 
-    $cmdLinks = @(
-        @{ Name = "BackgroundModifier-AdminShell.ps1"; Source = (Join-Path $repoRoot "Install\AdminShell.ps1") },
-        @{ Name = "BackgroundModifier-Setup.ps1"; Source = (Join-Path $repoRoot "Install\Setup.ps1") },
-        @{ Name = "BackgroundModifier-Verify.ps1"; Source = (Join-Path $repoRoot "Install\BackgroundInstallationVerifier.ps1") },
-        @{ Name = "BackgroundModifier-Cleanup.ps1"; Source = (Join-Path $repoRoot "Install\Cleanup.ps1") },
-        @{ Name = "BackgroundModifier-Disable.ps1"; Source = (Join-Path $repoRoot "Install\Disable.ps1") },
-        @{ Name = "BackgroundModifier-Enable.ps1"; Source = (Join-Path $repoRoot "Install\Enable.ps1") },
-        @{ Name = "BackgroundModifier-Uninstall.ps1"; Source = (Join-Path $repoRoot "Install\Uninstall.ps1") }
-    )
+    $installLauncherPath = Join-Path $CmdRoot "BackgroundModifier_Install.cmd"
+    New-OrReplaceCmdLauncher -LauncherPath $installLauncherPath -ScriptPath $resolvedScriptPath
 
-    foreach ($item in $cmdLinks) {
-        $target = Join-Path $CmdRoot $item.Name
-        New-OrReplaceLink -Target $target -Source $item.Source
-    }
-
-    $testCmdLinks = @(
-        @{ Name = "BackgroundModifier-BootIdentityTest.ps1"; Source = (Join-Path $repoRoot "Source\BootIdentity.ps1") },
-        @{ Name = "BackgroundModifier-RenderTest.ps1"; Source = (Join-Path $repoRoot "Source\BackgroundRenderer.ps1") },
-        @{ Name = "BackgroundModifier-ApplyTest.ps1"; Source = (Join-Path $repoRoot "Source\BackgroundSetter.ps1") },
-        @{ Name = "BackgroundModifier-LogonStage.ps1"; Source = (Join-Path $repoRoot "Source\BackgroundSetterStart.ps1") }
-    )
-
-    if ($IncludeTestLinks) {
-        Write-Host "--- Creating testing entry points in cmd (opt-in) ---"
-        foreach ($item in $testCmdLinks) {
-            $target = Join-Path $CmdRoot $item.Name
-            New-OrReplaceLink -Target $target -Source $item.Source
-        }
-    }
-    else {
-        Write-Host "--- Removing testing entry points in cmd (default mode) ---"
-        foreach ($item in $testCmdLinks) {
-            $target = Join-Path $CmdRoot $item.Name
-            if (Test-Path -LiteralPath $target) {
-                Remove-Item -LiteralPath $target -Force
-                Write-Host "[OK] Removed test entry point: $target"
-            }
-        }
-        Write-Host "[OK] Test entry points removed/skipped. Use -IncludeTestLinks to create them."
-    }
+    $menuLauncherPath = Join-Path $CmdRoot "BackgroundModifier.cmd"
+    New-OrReplaceCmdLauncher -LauncherPath $menuLauncherPath -ScriptPath (Join-Path $runtimeInstallRoot "AdminShell.ps1")
 
     Write-Host "--- Registering scheduled automation tasks ---"
     $taskTraceArguments = @()
@@ -221,18 +312,22 @@ try {
         $taskTraceArguments = @('-t')
     }
 
-    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $solutionCodeRoot "BootIdentity.ps1") -ScriptArguments $taskTraceArguments -TriggerType Startup -RunAs System)) {
+    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $runtimeSourceRoot "BootIdentity.ps1") -ScriptArguments $taskTraceArguments -TriggerType Startup -RunAs System)) {
         throw "Failed to register BackgroundModifier-BootIdentity"
     }
-    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $solutionCodeRoot "BackgroundSetterStart.ps1") -ScriptArguments $taskTraceArguments -TriggerType LogOn -RunAs Interactive)) {
+    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $runtimeSourceRoot "BackgroundApply.ps1") -ScriptArguments $taskTraceArguments -TriggerType LogOn -RunAs Interactive)) {
         throw "Failed to register BackgroundModifier-Autorun"
     }
 
     Write-Host "--- Setup verification ---"
-    $verifierScript = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"
-    & $verifierScript -t:$t -d:$d -CmdRoot $CmdRoot -RuntimeRoot $RuntimeRoot -IncludeTestLinks:$IncludeTestLinks
-    if ($LASTEXITCODE -ne 0) {
-        throw "BackgroundInstallationVerifier failed with exit code $LASTEXITCODE"
+    $verifierScript = Join-Path $runtimeInstallRoot "Verifyer.ps1"
+    & $verifierScript -t:$t -CmdRoot $CmdRoot -RuntimeRoot $RuntimeRoot
+    $verifierExitCode = $LASTEXITCODE
+    if ($null -eq $verifierExitCode) {
+        $verifierExitCode = 0
+    }
+    if ($verifierExitCode -ne 0) {
+        throw "Verifyer failed with exit code $verifierExitCode"
     }
 
     Write-Host "[OK] Setup completed successfully"
@@ -250,4 +345,5 @@ if ($TranscriptStarted) {
 }
 
 Wait-ForInstallerExit -Pause:($TraceMode -or $DebugMode) -Message "Setup completed. Press Enter to exit..."
+
 

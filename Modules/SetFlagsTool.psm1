@@ -2,7 +2,7 @@
 #  Module:      SetFlagsTool.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  --------  Reconciled module purpose; added command-line flag parsing via Set-Flags
 # =================================================================================================
@@ -12,13 +12,11 @@ function Set-Flags {
     param(
         [switch]$T,
 
-        [switch]$D,
-
         [switch]$V
     )
 
     $traceMode = [bool]$T
-    $debugMode = [bool]$D -or $traceMode
+    $debugMode = $traceMode
     $verboseMode = [bool]$V
 
     $mode = 'normal'
@@ -38,4 +36,5 @@ function Set-Flags {
 }
 
 Export-ModuleMember -Function Set-Flags
+
 

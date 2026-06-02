@@ -2,13 +2,13 @@
 #  Module:      BootIdentity.ps1
 #  Path:        .\Source
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.2
 #  Changelog:
+#      6.0.2  --------  Fixed active-ESP null check for Disk 0 and aligned with BootTools DiskPart/fsutil/BCD pipeline.
 #      6.0.1  --------  Delegated ESP/BCD identity determination to BootTools atom module.
-#      5.000  --------  Introduced BCD--------based bootloader--------path resolution; restored Diskpart A1/Variant-------1;
-#                 added full ESP correlation rules; added BootLoaderPath to State.json.
-#      4.004  --------  Refined ESP label handling; removed temp--------file Diskpart capture; pipeline only.
-#      4.003  --------  Corrected partition/volume correlation; enforced GUID--------based ESP detection.
+#      5.000  --------  Introduced BCD-based bootloader-path resolution and full ESP correlation in State.json.
+#      4.004  --------  Refined ESP label handling and deterministic pipeline behavior.
+#      4.003  --------  Corrected partition/volume correlation and GUID-based ESP detection.
 #      4.002  --------  Added deterministic logging and strict error handling.
 #      4.001  --------  Initial 4.x series structure and module boundary cleanup.
 # =================================================================================================
@@ -35,7 +35,7 @@ Import-Module (Join-Path $ModuleRoot "BackgroundStateMgr.psm1")
 Import-Module (Join-Path $ModuleRoot "SystemTools.psm1")
 Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1")
 
-$RuntimeRoot = "C:\BackgroundMotives"
+$RuntimeRoot = "C:\BootOpsHub"
 $LogRoot = Join-Path $RuntimeRoot "logs"
 $SystemRoot = Join-Path $RuntimeRoot "system"
 if (-not (Test-Path -LiteralPath $LogRoot)) {
@@ -86,7 +86,7 @@ try {
         Write-Log -Path $Log -Message "Enumerated and correlated EFI partitions."
     }
 
-    if (-not $espSnapshot.Active.DiskNumber) {
+    if ($null -eq $espSnapshot.Active.DiskNumber) {
         Write-Log -Path $Log -Message "No active ESP was selected." -Level "ERROR"
     }
 
@@ -118,4 +118,5 @@ catch {
     Write-Host "[X] BootIdentity failed: $($_.Exception.Message)"
     exit 1
 }
+
 

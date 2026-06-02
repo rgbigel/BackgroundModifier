@@ -31,7 +31,7 @@ if (Test-HelpRequested -Arguments $commandLineArguments) {
 }
 
 # Runtime root is explicitly outside the repo
-$RuntimeRoot = "C:\BackgroundMotives"
+$RuntimeRoot = "C:\BootOpsHub"
 $RenderRoot  = Join-Path $RuntimeRoot "rendered"
 $LogRoot     = Join-Path $RuntimeRoot "logs"
 
@@ -46,7 +46,7 @@ $CleanupModule = Join-Path $ModuleRoot "CleanupTools.psm1"
 if (Test-Path -LiteralPath $CleanupModule) {
     Import-Module $CleanupModule -Force
 
-    Write-Host "`n=== Running CleanupTools against C:\BackgroundMotives (logs + rendered) ==="
+    Write-Host "`n=== Running CleanupTools against C:\BootOpsHub (logs + rendered) ==="
 
     Clear-RenderFolder -RenderRoot $RenderRoot
     Remove-OldLogs     -LogRoot    $LogRoot -Days 7
@@ -57,4 +57,5 @@ else {
 }
 
 Write-Host "`n=== Cleanup Complete ==="
+
 

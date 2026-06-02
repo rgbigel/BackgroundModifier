@@ -9,11 +9,10 @@
 
 param(
     [switch]$t,
-    [switch]$d,
     [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
     [Alias('r')]
-    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$RuntimeRoot = "C:\BootOpsHub",
     [switch]$RemoveRuntimeData
 )
 
@@ -30,7 +29,7 @@ Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "BackgroundNoBlurReg.psm1") -Force
 
-$flags = Set-Flags -T:$t -D:$d
+$flags = Set-Flags -T:$t
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
@@ -41,9 +40,8 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Uninstall.ps1 help" -UsageLines @(
-        "Usage: Uninstall.ps1 [-t] [-d] [-CmdRoot <path>] [-RuntimeRoot <path>] [-RemoveRuntimeData]",
+        "Usage: Uninstall.ps1 [-t] [-CmdRoot <path>] [-RuntimeRoot <path>] [-RemoveRuntimeData]",
         "  -t: Trace mode (implies debug mode for richer diagnostics).",
-        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
         "  -CmdRoot (-c): Folder that contains BackgroundModifier cmd entry-point links.",
         "  -RuntimeRoot (-r): Runtime root used to locate SolutionCode and runtime data.",
         "  -RemoveRuntimeData: Removes RuntimeRoot recursively (default is to retain runtime data).",
@@ -92,16 +90,8 @@ catch {
 
 Write-Host "--- Removing cmd entry points ---"
 $cmdEntries = @(
-    "BackgroundModifier-Setup.ps1",
-    "BackgroundModifier-Verify.ps1",
-    "BackgroundModifier-Cleanup.ps1",
-    "BackgroundModifier-Disable.ps1",
-    "BackgroundModifier-Enable.ps1",
-    "BackgroundModifier-Uninstall.ps1",
-    "BackgroundModifier-BootIdentityTest.ps1",
-    "BackgroundModifier-RenderTest.ps1",
-    "BackgroundModifier-ApplyTest.ps1",
-    "BackgroundModifier-LogonStage.ps1"
+    "BackgroundModifier_Install.cmd",
+    "BackgroundModifier.cmd"
 )
 
 foreach ($entry in $cmdEntries) {
@@ -132,6 +122,33 @@ if (Test-Path -LiteralPath $solutionCodeRoot) {
         }
 }
 
+Write-Host "--- Removing runtime payload folders ---"
+$runtimePayloadRoots = @(
+    (Join-Path $runtimeRootFull "SolutionCode\Source"),
+    (Join-Path $runtimeRootFull "SolutionCode\Modules"),
+    (Join-Path $runtimeRootFull "SolutionCode\Install"),
+    (Join-Path $runtimeRootFull "Source"),
+    (Join-Path $runtimeRootFull "Modules"),
+    (Join-Path $runtimeRootFull "Install")
+)
+
+foreach ($payloadRoot in $runtimePayloadRoots) {
+    if (-not (Test-Path -LiteralPath $payloadRoot)) {
+        continue
+    }
+
+    Get-ChildItem -LiteralPath $payloadRoot -Force -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            try {
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force
+                Write-Host "[OK] Removed runtime payload item: $($_.FullName)"
+            }
+            catch {
+                Write-Host "[WARN] Could not remove runtime payload item: $($_.FullName)"
+            }
+        }
+}
+
 if ($RemoveRuntimeData) {
     Write-Host "--- Removing runtime data (explicit) ---"
     if (Test-Path -LiteralPath $runtimeRootFull) {
@@ -152,4 +169,5 @@ else {
 Write-Host "[OK] Uninstall completed. Repository source was not modified."
 
 Wait-ForInstallerExit -Pause:($DebugMode -or $TraceMode) -Message "Uninstall completed. Press Enter to exit..."
+
 

@@ -2,7 +2,7 @@
 #  Module:      BackgroundNoBlurReg.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  --------  Added registry helper functions to manage logon background blur behavior
 # =================================================================================================
@@ -33,4 +33,5 @@ function Remove-NoBlur {
 
 # Export the functions for use in other scripts
 Export-ModuleMember -Function Set-NoBlur, Remove-NoBlur
+
 

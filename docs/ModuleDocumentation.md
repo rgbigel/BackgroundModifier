@@ -1,6 +1,6 @@
 ﻿# ModuleDocumentation
 
-$16.0.0
+6.0.0
 Profile: default
 Author: Rolf Bercht
 

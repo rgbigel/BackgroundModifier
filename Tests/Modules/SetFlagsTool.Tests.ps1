@@ -14,13 +14,6 @@ Describe "SetFlagsTool" {
         $result.VerboseMode | Should Be $false
     }
 
-    It "returns debug mode when -D is set" {
-        $result = Set-Flags -D
-        $result.Mode | Should Be "debug"
-        $result.DebugMode | Should Be $true
-        $result.TraceMode | Should Be $false
-    }
-
     It "returns trace mode and implies debug when -T is set" {
         $result = Set-Flags -T
         $result.Mode | Should Be "trace"
