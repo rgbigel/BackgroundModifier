@@ -2,7 +2,7 @@
 #  Module:      BackgroundInstallationVerifier.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     16.0.0
 #  Changelog:
 #      6.0.0  --------  Added cmd entry-point verification and explicit root overrides.
 #      5.000  --------  Initial module creation for Consolidated Architecture (installation verifier)
@@ -54,7 +54,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-$16.0.0) ==="
+Write-Host "=== BackgroundModifier BackgroundInstallationVerifier.ps1 (v16.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -123,6 +123,7 @@ Write-Host "[OK] Base assets present"
 Write-Host "--- Checking operational cmd entry points ---"
 
 $cmdEntries = @(
+    "BackgroundModifier-AdminShell.ps1",
     "BackgroundModifier-Setup.ps1",
     "BackgroundModifier-Verify.ps1",
     "BackgroundModifier-Cleanup.ps1",
@@ -162,6 +163,23 @@ if ($IncludeTestLinks) {
 }
 else {
     Write-Host "[OK] Test cmd entry point verification skipped (default)."
+}
+
+Write-Host "--- Checking operational scheduled tasks ---"
+
+$taskEntries = @(
+    "BackgroundModifier-BootIdentity",
+    "BackgroundModifier-Autorun"
+)
+
+foreach ($taskName in $taskEntries) {
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if (-not $task) {
+        Write-Host "[X] Missing scheduled task -> $taskName"
+        if ($TraceMode) { Stop-Transcript | Out-Null }
+        exit 1
+    }
+    Write-Host "[OK] $taskName"
 }
 
 Write-Host "--- Summary ---"

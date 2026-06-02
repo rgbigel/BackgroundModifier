@@ -186,6 +186,8 @@ Operational entry-point model:
 2. Runtime data remains in `C:\BackgroundMotives`.
 3. User operational entry points are exposed in `D:\OneDrive\cmd` as links.
 4. Test entry points are optional and enabled explicitly.
+5. `BackgroundModifier-AdminShell.ps1` is provided as an operational helper to open an elevated shell at the cmd root.
+6. `Setup.ps1` may self-relaunch through UAC when started from a non-elevated shell.
 
 ## 9. Cross-Document Consistency Rules
 

@@ -370,6 +370,22 @@ BackgroundSetterStart.ps1
 
 BackgroundInstallationVerifier.ps1
 
+Operational `D:\OneDrive\cmd` links must contain:
+
+BackgroundModifier-AdminShell.ps1
+
+BackgroundModifier-Setup.ps1
+
+BackgroundModifier-Verify.ps1
+
+BackgroundModifier-Cleanup.ps1
+
+BackgroundModifier-Disable.ps1
+
+BackgroundModifier-Enable.ps1
+
+BackgroundModifier-Uninstall.ps1
+
 9.2 Rules
 No real code may exist in SolutionCode.
 
@@ -409,7 +425,7 @@ The following function inventory is documented to establish explicit reference c
 - ConfigTools.psm1: `Load-Config`, `Save-Config`
 - ErrorTools.psm1: `Throw-ToolError`, `Write-ToolError`
 - ImageTools.psm1: `Test-Image`, `Get-ImageSize`
-- InstallerTools.psm1: `Test-Admin`, `Require-Admin`, `Copy-Safe`
+- InstallerTools.psm1: `Test-Admin`, `Require-Admin`, `Copy-Safe`, `Get-PowerShellHostPath`, `Invoke-SelfElevated`, `Start-ElevatedPowerShellSession`
 - Logging.psm1: `Write-LogInfo`, `Write-LogWarn`, `Write-LogError`
 - LoggingTools.psm1: `Write-Log`, `Write-LogDebug`, `Write-LogTrace`
 - ModeTools.psm1: `Show-DebugState`, `Show-TraceState`
@@ -417,6 +433,13 @@ The following function inventory is documented to establish explicit reference c
 - ProfileTools.psm1: `Load-Profile`, `Save-Profile`, `Test-ProfileValid`
 - RenderTools.psm1: `Merge-Image`
 - SchedulerTools.psm1: `Register-BackgroundTask`, `Unregister-BackgroundTask`, `Test-BackgroundTask`
+
+15. Elevation and Host Selection
+
+1. Install-time operations that register tasks or change machine scope require elevation.
+2. `Setup.ps1` attempts self-elevation via `Invoke-SelfElevated` when started non-elevated.
+3. `BackgroundModifier-AdminShell.ps1` opens an elevated PowerShell session for manual install/maintenance steps.
+4. `Get-PowerShellHostPath` prefers `pwsh.exe` (PowerShell 7) and falls back to `powershell.exe` when PS7 is unavailable.
 - SetFlagsTool.psm1: `Set-Flags`
 - SummaryTools.psm1: `Show-Summary`
 - SystemTools.psm1: `Get-OSInfo`, `Test-IsWindows`, `Get-UserName`, `Get-ComputerName`

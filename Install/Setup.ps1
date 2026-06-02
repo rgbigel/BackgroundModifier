@@ -2,7 +2,7 @@
 #  Module:      Setup.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     16.0.0
 #  Changelog:
 #      6.0.0  --------  Added cmd entry-point provisioning and verifier alignment.
 #      5.000  --------  Initial module creation for Consolidated Architecture (installer)
@@ -37,6 +37,7 @@ Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "SchedulerTools.psm1") -Force
 
 $WarningPreference = $prev
 
@@ -50,10 +51,22 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-$16.0.0) ==="
+Write-Host "=== BackgroundModifier Setup.ps1 (v16.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
+
+if (-not (Test-Admin)) {
+    Write-Host "[WARN] Setup requires elevation. Relaunching via UAC prompt."
+    $elevatedExitCode = Invoke-SelfElevated -ScriptPath $resolvedScriptPath -WorkingDirectory $RepoRootResolved -NamedArguments @{
+        CmdRoot = $CmdRoot
+        RuntimeRoot = $RuntimeRoot
+        IncludeTestLinks = [bool]$IncludeTestLinks
+        t = [bool]$t
+        d = [bool]$d
+    }
+    exit $elevatedExitCode
+}
 
 try {
     Require-Admin
@@ -129,6 +142,7 @@ try {
     Ensure-Path -Path $CmdRoot | Out-Null
 
     $cmdLinks = @(
+        @{ Name = "BackgroundModifier-AdminShell.ps1"; Source = (Join-Path $repoRoot "Install\AdminShell.ps1") },
         @{ Name = "BackgroundModifier-Setup.ps1"; Source = (Join-Path $repoRoot "Install\Setup.ps1") },
         @{ Name = "BackgroundModifier-Verify.ps1"; Source = (Join-Path $repoRoot "Install\BackgroundInstallationVerifier.ps1") },
         @{ Name = "BackgroundModifier-Cleanup.ps1"; Source = (Join-Path $repoRoot "Install\Cleanup.ps1") },
@@ -167,6 +181,10 @@ try {
         }
         Write-Host "[OK] Test entry points removed/skipped. Use -IncludeTestLinks to create them."
     }
+
+    Write-Host "--- Registering scheduled automation tasks ---"
+    Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $solutionCodeRoot "BootIdentity.ps1") -TriggerType Startup -RunAs System
+    Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $solutionCodeRoot "BackgroundSetterStart.ps1") -TriggerType LogOn -RunAs Interactive
 
     Write-Host "--- Setup verification ---"
     $verifierScript = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"

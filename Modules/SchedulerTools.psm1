@@ -25,7 +25,11 @@ function Register-BackgroundTask {
     param(
         [string]$TaskName,
         [string]$ScriptPath,
-        [string]$TriggerTime = "03:00"
+        [ValidateSet("Startup", "LogOn", "Daily")]
+        [string]$TriggerType = "Daily",
+        [string]$TriggerTime = "03:00",
+        [ValidateSet("System", "Interactive")]
+        [string]$RunAs = "System"
     )
 
     if (-not (Test-Path $ScriptPath)) {
@@ -34,11 +38,28 @@ function Register-BackgroundTask {
     }
 
     $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
-    $trigger = New-ScheduledTaskTrigger -Daily -At $TriggerTime
+
+    switch ($TriggerType) {
+        "Startup" {
+            $trigger = New-ScheduledTaskTrigger -AtStartup
+        }
+        "LogOn" {
+            $trigger = New-ScheduledTaskTrigger -AtLogOn
+        }
+        default {
+            $trigger = New-ScheduledTaskTrigger -Daily -At $TriggerTime
+        }
+    }
 
     try {
-        Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Force | Out-Null
-        Write-Host "[OK] Scheduled task registered -> $TaskName at $TriggerTime"
+        if ($RunAs -eq "System") {
+            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -User "SYSTEM" -RunLevel Highest -Force | Out-Null
+        }
+        else {
+            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -User "INTERACTIVE" -RunLevel Highest -Force | Out-Null
+        }
+
+        Write-Host "[OK] Scheduled task registered -> $TaskName ($TriggerType/$RunAs)"
     }
     catch {
         Write-Host "[ERROR] Failed to register scheduled task: $($_.Exception.Message)"

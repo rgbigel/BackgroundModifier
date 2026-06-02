@@ -3,6 +3,9 @@ Import-Module $modulePath -Force
 
 Describe "InstallerTools" {
     It "exports expected functions" {
+        Get-Command Get-PowerShellHostPath -ErrorAction Stop | Should Not BeNullOrEmpty
+        Get-Command Invoke-SelfElevated -ErrorAction Stop | Should Not BeNullOrEmpty
+        Get-Command Start-ElevatedPowerShellSession -ErrorAction Stop | Should Not BeNullOrEmpty
         Get-Command Test-Admin -ErrorAction Stop | Should Not BeNullOrEmpty
         Get-Command Require-Admin -ErrorAction Stop | Should Not BeNullOrEmpty
         Get-Command Copy-Safe -ErrorAction Stop | Should Not BeNullOrEmpty
@@ -32,5 +35,13 @@ Describe "InstallerTools" {
     It "returns boolean from Test-Admin" {
         $value = Test-Admin
         ($value -is [bool]) | Should Be $true
+    }
+
+    It "resolves a PowerShell host path" {
+        $path = Get-PowerShellHostPath
+
+        Test-Path -LiteralPath $path | Should Be $true
+        $fileName = [System.IO.Path]::GetFileName($path).ToLowerInvariant()
+        @("pwsh.exe", "powershell.exe") -contains $fileName | Should Be $true
     }
 }

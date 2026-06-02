@@ -14,6 +14,7 @@ Describe "Install script orchestration contracts" {
         $text = Get-Content -LiteralPath $path -Raw
 
         $expected = @(
+            'BackgroundModifier-AdminShell.ps1',
             'BackgroundModifier-Setup.ps1',
             'BackgroundModifier-Verify.ps1',
             'BackgroundModifier-Cleanup.ps1',
@@ -26,6 +27,24 @@ Describe "Install script orchestration contracts" {
             $pattern = [regex]::Escape($entry)
             $text | Should Match $pattern
         }
+    }
+
+    It "Setup self-elevates when started from a non-admin shell" {
+        $path = Join-Path $installRoot "Setup.ps1"
+        $text = Get-Content -LiteralPath $path -Raw
+
+        $text | Should Match '\bTest-Admin\b'
+        $text | Should Match '\bInvoke-SelfElevated\b'
+        $text | Should Match 'Setup requires elevation\. Relaunching via UAC prompt'
+    }
+
+    It "AdminShell launcher uses InstallerTools to open an elevated PowerShell session" {
+        $path = Join-Path $installRoot "AdminShell.ps1"
+        $text = Get-Content -LiteralPath $path -Raw
+
+        $text | Should Match 'InstallerTools\.psm1'
+        $text | Should Match 'Start-ElevatedPowerShellSession'
+        $text | Should Match 'BackgroundModifier AdminShell\.ps1'
     }
 
     It "Setup defines expected test cmd links" {
@@ -43,6 +62,28 @@ Describe "Install script orchestration contracts" {
             $pattern = [regex]::Escape($entry)
             $text | Should Match $pattern
         }
+    }
+
+    It "Setup provisions scheduled automation tasks through SchedulerTools" {
+        $path = Join-Path $installRoot "Setup.ps1"
+        $text = Get-Content -LiteralPath $path -Raw
+
+        $text | Should Match 'SchedulerTools\.psm1'
+        $text | Should Match 'Register-BackgroundTask'
+        $text | Should Match 'BackgroundModifier-BootIdentity'
+        $text | Should Match 'BackgroundModifier-Autorun'
+        $text | Should Match 'TriggerType Startup'
+        $text | Should Match 'TriggerType LogOn'
+    }
+
+    It "Verifier checks operational scheduled tasks" {
+        $path = Join-Path $installRoot "BackgroundInstallationVerifier.ps1"
+        $text = Get-Content -LiteralPath $path -Raw
+
+        $text | Should Match '\bGet-ScheduledTask\b'
+        $text | Should Match 'BackgroundModifier-AdminShell\.ps1'
+        $text | Should Match 'BackgroundModifier-BootIdentity'
+        $text | Should Match 'BackgroundModifier-Autorun'
     }
 
     It "Disable uses Require-Admin and Disable-ScheduledTask" {

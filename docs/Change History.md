@@ -754,3 +754,20 @@ Working tree includes modified/new/deleted paths associated with the consistency
 2. New install operation scripts (`Disable`, `Enable`, `Uninstall`).
 3. Documentation updates under `docs/` and this history replacement under `Docs/`.
 4. Pending module-root migration artifacts in `Source/Modules` (deletions) and top-level `Modules/` (present in working tree).
+
+### 40. Elevation entry-point hardening and PS7 host preference (2026-06-02)
+
+Verified changes:
+
+1. Added installer elevation helper functions in `Modules/InstallerTools.psm1`:
+   - `Get-PowerShellHostPath`
+   - `Invoke-SelfElevated`
+   - `Start-ElevatedPowerShellSession`
+2. Host resolution now prefers `pwsh.exe` (PowerShell 7) and falls back to `powershell.exe`.
+3. Added `Install/AdminShell.ps1` to launch an elevated shell for install and maintenance operations.
+4. Updated `Install/Setup.ps1` to self-relaunch via UAC when not elevated and preserve key named parameters.
+5. Setup now provisions `BackgroundModifier-AdminShell.ps1` as an operational cmd entry link.
+6. Updated `Install/BackgroundInstallationVerifier.ps1` to validate the new operational cmd entry.
+7. Added/updated coverage in:
+   - `Tests/Modules/InstallerTools.Tests.ps1`
+   - `Tests/Install/InstallScripts.Orchestration.Tests.ps1`
