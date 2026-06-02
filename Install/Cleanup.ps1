@@ -2,7 +2,7 @@
 #  Module:      Cleanup.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      6.0.0  --------  Converted to maintenance-only cleanup and aligned module root to top-level Modules.
 #      5.000  --------  Initial module creation for Consolidated Architecture (cleanup utility)

@@ -2,7 +2,7 @@
 #  Module:      SchedulerTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-$16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      5.000  -  Header normalized for repository-wide uniformity.
 # =================================================================================================
@@ -10,7 +10,7 @@ $16.0.0
 <# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules\SchedulerTools.psm1
   Module:     SchedulerTools.psm1
-$16.0.0
+    Version:    6.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -34,7 +34,7 @@ function Register-BackgroundTask {
 
     if (-not (Test-Path $ScriptPath)) {
         Write-Host "[ERROR] Cannot register task. Script not found: $ScriptPath"
-        return
+        return $false
     }
 
     $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
@@ -52,17 +52,23 @@ function Register-BackgroundTask {
     }
 
     try {
-        if ($RunAs -eq "System") {
-            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -User "SYSTEM" -RunLevel Highest -Force | Out-Null
-        }
-        else {
-            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -User "INTERACTIVE" -RunLevel Highest -Force | Out-Null
+        $principal = switch ($RunAs) {
+            "System" {
+                New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+            }
+            "Interactive" {
+                New-ScheduledTaskPrincipal -GroupId "S-1-5-4" -RunLevel Limited
+            }
         }
 
+        Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Force -ErrorAction Stop | Out-Null
+
         Write-Host "[OK] Scheduled task registered -> $TaskName ($TriggerType/$RunAs)"
+        return $true
     }
     catch {
         Write-Host "[ERROR] Failed to register scheduled task: $($_.Exception.Message)"
+        return $false
     }
 }
 

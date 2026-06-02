@@ -2,7 +2,7 @@
 #  Module:      AdminShell.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      16.0.0 --------  Added elevated PowerShell launcher for install and maintenance workflows.
 # =================================================================================================
@@ -39,7 +39,7 @@ if (-not (Test-Path -LiteralPath $StartIn)) {
     $StartIn = $RepoRootResolved
 }
 
-Write-Host "=== BackgroundModifier AdminShell.ps1 (v16.0.0) ==="
+Write-Host "=== BackgroundModifier AdminShell.ps1 (v6.0.0) ==="
 Write-Host "[OK] Launching elevated PowerShell in: $StartIn"
 
 Start-ElevatedPowerShellSession -WorkingDirectory $StartIn -Command $Command

@@ -2,7 +2,7 @@
 #  Module:      Setup.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      6.0.0  --------  Added cmd entry-point provisioning and verifier alignment.
 #      5.000  --------  Initial module creation for Consolidated Architecture (installer)
@@ -54,7 +54,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setup.ps1 (v16.0.0) ==="
+Write-Host "=== BackgroundModifier Setup.ps1 (v6.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -197,8 +197,12 @@ try {
     }
 
     Write-Host "--- Registering scheduled automation tasks ---"
-    Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $solutionCodeRoot "BootIdentity.ps1") -TriggerType Startup -RunAs System
-    Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $solutionCodeRoot "BackgroundSetterStart.ps1") -TriggerType LogOn -RunAs Interactive
+    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $solutionCodeRoot "BootIdentity.ps1") -TriggerType Startup -RunAs System)) {
+        throw "Failed to register BackgroundModifier-BootIdentity"
+    }
+    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $solutionCodeRoot "BackgroundSetterStart.ps1") -TriggerType LogOn -RunAs Interactive)) {
+        throw "Failed to register BackgroundModifier-Autorun"
+    }
 
     Write-Host "--- Setup verification ---"
     $verifierScript = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"

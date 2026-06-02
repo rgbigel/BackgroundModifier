@@ -2,7 +2,7 @@
 #  Module:      Uninstall.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      6.0.0  --------  Added safe uninstall with repository protection guard and cmd entry cleanup.
 # =================================================================================================
@@ -33,7 +33,7 @@ Import-Module (Join-Path $ModuleRoot "BackgroundNoBlurReg.psm1") -Force
 $flags = Set-Flags -T:$t -D:$d
 $DebugMode = $flags.DebugMode
 
-Write-Host "=== BackgroundModifier Uninstall.ps1 (v16.0.0) ==="
+Write-Host "=== BackgroundModifier Uninstall.ps1 (v6.0.0) ==="
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 
 $commandLineArguments = [System.Environment]::GetCommandLineArgs()

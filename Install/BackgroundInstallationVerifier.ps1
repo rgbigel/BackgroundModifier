@@ -2,7 +2,7 @@
 #  Module:      BackgroundInstallationVerifier.ps1
 #  Path:        .\Install
 #  Author:      Rolf Bercht
-#  Version:     16.0.0
+#  Version:     6.0.0
 #  Changelog:
 #      6.0.0  --------  Added cmd entry-point verification and explicit root overrides.
 #      5.000  --------  Initial module creation for Consolidated Architecture (installation verifier)
@@ -57,7 +57,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier BackgroundInstallationVerifier.ps1 (v16.0.0) ==="
+Write-Host "=== BackgroundModifier BackgroundInstallationVerifier.ps1 (v6.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
