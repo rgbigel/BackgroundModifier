@@ -805,16 +805,19 @@ Verified changes:
 
 Verified changes:
 
-1. Migrated verifier entry script naming from `Install/BackgroundInstallationVerifier.ps1` to `Install/Verifyer.ps1`.
-2. Updated install and scheduling wiring to invoke the new verifier path and aligned command-entry checks accordingly.
-3. Added/retained `Source/BackgroundApply.ps1` as the active render/policy/apply orchestrator path and aligned stage-success checks to PowerShell invocation success semantics.
-4. Repaired malformed header/version artifacts in active PowerShell files and fixed broken banner text in logon/start scripts.
-5. Normalized repository version marker consistency in active code/doc headers to `6.0.0` where malformed tokens remained.
-6. Completed ESP/boot identity hardening updates in active pipeline modules/scripts:
-   - `Modules/BootTools.psm1`
-   - `Source/BootIdentity.ps1`
-   including deterministic ESP metadata enrichment and resilient boot-loader path resolution behavior.
-7. Updated architecture/implementation/readme/requirements documentation to reflect current runtime model and operational behavior boundaries.
-8. Validation evidence for this wave:
-   - parser/diagnostic checks on touched code files passed
-   - focused Pester sanity suites passed (`InstallScripts.Orchestration`, `InstallerTools`)
+1. Stabilized verifier and setup flow:
+   - verifier imports installer helper module for shared help/usage handling
+   - setup normalizes verifier process exit handling to avoid false failures from stale native `$LASTEXITCODE` state
+2. Consolidated runtime execution model to source-owned entry points:
+   - removed redundant root `SolutionCode` helper links from setup provisioning
+   - scheduled task registrations target source scripts directly under `SolutionCode\Source`
+3. Repaired parser-breaking malformed version markers in active scripts/modules:
+   - replaced standalone malformed token occurrences with valid header/version lines
+   - corrected broken banner literal in `Source/BackgroundSetterStart.ps1`
+4. Normalized consistency metadata across active docs and scripts:
+   - aligned `Version` markers to `6.0.0` in active docs/scripts touched by the sweep
+   - repo-wide search confirmed zero remaining malformed `$16.0.0` tokens
+5. Validation executed:
+   - focused Pester suites passed:
+     - `InstallScripts.Orchestration`: Passed `16`, Failed `0`, Skipped `0`
+     - `InstallerTools`: Passed `5`, Failed `0`, Skipped `0`
