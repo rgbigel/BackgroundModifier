@@ -25,8 +25,9 @@ function Register-BackgroundTask {
     param(
         [string]$TaskName,
         [string]$ScriptPath,
+        [string[]]$ScriptArguments = @(),
         [ValidateSet("Startup", "LogOn", "Daily")]
-        [string]$TriggerType = "Daily",
+        [string]$TriggerType = "Startup",
         [string]$TriggerTime = "03:00",
         [ValidateSet("System", "Interactive")]
         [string]$RunAs = "System"
@@ -37,7 +38,28 @@ function Register-BackgroundTask {
         return $false
     }
 
-    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
+    $actionArguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        ('`"{0}`"' -f $ScriptPath)
+    )
+
+    foreach ($scriptArgument in $ScriptArguments) {
+        if ([string]::IsNullOrWhiteSpace($scriptArgument)) {
+            continue
+        }
+
+        if ($scriptArgument.Contains(' ')) {
+            $actionArguments += ('`"{0}`"' -f $scriptArgument)
+        }
+        else {
+            $actionArguments += $scriptArgument
+        }
+    }
+
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ($actionArguments -join ' ')
 
     switch ($TriggerType) {
         "Startup" {

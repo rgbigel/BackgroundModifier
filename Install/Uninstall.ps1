@@ -31,6 +31,7 @@ Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "BackgroundNoBlurReg.psm1") -Force
 
 $flags = Set-Flags -T:$t -D:$d
+$TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
 Write-Host "=== BackgroundModifier Uninstall.ps1 (v6.0.0) ==="
@@ -41,6 +42,11 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Uninstall.ps1 help" -UsageLines @(
         "Usage: Uninstall.ps1 [-t] [-d] [-CmdRoot <path>] [-RuntimeRoot <path>] [-RemoveRuntimeData]",
+        "  -t: Trace mode (implies debug mode for richer diagnostics).",
+        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
+        "  -CmdRoot (-c): Folder that contains BackgroundModifier cmd entry-point links.",
+        "  -RuntimeRoot (-r): Runtime root used to locate SolutionCode and runtime data.",
+        "  -RemoveRuntimeData: Removes RuntimeRoot recursively (default is to retain runtime data).",
         "Use /?, /H, or -Help to show this message.",
         "Requires administrator privileges."
     )

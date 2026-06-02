@@ -19,6 +19,15 @@ param(
     [switch]$IncludeTestLinks
 )
 
+if ($t) {
+    if (-not $PSBoundParameters.ContainsKey('d')) {
+        $d = $true
+    }
+    if (-not $PSBoundParameters.ContainsKey('IncludeTestLinks')) {
+        $IncludeTestLinks = $true
+    }
+}
+
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
 $resolvedScriptPath = $PSCommandPath
 if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
@@ -67,6 +76,11 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier BackgroundInstallationVerifier.ps1 help" -UsageLines @(
         "Usage: BackgroundInstallationVerifier.ps1 [-t] [-d] [-CmdRoot <path>] [-RuntimeRoot <path>] [-IncludeTestLinks]",
+        "  -t: Trace mode (starts transcript; implies -d and -IncludeTestLinks when not explicitly set).",
+        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
+        "  -IncludeTestLinks (-i): Verify test cmd entry points in addition to operational checks.",
+        "  -CmdRoot (-c): Folder where cmd entry-point links are validated.",
+        "  -RuntimeRoot (-r): Runtime root containing logs/assets/rendered/system folders.",
         "Use /?, /H, or -Help to show this message.",
         "This script does not require elevation."
     )

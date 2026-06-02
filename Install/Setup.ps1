@@ -19,6 +19,15 @@ param(
     [switch]$IncludeTestLinks
 )
 
+if ($t) {
+    if (-not $PSBoundParameters.ContainsKey('d')) {
+        $d = $true
+    }
+    if (-not $PSBoundParameters.ContainsKey('IncludeTestLinks')) {
+        $IncludeTestLinks = $true
+    }
+}
+
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
 $resolvedScriptPath = $PSCommandPath
 if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
@@ -48,11 +57,8 @@ $flags = Set-Flags -T:$t -D:$d
 $TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
-if ($TraceMode) {
-    $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
-    $TranscriptPath = Join-Path $Global:LogRoot "Setup_$timestamp.log"
-    Start-Transcript -Path $TranscriptPath -Force | Out-Null
-}
+$TranscriptPath = $null
+$TranscriptStarted = $false
 
 Write-Host "=== BackgroundModifier Setup.ps1 (v6.0.0) ==="
 
@@ -64,6 +70,11 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Setup.ps1 help" -UsageLines @(
         "Usage: Setup.ps1 [-t] [-d] [-IncludeTestLinks] [-CmdRoot <path>] [-RuntimeRoot <path>]",
+        "  -t: Trace mode (starts transcript; implies -d and -IncludeTestLinks when not explicitly set).",
+        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
+        "  -IncludeTestLinks (-i): Creates test cmd entry points in addition to operational links.",
+        "  -CmdRoot (-c): Destination folder for operational/test cmd entry-point links.",
+        "  -RuntimeRoot (-r): Runtime root used for assets, logs, rendered output, and SolutionCode links.",
         "Use /?, /H, or -Help to show this message.",
         "This script self-relaunches with UAC when elevation is required."
     )
@@ -91,6 +102,14 @@ try {
     $Global:AssetsRoot = Join-Path $Global:RootPath "assets"
     $Global:RenderRoot = Join-Path $Global:RootPath "rendered"
     $Global:SystemRoot = Join-Path $Global:RootPath "system"
+
+    if ($TraceMode) {
+        Ensure-Path -Path $Global:LogRoot | Out-Null
+        $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
+        $TranscriptPath = Join-Path $Global:LogRoot "Setup_$timestamp.log"
+        Start-Transcript -Path $TranscriptPath -Force | Out-Null
+        $TranscriptStarted = $true
+    }
 
     function New-OrReplaceLink {
         param(
@@ -197,10 +216,15 @@ try {
     }
 
     Write-Host "--- Registering scheduled automation tasks ---"
-    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $solutionCodeRoot "BootIdentity.ps1") -TriggerType Startup -RunAs System)) {
+    $taskTraceArguments = @()
+    if ($TraceMode) {
+        $taskTraceArguments = @('-t')
+    }
+
+    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-BootIdentity" -ScriptPath (Join-Path $solutionCodeRoot "BootIdentity.ps1") -ScriptArguments $taskTraceArguments -TriggerType Startup -RunAs System)) {
         throw "Failed to register BackgroundModifier-BootIdentity"
     }
-    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $solutionCodeRoot "BackgroundSetterStart.ps1") -TriggerType LogOn -RunAs Interactive)) {
+    if (-not (Register-BackgroundTask -TaskName "BackgroundModifier-Autorun" -ScriptPath (Join-Path $solutionCodeRoot "BackgroundSetterStart.ps1") -ScriptArguments $taskTraceArguments -TriggerType LogOn -RunAs Interactive)) {
         throw "Failed to register BackgroundModifier-Autorun"
     }
 
@@ -215,12 +239,12 @@ try {
 }
 catch {
     Write-Host "[X] Setup failed: $($_.Exception.Message)"
-    if ($TraceMode) { Stop-Transcript | Out-Null }
+    if ($TranscriptStarted) { Stop-Transcript | Out-Null }
     Wait-ForInstallerExit -Pause:($TraceMode -or $DebugMode) -Message "Setup failed. Press Enter to exit..."
     exit 1
 }
 
-if ($TraceMode) {
+if ($TranscriptStarted) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }

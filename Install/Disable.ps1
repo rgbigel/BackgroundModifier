@@ -25,6 +25,7 @@ Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SetFlagsTool.psm1") -Force
 
 $flags = Set-Flags -T:$t -D:$d
+$TraceMode = $flags.TraceMode
 $DebugMode = $flags.DebugMode
 
 Write-Host "=== BackgroundModifier Disable.ps1 (v6.0.0) ==="
@@ -35,6 +36,8 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Disable.ps1 help" -UsageLines @(
         "Usage: Disable.ps1 [-t] [-d]",
+        "  -t: Trace mode (implies debug mode for richer diagnostics).",
+        "  -d: Debug mode (verbose console diagnostics and pause-on-exit in interactive runs).",
         "Use /?, /H, or -Help to show this message.",
         "Requires administrator privileges."
     )
