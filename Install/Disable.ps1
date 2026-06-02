@@ -30,6 +30,17 @@ $DebugMode = $flags.DebugMode
 Write-Host "=== BackgroundModifier Disable.ps1 (v16.0.0) ==="
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 
+$commandLineArguments = [System.Environment]::GetCommandLineArgs()
+
+if (Test-HelpRequested -Arguments $commandLineArguments) {
+    Show-InstallerUsage -Title "BackgroundModifier Disable.ps1 help" -UsageLines @(
+        "Usage: Disable.ps1 [-t] [-d]",
+        "Use /?, /H, or -Help to show this message.",
+        "Requires administrator privileges."
+    )
+    exit 0
+}
+
 Require-Admin
 
 $taskNames = @(
@@ -57,4 +68,6 @@ foreach ($taskName in $taskNames) {
 }
 
 Write-Host "[OK] Disable operation completed. Tasks disabled: $disabledCount"
+
+Wait-ForInstallerExit -Pause:($DebugMode -or $TraceMode) -Message "Disable completed. Press Enter to exit..."
 

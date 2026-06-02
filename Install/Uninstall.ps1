@@ -10,7 +10,9 @@
 param(
     [switch]$t,
     [switch]$d,
+    [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
+    [Alias('r')]
     [string]$RuntimeRoot = "C:\BackgroundMotives",
     [switch]$RemoveRuntimeData
 )
@@ -33,6 +35,17 @@ $DebugMode = $flags.DebugMode
 
 Write-Host "=== BackgroundModifier Uninstall.ps1 (v16.0.0) ==="
 if ($DebugMode) { Write-Host "Debug mode enabled" }
+
+$commandLineArguments = [System.Environment]::GetCommandLineArgs()
+
+if (Test-HelpRequested -Arguments $commandLineArguments) {
+    Show-InstallerUsage -Title "BackgroundModifier Uninstall.ps1 help" -UsageLines @(
+        "Usage: Uninstall.ps1 [-t] [-d] [-CmdRoot <path>] [-RuntimeRoot <path>] [-RemoveRuntimeData]",
+        "Use /?, /H, or -Help to show this message.",
+        "Requires administrator privileges."
+    )
+    exit 0
+}
 
 Require-Admin
 
@@ -131,4 +144,6 @@ else {
 }
 
 Write-Host "[OK] Uninstall completed. Repository source was not modified."
+
+Wait-ForInstallerExit -Pause:($DebugMode -or $TraceMode) -Message "Uninstall completed. Press Enter to exit..."
 

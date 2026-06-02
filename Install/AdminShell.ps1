@@ -23,6 +23,17 @@ $ModuleRoot = Join-Path $RepoRootResolved "Modules"
 
 Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
 
+$commandLineArguments = [System.Environment]::GetCommandLineArgs()
+
+if (Test-HelpRequested -Arguments $commandLineArguments) {
+    Show-InstallerUsage -Title "BackgroundModifier AdminShell.ps1 help" -UsageLines @(
+        "Usage: AdminShell.ps1 [-StartIn <path>] [-Command <string>]",
+        "Use /?, /H, or -Help to show this message.",
+        "Opens an elevated PowerShell session and does not run task/install logic."
+    )
+    exit 0
+}
+
 if (-not (Test-Path -LiteralPath $StartIn)) {
     Write-Host "[WARN] StartIn path not found, falling back to repository root: $StartIn"
     $StartIn = $RepoRootResolved

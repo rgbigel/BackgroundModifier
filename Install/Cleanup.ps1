@@ -17,6 +17,19 @@ $ScriptRootResolved = Split-Path -Parent ([System.IO.Path]::GetFullPath($resolve
 $RepoRoot = Split-Path $ScriptRootResolved -Parent
 $ModuleRoot = Join-Path $RepoRoot "Modules"
 
+Import-Module (Join-Path $ModuleRoot "InstallerTools.psm1") -Force
+
+$commandLineArguments = [System.Environment]::GetCommandLineArgs()
+
+if (Test-HelpRequested -Arguments $commandLineArguments) {
+    Show-InstallerUsage -Title "BackgroundModifier Cleanup.ps1 help" -UsageLines @(
+        "Usage: Cleanup.ps1",
+        "Use /?, /H, or -Help to show this message.",
+        "This is a maintenance-only operation and does not require elevation."
+    )
+    exit 0
+}
+
 # Runtime root is explicitly outside the repo
 $RuntimeRoot = "C:\BackgroundMotives"
 $RenderRoot  = Join-Path $RuntimeRoot "rendered"

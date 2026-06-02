@@ -14,6 +14,57 @@ function Test-Admin {
     return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Test-HelpRequested {
+    param(
+        [string[]]$Arguments
+    )
+
+    foreach ($argument in $Arguments) {
+        if ([string]::IsNullOrWhiteSpace($argument)) {
+            continue
+        }
+
+        switch -Regex ($argument) {
+            '^(?:-|/)(?:\?|h|help)$' { return $true }
+        }
+    }
+
+    return $false
+}
+
+function Show-InstallerUsage {
+    param(
+        [string]$Title,
+        [string[]]$UsageLines
+    )
+
+    Write-Host "=== $Title ==="
+    foreach ($line in $UsageLines) {
+        Write-Host $line
+    }
+}
+
+function Wait-ForInstallerExit {
+    param(
+        [switch]$Pause,
+        [string]$Message = "Press Enter to exit..."
+    )
+
+    if (-not $Pause) {
+        return
+    }
+
+    if (-not [Environment]::UserInteractive) {
+        return
+    }
+
+    try {
+        [void](Read-Host $Message)
+    }
+    catch {
+    }
+}
+
 function Get-PowerShellHostPath {
     $candidates = @(
         (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1),

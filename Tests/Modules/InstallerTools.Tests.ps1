@@ -3,6 +3,9 @@ Import-Module $modulePath -Force
 
 Describe "InstallerTools" {
     It "exports expected functions" {
+        Get-Command Test-HelpRequested -ErrorAction Stop | Should Not BeNullOrEmpty
+        Get-Command Show-InstallerUsage -ErrorAction Stop | Should Not BeNullOrEmpty
+        Get-Command Wait-ForInstallerExit -ErrorAction Stop | Should Not BeNullOrEmpty
         Get-Command Get-PowerShellHostPath -ErrorAction Stop | Should Not BeNullOrEmpty
         Get-Command Invoke-SelfElevated -ErrorAction Stop | Should Not BeNullOrEmpty
         Get-Command Start-ElevatedPowerShellSession -ErrorAction Stop | Should Not BeNullOrEmpty
@@ -43,5 +46,13 @@ Describe "InstallerTools" {
         Test-Path -LiteralPath $path | Should Be $true
         $fileName = [System.IO.Path]::GetFileName($path).ToLowerInvariant()
         @("pwsh.exe", "powershell.exe") -contains $fileName | Should Be $true
+    }
+
+    It "detects help aliases" {
+        Test-HelpRequested -Arguments @('/?') | Should Be $true
+        Test-HelpRequested -Arguments @('/H') | Should Be $true
+        Test-HelpRequested -Arguments @('-Help') | Should Be $true
+        Test-HelpRequested -Arguments @('-h') | Should Be $true
+        Test-HelpRequested -Arguments @('-t') | Should Be $false
     }
 }

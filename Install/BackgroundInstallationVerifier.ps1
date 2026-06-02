@@ -11,8 +11,11 @@
 param(
     [switch]$t,
     [switch]$d,
+    [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
+    [Alias('r')]
     [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [Alias('i')]
     [switch]$IncludeTestLinks
 )
 
@@ -58,6 +61,17 @@ Write-Host "=== BackgroundModifier BackgroundInstallationVerifier.ps1 (v16.0.0) 
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
+
+$commandLineArguments = [System.Environment]::GetCommandLineArgs()
+
+if (Test-HelpRequested -Arguments $commandLineArguments) {
+    Show-InstallerUsage -Title "BackgroundModifier BackgroundInstallationVerifier.ps1 help" -UsageLines @(
+        "Usage: BackgroundInstallationVerifier.ps1 [-t] [-d] [-CmdRoot <path>] [-RuntimeRoot <path>] [-IncludeTestLinks]",
+        "Use /?, /H, or -Help to show this message.",
+        "This script does not require elevation."
+    )
+    exit 0
+}
 
 Write-Host "--- Checking folder structure ---"
 
@@ -189,4 +203,6 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+
+Wait-ForInstallerExit -Pause:($TraceMode -or $DebugMode) -Message "Verification completed. Press Enter to exit..."
 

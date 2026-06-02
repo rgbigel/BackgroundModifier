@@ -38,6 +38,16 @@ Describe "Install script orchestration contracts" {
         $text | Should Match 'Setup requires elevation\. Relaunching via UAC prompt'
     }
 
+    It "Setup help path is checked before elevation" {
+        $path = Join-Path $installRoot "Setup.ps1"
+        $text = Get-Content -LiteralPath $path -Raw
+
+        $text | Should Match '\bTest-HelpRequested\b'
+        $text | Should Match '\bShow-InstallerUsage\b'
+        $text | Should Match '\bWait-ForInstallerExit\b'
+        $text | Should Match 'This script self-relaunches with UAC when elevation is required'
+    }
+
     It "AdminShell launcher uses InstallerTools to open an elevated PowerShell session" {
         $path = Join-Path $installRoot "AdminShell.ps1"
         $text = Get-Content -LiteralPath $path -Raw
@@ -84,6 +94,46 @@ Describe "Install script orchestration contracts" {
         $text | Should Match 'BackgroundModifier-AdminShell\.ps1'
         $text | Should Match 'BackgroundModifier-BootIdentity'
         $text | Should Match 'BackgroundModifier-Autorun'
+    }
+
+    It "Help text is available on non-elevating scripts" {
+        $scripts = @(
+            'BackgroundInstallationVerifier.ps1',
+            'AdminShell.ps1',
+            'Cleanup.ps1'
+        )
+
+        foreach ($script in $scripts) {
+            $path = Join-Path $installRoot $script
+            $text = Get-Content -LiteralPath $path -Raw
+            $text | Should Match '\bTest-HelpRequested\b'
+            $text | Should Match '\bShow-InstallerUsage\b'
+        }
+    }
+
+    It "Setup and verifier accept short-form parameter aliases" {
+        $setupText = Get-Content -LiteralPath (Join-Path $installRoot 'Setup.ps1') -Raw
+        $verifierText = Get-Content -LiteralPath (Join-Path $installRoot 'BackgroundInstallationVerifier.ps1') -Raw
+        $uninstallText = Get-Content -LiteralPath (Join-Path $installRoot 'Uninstall.ps1') -Raw
+
+        $setupText | Should Match '\[Alias\(\x27c\x27\)\]'
+        $setupText | Should Match '\[Alias\(\x27r\x27\)\]'
+        $setupText | Should Match '\[Alias\(\x27i\x27\)\]'
+        $setupText | Should Match '\$CmdRoot'
+        $setupText | Should Match '\$RuntimeRoot'
+        $setupText | Should Match '\$IncludeTestLinks'
+
+        $verifierText | Should Match '\[Alias\(\x27c\x27\)\]'
+        $verifierText | Should Match '\[Alias\(\x27r\x27\)\]'
+        $verifierText | Should Match '\[Alias\(\x27i\x27\)\]'
+        $verifierText | Should Match '\$CmdRoot'
+        $verifierText | Should Match '\$RuntimeRoot'
+        $verifierText | Should Match '\$IncludeTestLinks'
+
+        $uninstallText | Should Match '\[Alias\(\x27c\x27\)\]'
+        $uninstallText | Should Match '\[Alias\(\x27r\x27\)\]'
+        $uninstallText | Should Match '\$CmdRoot'
+        $uninstallText | Should Match '\$RuntimeRoot'
     }
 
     It "Disable uses Require-Admin and Disable-ScheduledTask" {

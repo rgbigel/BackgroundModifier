@@ -440,6 +440,11 @@ The following function inventory is documented to establish explicit reference c
 2. `Setup.ps1` attempts self-elevation via `Invoke-SelfElevated` when started non-elevated.
 3. `BackgroundModifier-AdminShell.ps1` opens an elevated PowerShell session for manual install/maintenance steps.
 4. `Get-PowerShellHostPath` prefers `pwsh.exe` (PowerShell 7) and falls back to `powershell.exe` when PS7 is unavailable.
+5. `/?`, `/H`, and `-Help` are help-only invocations and must not trigger self-elevation.
+6. Help-only invocations emit usage text and return exit code `0`.
+7. `-h` is accepted as a help alias for the help detector.
+8. `Setup.ps1`, `BackgroundInstallationVerifier.ps1`, and `Uninstall.ps1` accept short-form aliases for path/link parameters (`-c`, `-r`, `-i`) where applicable.
+9. Debug/trace runs pause before script exit so elevated console windows remain open for inspection.
 - SetFlagsTool.psm1: `Set-Flags`
 - SummaryTools.psm1: `Show-Summary`
 - SystemTools.psm1: `Get-OSInfo`, `Test-IsWindows`, `Get-UserName`, `Get-ComputerName`

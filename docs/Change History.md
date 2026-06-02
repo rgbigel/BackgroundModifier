@@ -771,3 +771,32 @@ Verified changes:
 7. Added/updated coverage in:
    - `Tests/Modules/InstallerTools.Tests.ps1`
    - `Tests/Install/InstallScripts.Orchestration.Tests.ps1`
+
+### 41. Help-only invocation short-circuiting for installer entry scripts (2026-06-02)
+
+Verified changes:
+
+1. Added shared help-detection and usage-printing helpers to `Modules/InstallerTools.psm1`.
+2. Added help-only short-circuit behavior to installer entry scripts so `/?, /H, -Help` do not trigger UAC relaunch.
+3. Updated scripts covered:
+   - `Install/Setup.ps1`
+   - `Install/Enable.ps1`
+   - `Install/Disable.ps1`
+   - `Install/Uninstall.ps1`
+   - `Install/BackgroundInstallationVerifier.ps1`
+   - `Install/AdminShell.ps1`
+   - `Install/Cleanup.ps1`
+4. Added/updated tests to cover help detection and help-path presence.
+
+### 42. Installer short-forms and debug-pause handling (2026-06-02)
+
+Verified changes:
+
+1. Added parameter aliases where applicable:
+   - `-c` for `CmdRoot`
+   - `-r` for `RuntimeRoot`
+   - `-i` for `IncludeTestLinks`
+2. Added a shared installer exit pause helper:
+   - `Wait-ForInstallerExit`
+3. Debug/trace runs now pause before exit so elevated console windows remain visible.
+4. Updated installer tests to cover alias presence and pause helper wiring.
