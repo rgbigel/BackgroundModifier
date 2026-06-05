@@ -10,6 +10,8 @@
 
 param(
     [switch]$t,
+    [Alias('i')]
+    [switch]$IncludeTestLinks,
     [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
     [Alias('r')]
@@ -64,8 +66,9 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Verifyer.ps1 help" -UsageLines @(
-        "Usage: Verifyer.ps1 [-t] [-CmdRoot <path>] [-RuntimeRoot <path>]",
+        "Usage: Verifyer.ps1 [-t] [-IncludeTestLinks] [-CmdRoot <path>] [-RuntimeRoot <path>]",
         "  -t: Trace mode (starts transcript and enables implied debug behavior).",
+        "  -IncludeTestLinks (-i): Also require the cmd test entry links to exist.",
         "  -CmdRoot (-c): Folder where cmd entry-point links are validated.",
         "  -RuntimeRoot (-r): Runtime root containing logs/assets/rendered/system folders.",
         "Use /?, /H, or -Help to show this message.",
@@ -173,6 +176,27 @@ foreach ($entry in $cmdEntries) {
 }
 
 Write-Host "[OK] Test cmd entry point verification is menu-driven in current model."
+
+if ($IncludeTestLinks) {
+    Write-Host "--- Checking test cmd entry points ---"
+
+    $testCmdEntries = @(
+        "BackgroundModifier-BootIdentityTest.ps1",
+        "BackgroundModifier-RenderTest.ps1",
+        "BackgroundModifier-ApplyTest.ps1",
+        "BackgroundModifier-LogonStage.ps1"
+    )
+
+    foreach ($entry in $testCmdEntries) {
+        $path = Join-Path $CmdRoot $entry
+        if (-not (Test-Path -LiteralPath $path)) {
+            Write-Host "[X] Missing test cmd entry -> $path"
+            if ($TraceMode) { Stop-Transcript | Out-Null }
+            exit 1
+        }
+        Write-Host "[OK] $path"
+    }
+}
 
 Write-Host "--- Checking operational scheduled tasks ---"
 

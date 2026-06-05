@@ -6,7 +6,10 @@ Describe "Install script orchestration contracts" {
         $path = Join-Path $installRoot "Setup.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
-        $text | Should Match '& \$verifierScript -t:\$t -CmdRoot \$CmdRoot -RuntimeRoot \$RuntimeRoot'
+        $text | Should Match 'verifierArgs'
+        $text | Should Match '-t:'
+        $text | Should Match '-IncludeTestLinks'
+        $text | Should Match 'verifierScript @verifierArgs'
     }
 
     It "Setup defines expected operational cmd links" {
@@ -16,6 +19,25 @@ Describe "Install script orchestration contracts" {
         $expected = @(
             'BackgroundModifier_Install.cmd',
             'BackgroundModifier.cmd'
+        )
+
+        foreach ($entry in $expected) {
+            $pattern = [regex]::Escape($entry)
+            $text | Should Match $pattern
+        }
+    }
+
+    It "Setup defines expected test cmd links and IncludeTestLinks contract" {
+        $path = Join-Path $installRoot "Setup.ps1"
+        $text = Get-Content -LiteralPath $path -Raw
+
+        $expected = @(
+            'BackgroundModifier-BootIdentityTest.ps1',
+            'BackgroundModifier-RenderTest.ps1',
+            'BackgroundModifier-ApplyTest.ps1',
+            'BackgroundModifier-LogonStage.ps1',
+            'BackgroundSetterStart.ps1',
+            'IncludeTestLinks'
         )
 
         foreach ($entry in $expected) {
@@ -66,12 +88,17 @@ Describe "Install script orchestration contracts" {
         $text | Should Match 'Setter completed\. Running Apply automatically'
     }
 
-    It "Setup keeps test-mode behavior without creating dedicated cmd test links" {
+    It "Setup provisions dedicated cmd test links when requested" {
         $path = Join-Path $installRoot "Setup.ps1"
         $text = Get-Content -LiteralPath $path -Raw
 
         $text | Should Match '\[switch\]\$t'
+        $text | Should Match '\[switch\]\$IncludeTestLinks'
         $text | Should Match 'BackgroundModifier\.cmd'
+        $text | Should Match 'BackgroundModifier-BootIdentityTest\.ps1'
+        $text | Should Match 'BackgroundModifier-RenderTest\.ps1'
+        $text | Should Match 'BackgroundModifier-ApplyTest\.ps1'
+        $text | Should Match 'BackgroundModifier-LogonStage\.ps1'
     }
 
     It "Setup provisions scheduled automation tasks through SchedulerTools" {
@@ -95,6 +122,7 @@ Describe "Install script orchestration contracts" {
         $text | Should Match 'BackgroundModifier\.cmd'
         $text | Should Match 'BackgroundModifier-BootIdentity'
         $text | Should Match 'BackgroundModifier-Autorun'
+        $text | Should Match 'IncludeTestLinks'
     }
 
     It "Help text is available on non-elevating scripts" {
@@ -133,19 +161,19 @@ Describe "Install script orchestration contracts" {
         $uninstallText | Should Match '\$RuntimeRoot'
     }
 
-    It "Install scripts expose t as the only mode switch" {
+    It "Install scripts expose t and IncludeTestLinks for mode control" {
         $setupText = Get-Content -LiteralPath (Join-Path $installRoot 'Setup.ps1') -Raw
         $verifierText = Get-Content -LiteralPath (Join-Path $installRoot 'Verifyer.ps1') -Raw
         $adminShellText = Get-Content -LiteralPath (Join-Path $installRoot 'AdminShell.ps1') -Raw
 
         $setupText | Should Match '\[switch\]\$t'
+        $setupText | Should Match '\[switch\]\$IncludeTestLinks'
         $verifierText | Should Match '\[switch\]\$t'
+        $verifierText | Should Match '\[switch\]\$IncludeTestLinks'
         $adminShellText | Should Match '\[switch\]\$t'
 
         $setupText | Should Not Match '\[switch\]\$d'
         $verifierText | Should Not Match '\[switch\]\$d'
-        $setupText | Should Not Match 'IncludeTestLinks'
-        $verifierText | Should Not Match 'IncludeTestLinks'
     }
 
     It "Disable uses Require-Admin and Disable-ScheduledTask" {

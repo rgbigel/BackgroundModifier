@@ -41,6 +41,7 @@ $DebugMode = $flags.DebugMode
 
 $RenderRoot = $Global:RenderRoot
 $SystemRoot = $Global:SystemRoot
+$AssetsRoot = $Global:AssetsRoot
 
 if ($TraceMode) {
     $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
@@ -74,6 +75,66 @@ if (-not (Test-Path $RenderedDesktop)) {
 }
 
 Write-Host "[OK] Rendered images found"
+
+function Save-HistoryImageIfMissing {
+    param(
+        [string]$SourcePath,
+        [string]$TargetPath,
+        [string]$Label
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SourcePath)) {
+        return
+    }
+
+    if (Test-Path -LiteralPath $TargetPath) {
+        Write-Host "[OK] $Label history already exists -> $TargetPath"
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $SourcePath)) {
+        Write-Host "[WARN] $Label source not found for history backup -> $SourcePath"
+        return
+    }
+
+    Copy-Item -LiteralPath $SourcePath -Destination $TargetPath -Force
+    Write-Host "[OK] Backed up current $Label image -> $TargetPath"
+}
+
+Write-Host "--- Backing up current live images (once) ---"
+
+if (-not (Test-Path -LiteralPath $AssetsRoot)) {
+    New-Item -Path $AssetsRoot -ItemType Directory -Force | Out-Null
+}
+
+$DesktopHist = Join-Path $AssetsRoot "DesktopHist.jpg"
+$LogonHist = Join-Path $AssetsRoot "LogonHist.jpg"
+
+$currentDesktopPath = $null
+try {
+    $desktopReg = Get-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name Wallpaper -ErrorAction SilentlyContinue
+    if ($desktopReg -and -not [string]::IsNullOrWhiteSpace([string]$desktopReg.Wallpaper)) {
+        $currentDesktopPath = [string]$desktopReg.Wallpaper
+    }
+}
+catch {
+    $currentDesktopPath = $null
+}
+
+$currentLogonPath = $null
+$logonCandidates = @(
+    $SystemLogon,
+    "C:\Windows\Web\Screen\img100.jpg"
+)
+foreach ($candidate in $logonCandidates) {
+    if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
+        $currentLogonPath = $candidate
+        break
+    }
+}
+
+Save-HistoryImageIfMissing -SourcePath $currentDesktopPath -TargetPath $DesktopHist -Label "desktop"
+Save-HistoryImageIfMissing -SourcePath $currentLogonPath -TargetPath $LogonHist -Label "logon"
 
 Write-Host "--- Applying backgrounds ---"
 

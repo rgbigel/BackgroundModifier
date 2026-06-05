@@ -238,14 +238,6 @@ try {
                 if ($state.ESP.Active.DriveLetter -ne $null) { $espDriveValue = [string]$state.ESP.Active.DriveLetter }
                 if ($state.ESP.Active.BootLoaderPath -ne $null) { $espBootLoaderValue = [string]$state.ESP.Active.BootLoaderPath }
             }
-            if ($state -and $state.Meta -and $state.Meta.RenderTableFormat) {
-                if ($state.Meta.RenderTableFormat.KeyWidth -ne $null) {
-                    $tableFormat["KeyWidth"] = [int]$state.Meta.RenderTableFormat.KeyWidth
-                }
-                if ($state.Meta.RenderTableFormat.ValueWidth -ne $null) {
-                    $tableFormat["ValueWidth"] = [int]$state.Meta.RenderTableFormat.ValueWidth
-                }
-            }
         }
         catch {
             Write-Host "[WARN] State.json unreadable, using live environment fields."
@@ -357,19 +349,6 @@ try {
         ValueWidth = $resolvedFormat.ValueWidth
     } -TextColor $accentColor | Out-Null
 
-    if ($state -and $resolvedFormat) {
-        if (-not ($state.PSObject.Properties.Name -contains "Meta")) {
-            $state | Add-Member -NotePropertyName Meta -NotePropertyValue ([PSCustomObject]@{})
-        }
-
-        $state.Meta | Add-Member -Force -NotePropertyName RenderTableFormat -NotePropertyValue ([PSCustomObject]@{
-            KeyWidth = [int]$resolvedFormat.KeyWidth
-            ValueWidth = [int]$resolvedFormat.ValueWidth
-            UpdatedAt = (Get-Date).ToString("s")
-        })
-
-        Save-Config -Path $stateFile -Config $state
-    }
 }
 catch {
     Write-Host "[X] Rendering failed: $($_.Exception.Message)"

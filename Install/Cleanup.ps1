@@ -8,6 +8,13 @@
 #      5.000  --------  Initial module creation for Consolidated Architecture (cleanup utility)
 # =================================================================================================
 
+param(
+    [switch]$t,
+    [switch]$f,
+    [Alias('c')]
+    [string]$CmdRoot = "D:\OneDrive\cmd"
+)
+
 $scriptItem = Get-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue
 $resolvedScriptPath = $PSCommandPath
 if ($scriptItem -and $scriptItem.LinkType -eq "SymbolicLink" -and $scriptItem.Target) {
@@ -23,7 +30,10 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Cleanup.ps1 help" -UsageLines @(
-        "Usage: Cleanup.ps1",
+        "Usage: Cleanup.ps1 [-t] [-f] [-CmdRoot <path>]",
+        "  -t: Removes test links from CmdRoot during cleanup.",
+        "  -f: Full log cleanup; removes all log files instead of only older logs.",
+        "  -CmdRoot (-c): Folder where test links are removed when -t is used.",
         "Use /?, /H, or -Help to show this message.",
         "This is a maintenance-only operation and does not require elevation."
     )
@@ -49,7 +59,16 @@ if (Test-Path -LiteralPath $CleanupModule) {
     Write-Host "`n=== Running CleanupTools against C:\BootOpsHub (logs + rendered) ==="
 
     Clear-RenderFolder -RenderRoot $RenderRoot
-    Remove-OldLogs     -LogRoot    $LogRoot -Days 7
+    if ($f) {
+        Remove-OldLogs -LogRoot $LogRoot -Full
+    }
+    else {
+        Remove-OldLogs -LogRoot $LogRoot -Days 7
+    }
+
+    if ($t) {
+        Remove-TestLinks -CmdRoot $CmdRoot
+    }
 }
 else {
     Write-Host "[ERROR] CleanupTools.psm1 not found. Cannot run cleanup."

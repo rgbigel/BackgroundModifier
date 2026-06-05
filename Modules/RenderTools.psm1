@@ -72,7 +72,7 @@ function Render-TextOverlay {
         $gfx.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
         $gfx.DrawImage($base, 0, 0, $base.Width, $base.Height)
 
-        $panelW = [Math]::Min($base.Width - 80, 1300)
+        $panelW = [Math]::Min($base.Width - 80, 900)
         $panelX = $base.Width - $panelW - 40
         $panelY = 40
         $panelH = [Math]::Min($base.Height - 80, 1040)
@@ -87,13 +87,10 @@ function Render-TextOverlay {
             )
         }
         $textBrush = New-Object System.Drawing.SolidBrush ($resolvedTextColor)
-        $titleFont = New-Object System.Drawing.Font("Segoe UI", 56, [System.Drawing.FontStyle]::Bold)
-        $bodyFont = New-Object System.Drawing.Font("Consolas", 36, [System.Drawing.FontStyle]::Regular)
+        $titleFont = New-Object System.Drawing.Font("Segoe UI", 14.2, [System.Drawing.FontStyle]::Bold)
+        $bodyFont = New-Object System.Drawing.Font("Consolas", 8.5, [System.Drawing.FontStyle]::Regular)
 
         try {
-            $gfx.FillRectangle($panelBrush, $panelX, $panelY, $panelW, $panelH)
-            $gfx.DrawString($Title, $titleFont, $textBrush, ($panelX + 24), ($panelY + 20))
-
             $renderLines = @()
             $resolvedKeyWidth = 0
             $resolvedValueWidth = 0
@@ -110,13 +107,7 @@ function Render-TextOverlay {
                 }
 
                 $resolvedKeyWidth = [Math]::Max($resolvedKeyWidth, 5)
-                $maxWidth = $panelW - 48
-                $sample = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-                $sampleWidth = $gfx.MeasureString($sample, $bodyFont).Width
-                $charWidth = [Math]::Max(1, ($sampleWidth / $sample.Length))
-                $maxCharsPerLine = [Math]::Max(20, [int][Math]::Floor($maxWidth / $charWidth))
-                $maxValueCharsPerLine = [Math]::Max(5, $maxCharsPerLine - $resolvedKeyWidth - 3)
-                $resolvedValueWidth = [Math]::Min([Math]::Max($resolvedValueWidth, 5), $maxValueCharsPerLine)
+                $resolvedValueWidth = [Math]::Max($resolvedValueWidth, 5)
 
                 $renderLines += (("Field").PadRight($resolvedKeyWidth) + " | " + ("Value").PadRight($resolvedValueWidth))
                 $renderLines += (("-" * $resolvedKeyWidth) + "-+-" + ("-" * $resolvedValueWidth))
@@ -136,6 +127,24 @@ function Render-TextOverlay {
             else {
                 $renderLines = $Lines
             }
+
+            $leftPadding = 24
+            $rightPadding = 38
+            $contentWidth = [double]$gfx.MeasureString($Title, $titleFont).Width
+            foreach ($line in $renderLines) {
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                $lineWidth = [double]$gfx.MeasureString([string]$line, $bodyFont).Width
+                if ($lineWidth -gt $contentWidth) {
+                    $contentWidth = $lineWidth
+                }
+            }
+
+            $desiredPanelW = [int][Math]::Ceiling($contentWidth + $leftPadding + $rightPadding)
+            $panelW = [Math]::Max(320, [Math]::Min($base.Width - 80, $desiredPanelW))
+            $panelX = $base.Width - $panelW - 40
+
+            $gfx.FillRectangle($panelBrush, $panelX, $panelY, $panelW, $panelH)
+            $gfx.DrawString($Title, $titleFont, $textBrush, ($panelX + $leftPadding), ($panelY + 20))
 
             $maxWidth = $panelW - 48
             $lineHeight = [int][Math]::Ceiling($bodyFont.GetHeight($gfx) + 8)

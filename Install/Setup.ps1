@@ -10,6 +10,8 @@
 
 param(
     [switch]$t,
+    [Alias('i')]
+    [switch]$IncludeTestLinks,
     [Alias('c')]
     [string]$CmdRoot = "D:\OneDrive\cmd",
     [Alias('r')]
@@ -57,8 +59,9 @@ $commandLineArguments = [System.Environment]::GetCommandLineArgs()
 
 if (Test-HelpRequested -Arguments $commandLineArguments) {
     Show-InstallerUsage -Title "BackgroundModifier Setup.ps1 help" -UsageLines @(
-        "Usage: Setup.ps1 [-t] [-CmdRoot <path>] [-RuntimeRoot <path>]",
+        "Usage: Setup.ps1 [-t] [-IncludeTestLinks] [-CmdRoot <path>] [-RuntimeRoot <path>]",
         "  -t: Trace mode (starts transcript and enables implied debug/test-link behavior).",
+        "  -IncludeTestLinks (-i): Creates cmd test links and verifies them during setup.",
         "  -CmdRoot (-c): Destination folder for install/menu cmd launchers.",
         "  -RuntimeRoot (-r): Runtime root used for assets, logs, rendered output, and SolutionCode links.",
         "Use /?, /H, or -Help to show this message.",
@@ -79,6 +82,10 @@ if (-not (Test-Admin)) {
 
 try {
     Require-Admin
+
+    if (-not $PSBoundParameters.ContainsKey('IncludeTestLinks')) {
+        $IncludeTestLinks = [bool]$t
+    }
 
     # Runtime roots are explicit install-time inputs and become active constants for the process.
     $Global:RootPath = $RuntimeRoot
@@ -144,6 +151,59 @@ try {
 
         Set-Content -LiteralPath $LauncherPath -Value $launcherContent -Encoding Ascii -Force
         Write-Host "[OK] Created cmd launcher: $LauncherPath -> $ScriptPath"
+    }
+
+    function New-OrReplaceTestLink {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$LinkPath,
+
+            [Parameter(Mandatory = $true)]
+            [string]$TargetPath
+        )
+
+        if (-not (Test-Path -LiteralPath $TargetPath)) {
+            throw "Test link target is missing: $TargetPath"
+        }
+
+        if (Test-Path -LiteralPath $LinkPath) {
+            Remove-Item -LiteralPath $LinkPath -Force
+        }
+
+        New-Item -ItemType SymbolicLink -Path $LinkPath -Target $TargetPath | Out-Null
+        Write-Host "[OK] Created test link: $LinkPath -> $TargetPath"
+    }
+
+    function Sync-TestLinks {
+        param(
+            [string]$CmdRoot,
+            [string]$RuntimeSourceRoot,
+            [bool]$IncludeTestLinks
+        )
+
+        $testLinkMap = @(
+            @{ Name = 'BackgroundModifier-BootIdentityTest.ps1'; Target = (Join-Path $RuntimeSourceRoot 'BootIdentity.ps1') },
+            @{ Name = 'BackgroundModifier-RenderTest.ps1'; Target = (Join-Path $RuntimeSourceRoot 'BackgroundRenderer.ps1') },
+            @{ Name = 'BackgroundModifier-ApplyTest.ps1'; Target = (Join-Path $RuntimeSourceRoot 'BackgroundSetter.ps1') },
+            @{ Name = 'BackgroundModifier-LogonStage.ps1'; Target = (Join-Path $RuntimeSourceRoot 'BackgroundSetterStart.ps1') }
+        )
+
+        Ensure-Path -Path $CmdRoot | Out-Null
+
+        if (-not $IncludeTestLinks) {
+            foreach ($entry in $testLinkMap) {
+                $entryPath = Join-Path $CmdRoot $entry.Name
+                if (Test-Path -LiteralPath $entryPath) {
+                    Remove-Item -LiteralPath $entryPath -Force
+                    Write-Host "[OK] Removed test link: $entryPath"
+                }
+            }
+            return
+        }
+
+        foreach ($entry in $testLinkMap) {
+            New-OrReplaceTestLink -LinkPath (Join-Path $CmdRoot $entry.Name) -TargetPath $entry.Target
+        }
     }
 
     function Sync-RuntimeFiles {
@@ -306,6 +366,9 @@ try {
     $menuLauncherPath = Join-Path $CmdRoot "BackgroundModifier.cmd"
     New-OrReplaceCmdLauncher -LauncherPath $menuLauncherPath -ScriptPath (Join-Path $runtimeInstallRoot "AdminShell.ps1")
 
+    Write-Host "--- Syncing test entry links ---"
+    Sync-TestLinks -CmdRoot $CmdRoot -RuntimeSourceRoot $runtimeSourceRoot -IncludeTestLinks ([bool]$IncludeTestLinks)
+
     Write-Host "--- Registering scheduled automation tasks ---"
     $taskTraceArguments = @()
     if ($TraceMode) {
@@ -321,7 +384,11 @@ try {
 
     Write-Host "--- Setup verification ---"
     $verifierScript = Join-Path $runtimeInstallRoot "Verifyer.ps1"
-    & $verifierScript -t:$t -CmdRoot $CmdRoot -RuntimeRoot $RuntimeRoot
+    $verifierArgs = @('-t:' + [string]([bool]$t), '-CmdRoot', $CmdRoot, '-RuntimeRoot', $RuntimeRoot)
+    if ($IncludeTestLinks) {
+        $verifierArgs += '-IncludeTestLinks'
+    }
+    & $verifierScript @verifierArgs
     $verifierExitCode = $LASTEXITCODE
     if ($null -eq $verifierExitCode) {
         $verifierExitCode = 0

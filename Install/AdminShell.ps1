@@ -58,7 +58,7 @@ $sourceRoot = Join-Path $RepoRootResolved "Source"
 $actionScripts = @{
     "S" = @{ Name = "Setup"; Path = (Join-Path $ScriptRootResolved "Setup.ps1"); PassTrace = $true }
     "V" = @{ Name = "Verify"; Path = (Join-Path $ScriptRootResolved "Verifyer.ps1"); PassTrace = $true }
-    "C" = @{ Name = "Cleanup"; Path = (Join-Path $ScriptRootResolved "Cleanup.ps1"); PassTrace = $false }
+    "C" = @{ Name = "Cleanup"; Path = (Join-Path $ScriptRootResolved "Cleanup.ps1"); PassTrace = $true }
     "D" = @{ Name = "Disable"; Path = (Join-Path $ScriptRootResolved "Disable.ps1"); PassTrace = $true }
     "E" = @{ Name = "Enable"; Path = (Join-Path $ScriptRootResolved "Enable.ps1"); PassTrace = $true }
     "U" = @{ Name = "Uninstall"; Path = (Join-Path $ScriptRootResolved "Uninstall.ps1"); PassTrace = $true }
