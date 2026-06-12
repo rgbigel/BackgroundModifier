@@ -4,6 +4,7 @@ Version: 7.0.0
 
 ## Scope
 BackgroundModifier must deterministically generate and apply background images that include machine-relevant metadata for operational visibility.
+This solution targets Windows 11 only.
 
 ## Functional Requirements
 1. Provide a repeatable identity capture stage for boot and system context.

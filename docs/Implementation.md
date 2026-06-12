@@ -12,6 +12,7 @@
 - This document is user‑centric and phase‑centric.  
 - Requirements define functional intent.  
 - Implementation defines runtime wiring and technical mechanics.
+- Platform scope is Windows 11 only.
 
 ---
 
