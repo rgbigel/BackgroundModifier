@@ -8,7 +8,7 @@ BackgroundModifier must deterministically generate and apply background images t
 ## Functional Requirements
 1. Provide a repeatable identity capture stage for boot and system context.
 2. Provide a deterministic render stage that converts collected metadata into background output.
-3. Provide an apply stage that sets rendered backgrounds to active Windows targets.
+3. Provide an apply stage that sets generated backgrounds to active Windows targets.
 4. Provide installation verification to validate required folders, scripts, and modules.
 5. Provide diagnostic logging for every operator-facing execution path.
 
@@ -20,5 +20,6 @@ BackgroundModifier must deterministically generate and apply background images t
 
 ## Runtime Paths
 1. C:\BackgroundMotives\assets
-2. C:\BackgroundMotives\rendered
-3. C:\BackgroundMotives\logs
+2. C:\BackgroundMotives\logs
+
+Generated output images are stored in C:\BackgroundMotives\assets and distinguished from base input images by filename.

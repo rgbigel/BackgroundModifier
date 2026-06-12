@@ -7,7 +7,7 @@ BackgroundModifier is a deterministic PowerShell solution for rendering and appl
 ## Key Capabilities
 1. Deterministic identity and environment capture.
 2. Repeatable background rendering pipeline.
-3. Consistent apply stage for rendered outputs.
+3. Consistent apply stage for generated outputs stored in assets.
 4. Structured runtime logging for diagnostics.
 
 ## Repository Layout
@@ -18,8 +18,9 @@ BackgroundModifier is a deterministic PowerShell solution for rendering and appl
 
 ## Runtime Layout
 1. `C:\BackgroundMotives\assets`
-2. `C:\BackgroundMotives\rendered`
-3. `C:\BackgroundMotives\logs`
+2. `C:\BackgroundMotives\logs`
+
+Generated output images are also stored in `C:\BackgroundMotives\assets` and are distinguished from base inputs by filename.
 
 ## Versioning Rule
 All active scripts, modules, and active documentation pages use the same visible solution version. For this baseline, that value is `7.0.0`.

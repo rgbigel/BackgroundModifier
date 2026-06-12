@@ -1,7 +1,7 @@
-<# ============================================================================================
+﻿<# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules
   Module:     PathTools.psm1
-  Version:    1.000
+  Version:    7.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -17,3 +17,4 @@ function Ensure-Directory {
         New-Item -ItemType Directory -Path $Path | Out-Null
     }
 }
+

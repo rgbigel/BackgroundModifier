@@ -1,7 +1,7 @@
-<# ============================================================================================
+﻿<# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules
   Module:     TranscriptTools.psm1
-  Version:    1.000
+  Version:    7.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -19,3 +19,4 @@ function Start-TraceTranscript {
 function Stop-TraceTranscript {
     Stop-Transcript | Out-Null
 }
+

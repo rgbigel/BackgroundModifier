@@ -2,7 +2,7 @@
     Script: BackgroundSetter.ps1
     Version: 7.0.0
     Author: Rolf Bercht
-    Purpose: Deterministic application of rendered background images to logon and desktop.
+    Purpose: Deterministic application of generated background output images to logon and desktop.
 #>
 
 param(
@@ -37,30 +37,30 @@ if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 # --- Paths ---
-$RenderedLogon = "C:\BackgroundMotives\assets\Logon.jpg"
-$RenderedDesktop = "C:\BackgroundMotives\assets\Desktop.jpg"
+$OutputLogon = "C:\BackgroundMotives\assets\Logon.jpg"
+$OutputDesktop = "C:\BackgroundMotives\assets\Desktop.jpg"
 
 Write-Host "--- File check ---"
 
-if (-not (Test-Path $RenderedLogon)) {
-    Write-Host "[X] Missing rendered logon image -> $RenderedLogon"
+if (-not (Test-Path $OutputLogon)) {
+    Write-Host "[X] Missing generated logon image -> $OutputLogon"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
 
-if (-not (Test-Path $RenderedDesktop)) {
-    Write-Host "[X] Missing rendered desktop image -> $RenderedDesktop"
+if (-not (Test-Path $OutputDesktop)) {
+    Write-Host "[X] Missing generated desktop image -> $OutputDesktop"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
 
-Write-Host "[OK] Rendered images present"
+Write-Host "[OK] Generated images present"
 
 # --- Apply logon background ---
 Write-Host "--- Applying logon background ---"
 
 try {
-    Copy-Item -Path $RenderedLogon -Destination "C:\Windows\System32\oobe\info\backgrounds\backgroundDefault.jpg" -Force
+    Copy-Item -Path $OutputLogon -Destination "C:\Windows\System32\oobe\info\backgrounds\backgroundDefault.jpg" -Force
     Write-Host "[OK] Logon background applied -> backgroundDefault.jpg"
 }
 catch {
@@ -73,7 +73,7 @@ catch {
 Write-Host "--- Applying desktop background ---"
 
 try {
-    Copy-Item -Path $RenderedDesktop -Destination "$env:USERPROFILE\Pictures\Background.jpg" -Force
+    Copy-Item -Path $OutputDesktop -Destination "$env:USERPROFILE\Pictures\Background.jpg" -Force
     Write-Host "[OK] Desktop background applied -> $env:USERPROFILE\Pictures\Background.jpg"
 }
 catch {

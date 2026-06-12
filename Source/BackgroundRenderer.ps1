@@ -2,7 +2,7 @@
     Script: BackgroundRenderer.ps1
     Version: 7.0.0
     Author: Rolf Bercht
-    Purpose: Deterministic rendering of logon and desktop background images.
+    Purpose: Deterministic generation of logon and desktop background output images.
 #>
 
 param(
@@ -65,10 +65,10 @@ Write-Host "--- Rendering images ---"
 
 try {
     Copy-Item -Path $LogonBase   -Destination $OutputLogon   -Force
-    Write-Host "[OK] Rendered logon image -> $OutputLogon"
+    Write-Host "[OK] Generated logon image -> $OutputLogon"
 
     Copy-Item -Path $DesktopBase -Destination $OutputDesktop -Force
-    Write-Host "[OK] Rendered desktop image -> $OutputDesktop"
+    Write-Host "[OK] Generated desktop image -> $OutputDesktop"
 }
 catch {
     Write-Host "[X] Rendering failed: $($_.Exception.Message)"

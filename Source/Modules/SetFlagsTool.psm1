@@ -1,6 +1,6 @@
-<#
+﻿<#
     Module: SetFlagsTool.psm1
-    Version: 1.000
+    Version: 7.0.0
     Author: Rolf Bercht
     Purpose: Provide invariant -t / -d flag handling for all operator-facing scripts and flag-aware modules.
 #>
@@ -27,3 +27,4 @@ function Set-Flags {
 
     return $result
 }
+

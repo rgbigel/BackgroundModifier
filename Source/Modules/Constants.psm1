@@ -10,6 +10,5 @@
 
 $Global:RuntimeRoot = "C:\BackgroundMotives"
 $Global:AssetsRoot  = "C:\BackgroundMotives\assets"
-$Global:RenderRoot  = $Global:AssetsRoot
 $Global:LogRoot     = "C:\BackgroundMotives\logs"
 
