@@ -1,6 +1,6 @@
-<#
+﻿<#
     Script: BackgroundSetter.ps1
-    Version: 1.000
+    Version: 7.0.0
     Author: Rolf Bercht
     Purpose: Deterministic application of rendered background images to logon and desktop.
 #>
@@ -31,14 +31,14 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setter (v1.000) ==="
+Write-Host "=== BackgroundModifier Setter (v7.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 # --- Paths ---
-$RenderedLogon = "C:\BackgroundMotives\rendered\Logon.jpg"
-$RenderedDesktop = "C:\BackgroundMotives\rendered\Desktop.jpg"
+$RenderedLogon = "C:\BackgroundMotives\assets\Logon.jpg"
+$RenderedDesktop = "C:\BackgroundMotives\assets\Desktop.jpg"
 
 Write-Host "--- File check ---"
 
@@ -90,3 +90,4 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+

@@ -1,6 +1,6 @@
-<#
+﻿<#
     Script: BackgroundRenderer.ps1
-    Version: 1.000
+    Version: 7.0.0
     Author: Rolf Bercht
     Purpose: Deterministic rendering of logon and desktop background images.
 #>
@@ -33,7 +33,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Renderer (v1.000) ==="
+Write-Host "=== BackgroundModifier Renderer (v7.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
@@ -42,8 +42,8 @@ if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started"
 $DesktopBase = "C:\BackgroundMotives\assets\DesktopBase.jpg"
 $LogonBase   = "C:\BackgroundMotives\assets\LogonBase.jpg"
 
-$OutputLogon   = "C:\BackgroundMotives\rendered\Logon.jpg"
-$OutputDesktop = "C:\BackgroundMotives\rendered\Desktop.jpg"
+$OutputLogon   = "C:\BackgroundMotives\assets\Logon.jpg"
+$OutputDesktop = "C:\BackgroundMotives\assets\Desktop.jpg"
 
 Write-Host "--- Asset check ---"
 
@@ -83,3 +83,4 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+

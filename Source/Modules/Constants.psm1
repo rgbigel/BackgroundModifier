@@ -1,7 +1,7 @@
-<# ============================================================================================
+﻿<# ============================================================================================
   Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules
   Module:     Constants.psm1
-  Version:    1.000
+  Version:    7.0.0
   Author:     Rolf Bercht
 
   Purpose:
@@ -10,5 +10,6 @@
 
 $Global:RuntimeRoot = "C:\BackgroundMotives"
 $Global:AssetsRoot  = "C:\BackgroundMotives\assets"
-$Global:RenderRoot  = "C:\BackgroundMotives\rendered"
+$Global:RenderRoot  = $Global:AssetsRoot
 $Global:LogRoot     = "C:\BackgroundMotives\logs"
+
