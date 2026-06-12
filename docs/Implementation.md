@@ -13,6 +13,7 @@
 - Requirements define functional intent.  
 - Implementation defines runtime wiring and technical mechanics.
 - Platform scope is Windows 11 only.
+- Installer/setup execution requires PowerShell 7 (`pwsh`).
 
 ---
 

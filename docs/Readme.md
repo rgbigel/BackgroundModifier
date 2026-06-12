@@ -5,6 +5,7 @@ Version: 7.0.0
 BackgroundModifier is a deterministic PowerShell solution for rendering and applying information-rich backgrounds in Windows logon and desktop contexts.
 
 Platform scope: Windows 11 only.
+Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 
 ## Key Capabilities
 1. Deterministic identity and environment capture.
