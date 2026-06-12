@@ -242,6 +242,39 @@ function Test-IsInteractiveSession {
     }
 }
 
+function Restart-ScriptElevated {
+    param(
+        [string[]]$ForwardArgs
+    )
+
+    $pwsh = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+    if (-not $pwsh) {
+        $pwsh = "powershell.exe"
+    }
+
+    $argumentList = @(
+        "-NoProfile"
+        "-ExecutionPolicy"
+        "Bypass"
+        "-File"
+        "`"$PSCommandPath`""
+    ) + $ForwardArgs
+
+    Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $argumentList | Out-Null
+    Write-Host "[INFO] Relaunching elevated to complete lock/sign-in apply."
+}
+
+function Test-ScheduledTasksPresent {
+    $renderer = Get-ScheduledTask -TaskName "BackgroundModifier-Renderer" -ErrorAction SilentlyContinue
+    $setter   = Get-ScheduledTask -TaskName "BackgroundModifier-Setter"   -ErrorAction SilentlyContinue
+
+    return [pscustomobject]@{
+        RendererPresent = ($null -ne $renderer)
+        SetterPresent   = ($null -ne $setter)
+        BothPresent     = ($null -ne $renderer -and $null -ne $setter)
+    }
+}
+
 if (-not (Test-IsWindows11)) {
     Write-Host "[X] Unsupported OS. This solution supports Windows 11 only."
     if ($TraceMode) { Stop-Transcript | Out-Null }
@@ -258,6 +291,19 @@ $LogonRendered   = "C:\BackgroundMotives\assets\logon_rendered.jpg"
 $PendingLogonStateFile = "C:\BackgroundMotives\assets\pending_logon_source.txt"
 
 $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
+
+# --- Scheduled task presence check ---
+$TaskState = Test-ScheduledTasksPresent
+if (-not $TaskState.BothPresent) {
+    Write-Host "[WARN] One or more scheduled tasks are not registered:"
+    if (-not $TaskState.RendererPresent) { Write-Host "[WARN]   Missing: BackgroundModifier-Renderer" }
+    if (-not $TaskState.SetterPresent)   { Write-Host "[WARN]   Missing: BackgroundModifier-Setter" }
+    Write-Host "[INFO] Automatic post-logon render and apply are not active."
+    Write-Host "[INFO] Run Installer.ps1 to restore automation, or run renderer and setter manually."
+    Write-Host "[INFO] For lock/sign-in apply, elevation will still be required."
+} elseif ($DebugMode) {
+    Write-Host "[OK] Scheduled tasks present (BackgroundModifier-Renderer, BackgroundModifier-Setter)"
+}
 
 Write-Host "--- Image state ---"
 Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
@@ -356,6 +402,8 @@ if (-not $DoApplyDesktop -and -not $DoApplyLockScreen) {
     exit 0
 }
 
+$LockSignInDeferred = $false
+
 Write-Host "--- File check ---"
 
 if ($DoApplyLockScreen -and -not (Test-Path $LogonRendered)) {
@@ -390,37 +438,48 @@ if ($DoApplyLockScreen) {
             Write-Host "[INFO] Pending logon source saved -> $PendingLogonStateFile"
             Write-Host "[INFO] Elevated re-run will apply: $PendingLogonSource"
         }
+        Restart-ScriptElevated -ForwardArgs @(
+            "-DebugMode"
+            if ($TraceMode) { "-TraceMode" }
+            if ($ApplyDesktop) { "-ApplyDesktop" }
+            "-ApplyLockScreen"
+            if ($CaptureDesktopAsBase) { "-CaptureDesktopAsBase" }
+            if ($PromoteDesktopBaseToLogonBase) { "-PromoteDesktopBaseToLogonBase" }
+            if ($Interactive) { "-Interactive" }
+        )
         if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
+        exit 0
     }
 
-    if ($isInteractive) {
+    if ($DoApplyLockScreen -and $isInteractive) {
         Write-Host "[INFO] Running in post-logon interactive session (elevated)."
         Write-Host "[INFO] Lock/sign-in changes may not be visible until sign-out/lock/restart."
     }
-    else {
+    elseif ($DoApplyLockScreen) {
         Write-Host "[INFO] Running in non-interactive pre-logon/system context."
     }
 
     # If a pending logon source exists (desktop changed, stored from prior non-elevated run),
     # promote it to logon_rendered.jpg so the elevated apply uses the intended image.
-    if ($PendingLogonSource -and (Test-Path $PendingLogonSource)) {
+    if ($DoApplyLockScreen -and $PendingLogonSource -and (Test-Path $PendingLogonSource)) {
         Write-Host "[INFO] Applying pending logon source -> $PendingLogonSource"
         Copy-Item -Path $PendingLogonSource -Destination $LogonRendered -Force
         Copy-Item -Path $PendingLogonSource -Destination $LogonBase -Force
     }
 
-    try {
-        Set-LockScreenImage -ImagePath $LogonRendered
-        Copy-Item -Path $LogonRendered -Destination $LogonImage -Force
-        if (Test-Path $PendingLogonStateFile) { Remove-Item $PendingLogonStateFile -Force }
-        Write-Host "[OK] Lock/sign-in policy updated -> $LogonRendered"
-        Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
-    }
-    catch {
-        Write-Host "[X] Failed to apply lock/sign-in image: $($_.Exception.Message)"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
+    if ($DoApplyLockScreen) {
+        try {
+            Set-LockScreenImage -ImagePath $LogonRendered
+            Copy-Item -Path $LogonRendered -Destination $LogonImage -Force
+            if (Test-Path $PendingLogonStateFile) { Remove-Item $PendingLogonStateFile -Force }
+            Write-Host "[OK] Lock/sign-in policy updated -> $LogonRendered"
+            Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
+        }
+        catch {
+            Write-Host "[X] Failed to apply lock/sign-in image: $($_.Exception.Message)"
+            if ($TraceMode) { Stop-Transcript | Out-Null }
+            exit 1
+        }
     }
 }
 
@@ -430,6 +489,11 @@ if ($DoApplyDesktop) {
 
     try {
         $managedDesktopTarget = "$env:USERPROFILE\Pictures\Background.jpg"
+        $managedDesktopDirectory = Split-Path $managedDesktopTarget -Parent
+        if (-not (Test-Path $managedDesktopDirectory)) {
+            New-Item -ItemType Directory -Path $managedDesktopDirectory -Force | Out-Null
+            Write-Host "[OK] Created desktop target directory -> $managedDesktopDirectory"
+        }
         Copy-Item -Path $DesktopRendered -Destination $managedDesktopTarget -Force
         Set-DesktopWallpaper -ImagePath $managedDesktopTarget
         Copy-Item -Path $DesktopRendered -Destination $DesktopImage -Force

@@ -29,6 +29,8 @@ Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "ImageTools.psm1") -Force
 
 $WarningPreference = $prev
 
@@ -165,6 +167,75 @@ function Restore-BaseFromCurrentImage {
     }
 }
 
+function New-SolidColorJpeg {
+    param(
+        [string]$OutputPath,
+        [int]$Width  = 1920,
+        [int]$Height = 1080,
+        [string]$HexColor = "#1a1a2e"
+    )
+
+    Add-Type -AssemblyName System.Drawing
+    $color = [System.Drawing.ColorTranslator]::FromHtml($HexColor)
+    $bmp = New-Object System.Drawing.Bitmap($Width, $Height)
+    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+    $brush = New-Object System.Drawing.SolidBrush($color)
+    $gfx.FillRectangle($brush, 0, 0, $Width, $Height)
+    $bmp.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+    $brush.Dispose()
+    $gfx.Dispose()
+    $bmp.Dispose()
+    Write-Host "[OK] Created solid-color base image -> $OutputPath ($HexColor ${Width}x${Height})"
+}
+
+function Get-WallpaperOrSolidColor {
+    param(
+        [string]$DestinationPath,
+        [string]$Label
+    )
+
+    # Try registry wallpaper path first
+    try {
+        $regPath = (Get-ItemPropertyValue -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper" -ErrorAction SilentlyContinue)
+        if ($regPath -and (Test-Path $regPath)) {
+            Copy-Item -Path $regPath -Destination $DestinationPath -Force
+            Write-Host "[OK] Captured $Label base from registry wallpaper -> $DestinationPath"
+            return $true
+        }
+    }
+    catch {}
+
+    # Try TranscodedWallpaper
+    $transcoded = Join-Path $env:APPDATA "Microsoft\Windows\Themes\TranscodedWallpaper"
+    if (Test-Path $transcoded) {
+        $len = (Get-Item $transcoded).Length
+        if ($len -gt 10240) {
+            Copy-Item -Path $transcoded -Destination $DestinationPath -Force
+            Write-Host "[OK] Captured $Label base from TranscodedWallpaper -> $DestinationPath"
+            return $true
+        }
+    }
+
+    # Solid color fallback - read current background color from registry
+    Write-Host "[INFO] No wallpaper image found. Using solid color fallback for $Label."
+    try {
+        $bgColor = (Get-ItemPropertyValue -Path "HKCU:\Control Panel\Colors" -Name "Background" -ErrorAction SilentlyContinue)
+        if ($bgColor) {
+            $rgb = $bgColor -split ' '
+            $hex = "#" + ($rgb | ForEach-Object { "{0:X2}" -f [int]$_ }) -join ''
+            New-SolidColorJpeg -OutputPath $DestinationPath -HexColor $hex
+        }
+        else {
+            New-SolidColorJpeg -OutputPath $DestinationPath
+        }
+        return $true
+    }
+    catch {
+        New-SolidColorJpeg -OutputPath $DestinationPath
+        return $true
+    }
+}
+
 if (-not (Test-IsWindows11)) {
     Write-Host "[X] Unsupported OS. This solution supports Windows 11 only."
     if ($TraceMode) { Stop-Transcript | Out-Null }
@@ -255,6 +326,15 @@ Write-Host "--- Asset check ---"
 
 if ($DoRenderDesktop) {
     $desktopBaseReady = Restore-BaseFromCurrentImage -BasePath $DesktopBase -CurrentImagePath $DesktopImage -Label "desktop"
+    # Auto-capture: if DesktopBase missing and no snapshot exists, capture from wallpaper now
+    if (-not $desktopBaseReady) {
+        Write-Host "[INFO] Attempting wallpaper capture for missing DesktopBase..."
+        $desktopBaseReady = Get-WallpaperOrSolidColor -DestinationPath $DesktopBase -Label "desktop"
+        if ($desktopBaseReady) {
+            Copy-Item -Path $DesktopBase -Destination $DesktopImage -Force
+            Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
+        }
+    }
     if (-not $desktopBaseReady) {
         Write-Host "[X] Missing DesktopBase and no usable Desktop image snapshot -> $DesktopBase"
         if ($TraceMode) { Stop-Transcript | Out-Null }
@@ -264,6 +344,12 @@ if ($DoRenderDesktop) {
 
 if ($DoRenderLogon) {
     $logonBaseReady = Restore-BaseFromCurrentImage -BasePath $LogonBase -CurrentImagePath $LogonImage -Label "logon"
+    # LogonBase fallback: use DesktopBase when LogonBase and snapshot are both missing
+    if (-not $logonBaseReady -and (Test-Path $DesktopBase)) {
+        Copy-Item -Path $DesktopBase -Destination $LogonBase -Force
+        Write-Host "[INFO] LogonBase missing; using DesktopBase as fallback -> $LogonBase"
+        $logonBaseReady = $true
+    }
     if (-not $logonBaseReady) {
         Write-Host "[X] Missing LogonBase and no usable Logon image snapshot -> $LogonBase"
         if ($TraceMode) { Stop-Transcript | Out-Null }
@@ -287,14 +373,30 @@ Write-Host "[OK] Base assets present"
 
 Write-Host "--- Rendering images ---"
 
+# --- Collect system info for text overlay ---
+$hostname    = $env:COMPUTERNAME
+$username    = $env:USERNAME
+$osVersion   = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "DisplayVersion" -ErrorAction SilentlyContinue)
+$buildNumber = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber" -ErrorAction SilentlyContinue)
+$ipAddresses = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceAlias -notmatch 'Loopback' } | ForEach-Object { $_.IPAddress }) -join ", "
+$renderTime  = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+
+$tableRows = @(
+    [pscustomobject]@{ Key = "Host";      Value = $hostname }
+    [pscustomobject]@{ Key = "User";      Value = $username }
+    [pscustomobject]@{ Key = "OS";        Value = "Windows 11 $osVersion (Build $buildNumber)" }
+    [pscustomobject]@{ Key = "IP";        Value = if ($ipAddresses) { $ipAddresses } else { "(none)" } }
+    [pscustomobject]@{ Key = "Rendered";  Value = $renderTime }
+)
+
 try {
     if ($DoRenderLogon) {
-        Copy-Item -Path $LogonBase -Destination $LogonRendered -Force
+        Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title "BackgroundModifier" -TableRows $tableRows | Out-Null
         Write-Host "[OK] Generated logon image -> $LogonRendered"
     }
 
     if ($DoRenderDesktop) {
-        Copy-Item -Path $DesktopBase -Destination $DesktopRendered -Force
+        Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title "BackgroundModifier" -TableRows $tableRows | Out-Null
         Write-Host "[OK] Generated desktop image -> $DesktopRendered"
     }
 }
