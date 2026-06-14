@@ -2,7 +2,7 @@
 #  Module:      ImageTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     6.0.0
+#  Version:     8.0.0
 #  Purpose:     Additional image-related helpers used by renderer and installer.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (image rendering)

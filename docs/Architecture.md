@@ -1,5 +1,5 @@
 ﻿# Architecture.md  
-**Version:** 7.0.0  
+**Version:** 8.0.0  
 **Profile:** default  
 **Author:** Rolf Bercht  
 
@@ -27,7 +27,7 @@ The solution is experienced in ordered phases:
 5. Runtime tests and re‑runnable operations after logon  
 6. Disable and uninstall  
 
-**Solution behavior (7.0.0):**
+**Solution behavior (8.0.0):**
 
 - A single unified background is produced for both the Windows logon screen and the desktop.  
 - The background is refreshed automatically at each logon.  

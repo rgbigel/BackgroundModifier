@@ -1,6 +1,6 @@
 <#
     Script: Installer.ps1
-    Version: 7.0.0
+    Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Deploy BackgroundModifier runtime files from the repository to the runtime
              directory, then invoke Setup.ps1 from the deployed location.
@@ -16,7 +16,7 @@ param(
     [switch]$TraceMode
 )
 
-$ScriptVersion = "7.0.0"
+$ScriptVersion = "8.0.0"
 
 # --- Derive source root from this script's location ($PSScriptRoot = Install\) ---
 $RepoRoot    = Split-Path $PSScriptRoot -Parent
@@ -29,9 +29,11 @@ $RuntimeDir  = Join-Path $RuntimeBase $ProjectName
 
 # --- Paths to copy ---
 $SourceSrc  = Join-Path $RepoRoot "Source"
+$ModulesSrc = Join-Path $RepoRoot "Modules"
 $InstallSrc = Join-Path $RepoRoot "Install"
 
 $SourceDst  = Join-Path $RuntimeDir "Source"
+$ModulesDst = Join-Path $RuntimeDir "Modules"
 $InstallDst = Join-Path $RuntimeDir "Install"
 
 $SetupDeployed = Join-Path $InstallDst "Setup.ps1"
@@ -69,7 +71,7 @@ if (-not (Test-IsWindows11)) {
 # --- Verify source layout ---
 Write-Host "--- Verifying source layout ---"
 $missingDirs = @()
-foreach ($dir in @($SourceSrc, $InstallSrc)) {
+foreach ($dir in @($SourceSrc, $ModulesSrc, $InstallSrc)) {
     if (Test-Path $dir) {
         if ($DebugMode) { Write-Host "[OK] Found: $dir" }
     } else {
@@ -86,7 +88,7 @@ Write-Host "[OK] Source layout verified"
 
 # --- Create runtime deployment directories ---
 Write-Host "--- Creating runtime directories ---"
-foreach ($dir in @($RuntimeBase, $RuntimeDir, $SourceDst, $InstallDst)) {
+foreach ($dir in @($RuntimeBase, $RuntimeDir, $SourceDst, $ModulesDst, $InstallDst)) {
     if (-not (Test-Path $dir)) {
         try {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -110,6 +112,18 @@ try {
 }
 catch {
     Write-Host "[X] Failed deploying Source: $($_.Exception.Message)"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+# --- Deploy Modules ---
+Write-Host "--- Deploying Modules ---"
+try {
+    Copy-Item -Path "$ModulesSrc\*" -Destination $ModulesDst -Recurse -Force
+    Write-Host "[OK] Modules deployed -> $ModulesDst"
+}
+catch {
+    Write-Host "[X] Failed deploying Modules: $($_.Exception.Message)"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }

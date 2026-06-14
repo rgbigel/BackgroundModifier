@@ -1,6 +1,6 @@
 <#
     Script: Setup.ps1
-    Version: 7.0.0
+    Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Install and configure BackgroundModifier runtime structure and scheduled tasks.
     Requires: Windows 11, elevation (Administrator).
@@ -12,7 +12,7 @@ param(
 )
 
 # --- Constants ---
-$ScriptVersion   = "7.0.0"
+$ScriptVersion   = "8.0.0"
 $RuntimeRoot     = "C:\BackgroundMotives"
 $AssetsRoot      = "C:\BackgroundMotives\assets"
 $LogRoot         = "C:\BackgroundMotives\logs"
@@ -21,6 +21,7 @@ $LogRoot         = "C:\BackgroundMotives\logs"
 # the repository (Install\) and the deployed runtime (runtimes\BackgroundModifier\Install\).
 $DeployedRoot    = Split-Path $PSScriptRoot -Parent
 $SourceRoot      = Join-Path $DeployedRoot "Source"
+$ModulesRoot     = Join-Path $DeployedRoot "Modules"
 $RendererScript  = Join-Path $SourceRoot "BackgroundRenderer.ps1"
 $SetterScript    = Join-Path $SourceRoot "BackgroundSetter.ps1"
 $VerifierScript  = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"
@@ -76,7 +77,7 @@ Write-Host "[OK] Running as Administrator"
 # --- Source script checks ---
 Write-Host "--- Source script check ---"
 $missingSource = @()
-foreach ($s in @($RendererScript, $SetterScript, $VerifierScript)) {
+foreach ($s in @($RendererScript, $SetterScript, $VerifierScript, $ModulesRoot)) {
     if (Test-Path $s) {
         if ($DebugMode) { Write-Host "[OK] Found: $s" }
     } else {
@@ -89,7 +90,7 @@ if ($missingSource.Count -gt 0) {
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
-Write-Host "[OK] Source scripts present"
+Write-Host "[OK] Source scripts and Modules present"
 
 # --- Runtime directory creation ---
 Write-Host "--- Directory setup ---"

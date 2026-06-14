@@ -1,6 +1,6 @@
 ﻿<#
     Script: BackgroundInstallationVerifier.ps1
-    Version: 7.0.0
+    Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Deterministic verification of BackgroundModifier installation.
 #>
@@ -20,16 +20,19 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Installation Verifier (v7.0.0) ==="
+Write-Host "=== BackgroundModifier Installation Verifier (v8.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
+
+$DeployedRoot = Split-Path $PSScriptRoot -Parent
 
 # --- Directory invariants ---
 $RequiredDirectories = @(
     "C:\BackgroundMotives",
     "C:\BackgroundMotives\assets",
-    "C:\BackgroundMotives\logs"
+    "C:\BackgroundMotives\logs",
+    (Join-Path $DeployedRoot "Modules")
 )
 
 Write-Host "--- Directory check ---"
@@ -47,7 +50,7 @@ foreach ($dir in $RequiredDirectories) {
 
 # --- File checks (currently none by architectural design) ---
 Write-Host "--- File check ---"
-Write-Host "(No file invariants defined in v7.0.0)"
+Write-Host "(No file invariants defined in v8.0.0)"
 
 # --- Summary ---
 Write-Host "=== Summary ==="

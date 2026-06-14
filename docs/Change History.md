@@ -1,5 +1,12 @@
 # Change History
 
+## 2026-06-14 - 8.0.0 Modules Layout Normalization
+
+Summary:
+1. Promoted `Modules` to a top-level sibling of `Source` and `Install`.
+2. Updated installer/runtime scripts to deploy and import modules from the normalized layout.
+3. Aligned active documentation and entry-script version markers to `8.0.0`.
+
 ## 2026-06-12 - 7.0.0 Baseline Normalization
 
 Summary:

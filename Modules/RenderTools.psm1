@@ -2,7 +2,7 @@
 #  Module:      RenderTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     6.0.0
+#  Version:     8.0.0
 #  Purpose:     Shared helpers for image rendering, composition, and deterministic output handling.
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (text rendering)

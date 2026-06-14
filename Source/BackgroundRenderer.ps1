@@ -1,6 +1,6 @@
 ﻿<#
     Script: BackgroundRenderer.ps1
-    Version: 7.0.0
+    Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Deterministic generation of logon and desktop background output images.
 #>
@@ -17,7 +17,7 @@ param(
 
 $LogRoot = "C:\BackgroundMotives\logs"
 
-$ModuleRoot = Join-Path $PSScriptRoot "Modules"
+$ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
 $WarningPreference = "SilentlyContinue"
 
@@ -40,7 +40,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Renderer (v7.0.0) ==="
+Write-Host "=== BackgroundModifier Renderer (v8.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }

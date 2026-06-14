@@ -1,6 +1,6 @@
 # BackgroundModifier Requirements
 
-Version: 7.0.0
+Version: 8.0.0
 
 ## Scope
 BackgroundModifier must deterministically generate and apply background images that include machine-relevant metadata for operational visibility.

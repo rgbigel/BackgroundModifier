@@ -1,6 +1,6 @@
 # BackgroundModifier
 
-Version: 7.0.0
+Version: 8.0.0
 
 BackgroundModifier is a deterministic PowerShell solution for rendering and applying information-rich backgrounds in Windows logon and desktop contexts.
 
@@ -16,7 +16,7 @@ Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 ## Repository Layout
 1. `Install`: installation and verification entry scripts.
 2. `Source`: active runtime scripts.
-3. `Source\Modules`: shared helper modules.
+3. `Modules`: shared helper modules.
 4. `docs`: requirements, architecture, implementation, and change-history documentation.
 
 ## Runtime Layout
@@ -26,7 +26,7 @@ Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 Generated output images are also stored in `C:\BackgroundMotives\assets` and are distinguished from base inputs by filename.
 
 ## Versioning Rule
-All active scripts, modules, and active documentation pages use the same visible solution version. For this baseline, that value is `7.0.0`.
+All active scripts, modules, and active documentation pages use the same visible solution version. For this baseline, that value is `8.0.0`.
 
 📁 Directory Layout
 Bootmgr-Solution/

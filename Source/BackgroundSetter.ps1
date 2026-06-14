@@ -1,6 +1,6 @@
 ﻿<#
     Script: BackgroundSetter.ps1
-    Version: 7.0.0
+    Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Deterministic application of generated background output images to logon and desktop.
 #>
@@ -19,7 +19,7 @@ param(
 $LogRoot = "C:\BackgroundMotives\logs"
 
 # --- Import modules ---
-$ModuleRoot = Join-Path $PSScriptRoot "Modules"
+$ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 Import-Module (Join-Path $ModuleRoot "Constants.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "Logging.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "TranscriptTools.psm1") -Force
@@ -36,7 +36,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setter (v7.0.0) ==="
+Write-Host "=== BackgroundModifier Setter (v8.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }

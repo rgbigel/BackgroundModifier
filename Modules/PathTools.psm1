@@ -1,7 +1,7 @@
 ﻿<# ============================================================================================
-  Path:       D:\OneDrive\Git_Repositories\PS\BackgroundModifier\Source\Modules
+    Path:       D:\Git_Repositories\BackgroundModifier\Modules
   Module:     PathTools.psm1
-  Version:    7.0.0
+    Version:    8.0.0
   Author:     Rolf Bercht
 
   Purpose:
