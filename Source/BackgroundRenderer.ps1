@@ -389,14 +389,17 @@ $tableRows = @(
     [pscustomobject]@{ Key = "Rendered";  Value = $renderTime }
 )
 
+# Bright orange text for overlay readability and visual consistency with the desktop base circle.
+$overlayTextColor = @{ R = 255; G = 140; B = 0 }
+
 try {
     if ($DoRenderLogon) {
-        Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title "BackgroundModifier" -TableRows $tableRows | Out-Null
+        Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title "BackgroundModifier" -TableRows $tableRows -TextColor $overlayTextColor | Out-Null
         Write-Host "[OK] Generated logon image -> $LogonRendered"
     }
 
     if ($DoRenderDesktop) {
-        Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title "BackgroundModifier" -TableRows $tableRows | Out-Null
+        Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title "BackgroundModifier" -TableRows $tableRows -TextColor $overlayTextColor | Out-Null
         Write-Host "[OK] Generated desktop image -> $DesktopRendered"
     }
 }
