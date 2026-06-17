@@ -5,15 +5,50 @@
     Purpose: Deterministic generation of logon and desktop background output images.
 #>
 
+<#
+.SYNOPSIS
+    Generates deterministic desktop and logon rendered background images.
+
+.DESCRIPTION
+    Validates prerequisites, resolves base images, collects system metadata,
+    and renders overlay text onto desktop/logon outputs.
+
+.PARAMETER DebugMode
+    Enables debug output.
+
+.PARAMETER TraceMode
+    Enables transcript logging for renderer execution.
+    Alias: t
+
+.PARAMETER HelpMode
+    Shows full help and exits.
+    Aliases: h, ?
+#>
+
+[CmdletBinding()]
 param(
     [switch]$DebugMode,
+    [Alias("t")]
     [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode,
     [switch]$CaptureDesktopAsBase,
     [switch]$PromoteDesktopBaseToLogonBase,
     [switch]$RenderDesktop,
     [switch]$RenderLogon,
     [switch]$SkipRender
 )
+
+if ($HelpMode) {
+    Get-Help $PSCommandPath -Full
+    exit 0
+}
+
+if ($DebugMode -and -not $TraceMode) {
+    $TraceMode = $true
+}
+
+$ScriptVersion = "8.0.0"
 
 $LogRoot = "C:\BackgroundMotives\logs"
 
@@ -40,11 +75,23 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Renderer (v8.0.0) ==="
+Write-Host "=== BackgroundModifier Renderer (v$ScriptVersion) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
+$MutationScriptName = "BackgroundRenderer.ps1"
+
+function Write-MutationLog {
+    param(
+        [string]$Operation,
+        [string]$Path,
+        [string]$Target,
+        [string]$Outcome = "OK"
+    )
+
+    Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
+}
 function Test-IsWindows11 {
     try {
         $build = [int](Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber")
@@ -158,6 +205,7 @@ function Restore-BaseFromCurrentImage {
 
     try {
         Copy-Item -Path $CurrentImagePath -Destination $BasePath -Force
+        Write-MutationLog -Operation "CopyItem" -Path $CurrentImagePath -Target $BasePath
         Write-Host "[OK] Restored $Label base from current image -> $BasePath"
         return $true
     }
@@ -182,6 +230,7 @@ function New-SolidColorJpeg {
     $brush = New-Object System.Drawing.SolidBrush($color)
     $gfx.FillRectangle($brush, 0, 0, $Width, $Height)
     $bmp.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+    Write-MutationLog -Operation "SaveImage" -Path $OutputPath -Target ""
     $brush.Dispose()
     $gfx.Dispose()
     $bmp.Dispose()
@@ -199,6 +248,7 @@ function Get-WallpaperOrSolidColor {
         $regPath = (Get-ItemPropertyValue -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper" -ErrorAction SilentlyContinue)
         if ($regPath -and (Test-Path $regPath)) {
             Copy-Item -Path $regPath -Destination $DestinationPath -Force
+            Write-MutationLog -Operation "CopyItem" -Path $regPath -Target $DestinationPath
             Write-Host "[OK] Captured $Label base from registry wallpaper -> $DestinationPath"
             return $true
         }
@@ -211,6 +261,7 @@ function Get-WallpaperOrSolidColor {
         $len = (Get-Item $transcoded).Length
         if ($len -gt 10240) {
             Copy-Item -Path $transcoded -Destination $DestinationPath -Force
+            Write-MutationLog -Operation "CopyItem" -Path $transcoded -Target $DestinationPath
             Write-Host "[OK] Captured $Label base from TranscodedWallpaper -> $DestinationPath"
             return $true
         }
@@ -233,6 +284,89 @@ function Get-WallpaperOrSolidColor {
     catch {
         New-SolidColorJpeg -OutputPath $DestinationPath
         return $true
+    }
+}
+
+function Get-DefaultBcdIdentifier {
+    try {
+        $bcdEdit = Join-Path $env:WINDIR "System32\bcdedit.exe"
+        if (-not (Test-Path $bcdEdit)) {
+            return "(bcdedit missing)"
+        }
+
+        $bootMgrLines = & $bcdEdit /enum "{bootmgr}" 2>$null
+        if (-not $bootMgrLines) {
+            return "(unavailable)"
+        }
+
+        foreach ($line in $bootMgrLines) {
+            if ($line -match '^\s*default\s+(.+)$') {
+                return $matches[1].Trim()
+            }
+        }
+
+        return "(not set)"
+    }
+    catch {
+        return "(error)"
+    }
+}
+
+function Get-EfiVolumeLabel {
+    try {
+        $efiGuid = '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}'
+        $efiPartition = Get-Partition -ErrorAction SilentlyContinue |
+            Where-Object { $_.GptType -eq $efiGuid } |
+            Select-Object -First 1
+
+        if (-not $efiPartition) {
+            return "(not found)"
+        }
+
+        $efiVolume = Get-Volume -Partition $efiPartition -ErrorAction SilentlyContinue
+        if (-not $efiVolume) {
+            return "Disk $($efiPartition.DiskNumber) Part $($efiPartition.PartitionNumber)"
+        }
+
+        $label = if ([string]::IsNullOrWhiteSpace($efiVolume.FileSystemLabel)) {
+            "(no label)"
+        }
+        else {
+            $efiVolume.FileSystemLabel
+        }
+
+        return "$label (D$($efiPartition.DiskNumber)P$($efiPartition.PartitionNumber))"
+    }
+    catch {
+        return "(error)"
+    }
+}
+
+function Get-VolumeInventorySummary {
+    try {
+        $volumes = @(Get-Volume -ErrorAction SilentlyContinue)
+        $volumeCount = $volumes.Count
+
+        $bcdRefCount = 0
+        try {
+            $bcdEdit = Join-Path $env:WINDIR "System32\bcdedit.exe"
+            if (Test-Path $bcdEdit) {
+                $bcdText = (& $bcdEdit /enum all /v 2>$null | Out-String)
+                if ($bcdText) {
+                    $bcdRefCount = ([regex]::Matches($bcdText, '\\\\Device\\\\HarddiskVolume\d+') |
+                        ForEach-Object { $_.Value.ToLowerInvariant() } |
+                        Select-Object -Unique).Count
+                }
+            }
+        }
+        catch {
+            $bcdRefCount = 0
+        }
+
+        return "Volumes=$volumeCount; BCDRefs=$bcdRefCount"
+    }
+    catch {
+        return "(error)"
     }
 }
 
@@ -280,7 +414,9 @@ if ($CaptureDesktopAsBase) {
 
     try {
         Copy-Item -Path $wallpaper -Destination $DesktopBase -Force
+        Write-MutationLog -Operation "CopyItem" -Path $wallpaper -Target $DesktopBase
         Copy-Item -Path $wallpaper -Destination $DesktopImage -Force
+        Write-MutationLog -Operation "CopyItem" -Path $wallpaper -Target $DesktopImage
         Write-Host "[OK] Captured DesktopBase -> $DesktopBase"
         Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
     }
@@ -301,7 +437,9 @@ if ($PromoteDesktopBaseToLogonBase) {
 
     try {
         Copy-Item -Path $DesktopBase -Destination $LogonBase -Force
+        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonBase
         Copy-Item -Path $DesktopBase -Destination $LogonImage -Force
+        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonImage
         Write-Host "[OK] Promoted LogonBase -> $LogonBase"
         Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
     }
@@ -332,6 +470,7 @@ if ($DoRenderDesktop) {
         $desktopBaseReady = Get-WallpaperOrSolidColor -DestinationPath $DesktopBase -Label "desktop"
         if ($desktopBaseReady) {
             Copy-Item -Path $DesktopBase -Destination $DesktopImage -Force
+            Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $DesktopImage
             Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
         }
     }
@@ -347,6 +486,7 @@ if ($DoRenderLogon) {
     # LogonBase fallback: use DesktopBase when LogonBase and snapshot are both missing
     if (-not $logonBaseReady -and (Test-Path $DesktopBase)) {
         Copy-Item -Path $DesktopBase -Destination $LogonBase -Force
+        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonBase
         Write-Host "[INFO] LogonBase missing; using DesktopBase as fallback -> $LogonBase"
         $logonBaseReady = $true
     }
@@ -378,28 +518,43 @@ $hostname    = $env:COMPUTERNAME
 $username    = $env:USERNAME
 $osVersion   = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "DisplayVersion" -ErrorAction SilentlyContinue)
 $buildNumber = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber" -ErrorAction SilentlyContinue)
-$ipAddresses = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceAlias -notmatch 'Loopback' } | ForEach-Object { $_.IPAddress }) -join ", "
+$ipAddresses = (Get-NetIPConfiguration -ErrorAction SilentlyContinue |
+    Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address } |
+    ForEach-Object { $_.IPv4Address.IPAddress } |
+    Where-Object { $_ -and $_ -notmatch '^169\.254\.' } |
+    Select-Object -Unique) -join ", "
 $renderTime  = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+$efiLabel    = Get-EfiVolumeLabel
+$bcdDefault  = Get-DefaultBcdIdentifier
+$volInv      = Get-VolumeInventorySummary
 
 $tableRows = @(
     [pscustomobject]@{ Key = "Host";      Value = $hostname }
     [pscustomobject]@{ Key = "User";      Value = $username }
     [pscustomobject]@{ Key = "OS";        Value = "Windows 11 $osVersion (Build $buildNumber)" }
     [pscustomobject]@{ Key = "IP";        Value = if ($ipAddresses) { $ipAddresses } else { "(none)" } }
+    [pscustomobject]@{ Key = "EFI";       Value = $efiLabel }
+    [pscustomobject]@{ Key = "BCD";       Value = $bcdDefault }
+    [pscustomobject]@{ Key = "VolumeInv"; Value = $volInv }
     [pscustomobject]@{ Key = "Rendered";  Value = $renderTime }
 )
+
+$overlayTitle = "BackgroundModifier - Ver $ScriptVersion"
+$tableFormat = @{ MaxValueChars = 50 }
 
 # Bright orange text for overlay readability and visual consistency with the desktop base circle.
 $overlayTextColor = @{ R = 255; G = 140; B = 0 }
 
 try {
     if ($DoRenderLogon) {
-        Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title "BackgroundModifier" -TableRows $tableRows -TextColor $overlayTextColor | Out-Null
+        Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title $overlayTitle -TableRows $tableRows -TableFormat $tableFormat -TextColor $overlayTextColor | Out-Null
+        Write-MutationLog -Operation "RenderWrite" -Path $LogonRendered -Target ""
         Write-Host "[OK] Generated logon image -> $LogonRendered"
     }
 
     if ($DoRenderDesktop) {
-        Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title "BackgroundModifier" -TableRows $tableRows -TextColor $overlayTextColor | Out-Null
+        Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title $overlayTitle -TableRows $tableRows -TableFormat $tableFormat -TextColor $overlayTextColor | Out-Null
+        Write-MutationLog -Operation "RenderWrite" -Path $DesktopRendered -Target ""
         Write-Host "[OK] Generated desktop image -> $DesktopRendered"
     }
 }

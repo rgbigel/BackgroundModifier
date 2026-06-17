@@ -6,10 +6,52 @@
     Requires: Windows 11, elevation (Administrator).
 #>
 
+<#
+.SYNOPSIS
+    Installs and configures BackgroundModifier runtime directories and scheduled tasks.
+
+.DESCRIPTION
+    Validates source layout, ensures required runtime folders exist, (re)registers
+    logon tasks for renderer and setter, then runs installation verification.
+
+.PARAMETER DebugMode
+    Enables debug output.
+
+.PARAMETER TraceMode
+    Enables setup transcript logging and registers tasks with trace-mode arguments.
+    Alias: t
+
+.PARAMETER HelpMode
+    Shows full help and exits.
+    Aliases: h, ?
+
+.EXAMPLE
+    .\Setup.ps1
+
+.EXAMPLE
+    .\Setup.ps1 -t
+
+.EXAMPLE
+    .\Setup.ps1 -h
+#>
+
+[CmdletBinding()]
 param(
     [switch]$DebugMode,
-    [switch]$TraceMode
+    [Alias("t")]
+    [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode
 )
+
+if ($HelpMode) {
+    Get-Help $PSCommandPath -Full
+    exit 0
+}
+
+if ($DebugMode -and -not $TraceMode) {
+    $TraceMode = $true
+}
 
 # --- Constants ---
 $ScriptVersion   = "8.0.0"
@@ -92,6 +134,22 @@ if ($missingSource.Count -gt 0) {
 }
 Write-Host "[OK] Source scripts and Modules present"
 
+# Import logging after module location has been validated.
+Import-Module (Join-Path $ModulesRoot "Logging.psm1") -Force
+
+$MutationScriptName = "Setup.ps1"
+
+function Write-MutationLog {
+    param(
+        [string]$Operation,
+        [string]$Path,
+        [string]$Target,
+        [string]$Outcome = "OK"
+    )
+
+    Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
+}
+
 # --- Runtime directory creation ---
 Write-Host "--- Directory setup ---"
 foreach ($dir in @($RuntimeRoot, $AssetsRoot, $LogRoot)) {
@@ -100,6 +158,7 @@ foreach ($dir in @($RuntimeRoot, $AssetsRoot, $LogRoot)) {
     } else {
         try {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Write-MutationLog -Operation "NewDirectory" -Path $dir -Target ""
             Write-Host "[OK] Created: $dir"
         }
         catch {
@@ -126,16 +185,41 @@ function Register-BackgroundTask {
         Write-Host "[OK] Removed existing task: $TaskName"
     }
 
-    $pwsh = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+    $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+    $pwsh = if ($pwshCmd) { $pwshCmd.Source } else { $null }
     if (-not $pwsh) { $pwsh = "powershell.exe" }
 
-    $action  = New-ScheduledTaskAction -Execute $pwsh -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
+    $taskArgs = @(
+        "-NoProfile"
+        "-ExecutionPolicy"
+        "Bypass"
+    )
+
+    if ($TraceMode) {
+        # Keep task consoles open in trace mode to allow post-run review.
+        $taskArgs += "-NoExit"
+    }
+
+    $taskArgs += @(
+        "-File"
+        "`"$ScriptPath`""
+    )
+
+    if ($TraceMode) {
+        $taskArgs += "-TraceMode"
+    }
+
+    $taskArgLine = ($taskArgs -join " ")
+    $action  = New-ScheduledTaskAction -Execute $pwsh -Argument $taskArgLine
     $trigger = New-ScheduledTaskTrigger -AtLogOn
     $principal = New-ScheduledTaskPrincipal -UserId (whoami) -LogonType Interactive -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -StartWhenAvailable
 
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description $Description -Force | Out-Null
     Write-Host "[OK] Registered task: $TaskName"
+    if ($DebugMode -or $TraceMode) {
+        Write-Host "[INFO] $TaskName args: $taskArgLine"
+    }
 }
 
 Register-BackgroundTask -TaskName $TaskNameRenderer -ScriptPath $RendererScript -Description "BackgroundModifier: render background at logon"

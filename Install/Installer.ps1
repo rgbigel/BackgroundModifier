@@ -11,10 +11,52 @@
     via the BackgroundModifier_Install.cmd launcher.
 #>
 
+<#
+.SYNOPSIS
+    Deploys BackgroundModifier runtime files and hands off to Setup.
+
+.DESCRIPTION
+    Copies Source, Modules, and Install content from the repository into the
+    runtime target folder and then invokes deployed Setup.ps1.
+
+.PARAMETER DebugMode
+    Enables debug output.
+
+.PARAMETER TraceMode
+    Enables installer transcript logging.
+    Alias: t
+
+.PARAMETER HelpMode
+    Shows full help and exits.
+    Aliases: h, ?
+
+.EXAMPLE
+    .\Installer.ps1
+
+.EXAMPLE
+    .\Installer.ps1 -t
+
+.EXAMPLE
+    .\Installer.ps1 -h
+#>
+
+[CmdletBinding()]
 param(
     [switch]$DebugMode,
-    [switch]$TraceMode
+    [Alias("t")]
+    [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode
 )
+
+if ($HelpMode) {
+    Get-Help $PSCommandPath -Full
+    exit 0
+}
+
+if ($DebugMode -and -not $TraceMode) {
+    $TraceMode = $true
+}
 
 $ScriptVersion = "8.0.0"
 
@@ -163,9 +205,9 @@ if (-not (Test-Path $SetupDeployed)) {
     exit 1
 }
 
-$setupArgs = @()
-if ($DebugMode) { $setupArgs += "-DebugMode" }
-if ($TraceMode) { $setupArgs += "-TraceMode" }
+$setupParams = @{}
+if ($DebugMode) { $setupParams.DebugMode = $true }
+if ($TraceMode) { $setupParams.TraceMode = $true }
 
-& $SetupDeployed @setupArgs
+& $SetupDeployed @setupParams
 exit $LASTEXITCODE

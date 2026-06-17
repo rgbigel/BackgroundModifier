@@ -5,15 +5,48 @@
     Purpose: Deterministic application of generated background output images to logon and desktop.
 #>
 
+<#
+.SYNOPSIS
+    Applies rendered desktop and lock/sign-in background images.
+
+.DESCRIPTION
+    Validates generated assets, applies desktop wallpaper, and updates
+    lock/sign-in policy with elevation-aware flow.
+
+.PARAMETER DebugMode
+    Enables debug output.
+
+.PARAMETER TraceMode
+    Enables transcript logging for setter execution.
+    Alias: t
+
+.PARAMETER HelpMode
+    Shows full help and exits.
+    Aliases: h, ?
+#>
+
+[CmdletBinding()]
 param(
     [switch]$DebugMode,
+    [Alias("t")]
     [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode,
     [switch]$ApplyDesktop,
     [switch]$ApplyLockScreen,
     [switch]$CaptureDesktopAsBase,
     [switch]$PromoteDesktopBaseToLogonBase,
     [switch]$Interactive
 )
+
+if ($HelpMode) {
+    Get-Help $PSCommandPath -Full
+    exit 0
+}
+
+if ($DebugMode -and -not $TraceMode) {
+    $TraceMode = $true
+}
 
 # --- Absolute log root ---
 $LogRoot = "C:\BackgroundMotives\logs"
@@ -40,6 +73,19 @@ Write-Host "=== BackgroundModifier Setter (v8.0.0) ==="
 
 if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
+
+$MutationScriptName = "BackgroundSetter.ps1"
+
+function Write-MutationLog {
+    param(
+        [string]$Operation,
+        [string]$Path,
+        [string]$Target,
+        [string]$Outcome = "OK"
+    )
+
+    Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
+}
 
 function Test-IsWindows11 {
     try {
@@ -154,6 +200,7 @@ function Restore-BaseFromCurrentImage {
 
     try {
         Copy-Item -Path $CurrentImagePath -Destination $BasePath -Force
+        Write-MutationLog -Operation "CopyItem" -Path $CurrentImagePath -Target $BasePath
         Write-Host "[OK] Restored $Label base from current image -> $BasePath"
         return $true
     }
@@ -247,7 +294,8 @@ function Restart-ScriptElevated {
         [string[]]$ForwardArgs
     )
 
-    $pwsh = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+    $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+    $pwsh = if ($pwshCmd) { $pwshCmd.Source } else { $null }
     if (-not $pwsh) {
         $pwsh = "powershell.exe"
     }
@@ -309,26 +357,6 @@ Write-Host "--- Image state ---"
 Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
 Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$($ImageState.LogonMatchesRendered) MatchesBase=$($ImageState.LogonMatchesBase)"
 
-# --- Detect pending logon change from a prior non-elevated run ---
-$PendingLogonSource = $null
-if (Test-Path $PendingLogonStateFile) {
-    $stored = (Get-Content $PendingLogonStateFile -Raw).Trim()
-    if ($stored -and (Test-Path $stored)) {
-        $PendingLogonSource = $stored
-        Write-Host "[INFO] Pending logon change detected from prior run -> $PendingLogonSource"
-    } else {
-        Write-Host "[WARN] Pending logon state file references a missing image: '$stored'"
-        Write-Host "[WARN] Pending logon change has been discarded."
-        Remove-Item $PendingLogonStateFile -Force
-    }
-}
-
-# --- Compute PendingLogonSource from current session if desktop changed and logon apply is intended ---
-if (-not $PendingLogonSource -and $ImageState.UserChangedDesktop -and ($DoApplyLockScreen -or $ApplyLockScreen.IsPresent)) {
-    $PendingLogonSource = $DesktopImage
-    Write-Host "[INFO] Desktop changed since last render. Logon update pending -> $PendingLogonSource"
-}
-
 $DoApplyDesktop = $ApplyDesktop.IsPresent
 $DoApplyLockScreen = $ApplyLockScreen.IsPresent
 $DoCapture = $CaptureDesktopAsBase.IsPresent
@@ -348,6 +376,28 @@ if ($Interactive) {
     $DoApplyLockScreen = ((Read-Host "Apply Logon.jpg as Windows lock/sign-in image policy? (y/N)") -match '^(y|yes)$')
 }
 
+# --- Detect pending logon change from a prior non-elevated run ---
+$PendingLogonSource = $null
+if (Test-Path $PendingLogonStateFile) {
+    $stored = (Get-Content $PendingLogonStateFile -Raw).Trim()
+    if ($stored -and (Test-Path $stored)) {
+        $PendingLogonSource = $stored
+        Write-Host "[INFO] Pending logon change detected from prior run -> $PendingLogonSource"
+    }
+    else {
+        Write-Host "[WARN] Pending logon state file references a missing image: '$stored'"
+        Write-Host "[WARN] Pending logon change has been discarded."
+        Remove-Item $PendingLogonStateFile -Force
+        Write-MutationLog -Operation "RemoveItem" -Path $PendingLogonStateFile -Target ""
+    }
+}
+
+# --- Compute PendingLogonSource from current session if desktop changed and logon apply is intended ---
+if (-not $PendingLogonSource -and $ImageState.UserChangedDesktop -and $DoApplyLockScreen) {
+    $PendingLogonSource = if ($DoApplyDesktop) { $DesktopRendered } else { $DesktopImage }
+    Write-Host "[INFO] Desktop changed since last render. Logon update pending -> $PendingLogonSource"
+}
+
 if ($DoCapture) {
     Write-Host "--- Capture desktop as DesktopBase ---"
     $wallpaper = Get-CurrentDesktopWallpaperPath
@@ -359,7 +409,9 @@ if ($DoCapture) {
 
     try {
         Copy-Item -Path $wallpaper -Destination $DesktopImage -Force
+        Write-MutationLog -Operation "CopyItem" -Path $wallpaper -Target $DesktopImage
         Copy-Item -Path $wallpaper -Destination $DesktopBase -Force
+        Write-MutationLog -Operation "CopyItem" -Path $wallpaper -Target $DesktopBase
         Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
         Write-Host "[OK] Captured DesktopBase -> $DesktopBase"
     }
@@ -381,7 +433,9 @@ if ($DoPromote) {
 
     try {
         Copy-Item -Path $DesktopBase -Destination $LogonBase -Force
+        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonBase
         Copy-Item -Path $DesktopBase -Destination $LogonImage -Force
+        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonImage
         Write-Host "[OK] Promoted LogonBase -> $LogonBase"
         Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
     }
@@ -420,7 +474,32 @@ if ($DoApplyDesktop -and -not (Test-Path $DesktopRendered)) {
 
 Write-Host "[OK] Generated images present"
 
-# --- Apply logon background ---
+# --- Apply desktop background first ---
+if ($DoApplyDesktop) {
+    Write-Host "--- Applying desktop background ---"
+
+    try {
+        $managedDesktopTarget = "$env:USERPROFILE\Pictures\Background.jpg"
+        $managedDesktopDirectory = Split-Path $managedDesktopTarget -Parent
+        if (-not (Test-Path $managedDesktopDirectory)) {
+            New-Item -ItemType Directory -Path $managedDesktopDirectory -Force | Out-Null
+            Write-Host "[OK] Created desktop target directory -> $managedDesktopDirectory"
+        }
+        Copy-Item -Path $DesktopRendered -Destination $managedDesktopTarget -Force
+        Set-DesktopWallpaper -ImagePath $managedDesktopTarget
+        Copy-Item -Path $DesktopRendered -Destination $DesktopImage -Force
+        Write-MutationLog -Operation "CopyItem" -Path $DesktopRendered -Target $DesktopImage
+        Write-Host "[OK] Desktop background applied -> $managedDesktopTarget"
+        Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
+    }
+    catch {
+        Write-Host "[X] Failed to apply desktop background: $($_.Exception.Message)"
+        if ($TraceMode) { Stop-Transcript | Out-Null }
+        exit 1
+    }
+}
+
+# --- Apply lock/sign-in background ---
 if ($DoApplyLockScreen) {
     Write-Host "--- Applying lock/sign-in image policy ---"
 
@@ -435,16 +514,17 @@ if ($DoApplyLockScreen) {
         }
         if ($PendingLogonSource) {
             Set-Content -Path $PendingLogonStateFile -Value $PendingLogonSource -Force
+            Write-MutationLog -Operation "SetContent" -Path $PendingLogonStateFile -Target ""
             Write-Host "[INFO] Pending logon source saved -> $PendingLogonStateFile"
             Write-Host "[INFO] Elevated re-run will apply: $PendingLogonSource"
         }
         Restart-ScriptElevated -ForwardArgs @(
-            "-DebugMode"
+            if ($DebugMode) { "-DebugMode" }
             if ($TraceMode) { "-TraceMode" }
-            if ($ApplyDesktop) { "-ApplyDesktop" }
-            "-ApplyLockScreen"
-            if ($CaptureDesktopAsBase) { "-CaptureDesktopAsBase" }
-            if ($PromoteDesktopBaseToLogonBase) { "-PromoteDesktopBaseToLogonBase" }
+            if ($DoApplyDesktop) { "-ApplyDesktop" }
+            if ($DoApplyLockScreen) { "-ApplyLockScreen" }
+            if ($DoCapture) { "-CaptureDesktopAsBase" }
+            if ($DoPromote) { "-PromoteDesktopBaseToLogonBase" }
             if ($Interactive) { "-Interactive" }
         )
         if ($TraceMode) { Stop-Transcript | Out-Null }
@@ -464,14 +544,20 @@ if ($DoApplyLockScreen) {
     if ($DoApplyLockScreen -and $PendingLogonSource -and (Test-Path $PendingLogonSource)) {
         Write-Host "[INFO] Applying pending logon source -> $PendingLogonSource"
         Copy-Item -Path $PendingLogonSource -Destination $LogonRendered -Force
+        Write-MutationLog -Operation "CopyItem" -Path $PendingLogonSource -Target $LogonRendered
         Copy-Item -Path $PendingLogonSource -Destination $LogonBase -Force
+        Write-MutationLog -Operation "CopyItem" -Path $PendingLogonSource -Target $LogonBase
     }
 
     if ($DoApplyLockScreen) {
         try {
             Set-LockScreenImage -ImagePath $LogonRendered
             Copy-Item -Path $LogonRendered -Destination $LogonImage -Force
-            if (Test-Path $PendingLogonStateFile) { Remove-Item $PendingLogonStateFile -Force }
+            Write-MutationLog -Operation "CopyItem" -Path $LogonRendered -Target $LogonImage
+            if (Test-Path $PendingLogonStateFile) {
+                Remove-Item $PendingLogonStateFile -Force
+                Write-MutationLog -Operation "RemoveItem" -Path $PendingLogonStateFile -Target ""
+            }
             Write-Host "[OK] Lock/sign-in policy updated -> $LogonRendered"
             Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
         }
@@ -480,30 +566,6 @@ if ($DoApplyLockScreen) {
             if ($TraceMode) { Stop-Transcript | Out-Null }
             exit 1
         }
-    }
-}
-
-# --- Apply desktop background ---
-if ($DoApplyDesktop) {
-    Write-Host "--- Applying desktop background ---"
-
-    try {
-        $managedDesktopTarget = "$env:USERPROFILE\Pictures\Background.jpg"
-        $managedDesktopDirectory = Split-Path $managedDesktopTarget -Parent
-        if (-not (Test-Path $managedDesktopDirectory)) {
-            New-Item -ItemType Directory -Path $managedDesktopDirectory -Force | Out-Null
-            Write-Host "[OK] Created desktop target directory -> $managedDesktopDirectory"
-        }
-        Copy-Item -Path $DesktopRendered -Destination $managedDesktopTarget -Force
-        Set-DesktopWallpaper -ImagePath $managedDesktopTarget
-        Copy-Item -Path $DesktopRendered -Destination $DesktopImage -Force
-        Write-Host "[OK] Desktop background applied -> $managedDesktopTarget"
-        Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
-    }
-    catch {
-        Write-Host "[X] Failed to apply desktop background: $($_.Exception.Message)"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
     }
 }
 

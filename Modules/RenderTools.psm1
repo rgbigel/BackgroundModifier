@@ -72,10 +72,14 @@ function Render-TextOverlay {
         $gfx.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
         $gfx.DrawImage($base, 0, 0, $base.Width, $base.Height)
 
-        $panelW = [Math]::Min($base.Width - 80, 900)
+        $maxPanelWidth = [int][Math]::Floor($base.Width * 0.45)
+        $maxPanelWidth = [Math]::Min($maxPanelWidth, 680)
+        $maxPanelWidth = [Math]::Max($maxPanelWidth, 360)
+
+        $panelW = [Math]::Min($base.Width - 80, $maxPanelWidth)
         $panelX = $base.Width - $panelW - 40
-        $panelY = 40
-        $panelH = [Math]::Min($base.Height - 80, 1040)
+        $panelY = 48
+        $panelH = [Math]::Min($base.Height - 96, 880)
 
         $panelBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(160, 0, 0, 0))
         $resolvedTextColor = [System.Drawing.Color]::White
@@ -94,6 +98,7 @@ function Render-TextOverlay {
             $renderLines = @()
             $resolvedKeyWidth = 0
             $resolvedValueWidth = 0
+            $maxValueChars = 50
 
             if ($TableRows -and $TableRows.Count -gt 0) {
                 $resolvedKeyWidth = ($TableRows | ForEach-Object { [string]$_.Key } | Measure-Object -Maximum Length).Maximum
@@ -105,9 +110,13 @@ function Render-TextOverlay {
                 if ($TableFormat.ContainsKey("ValueWidth")) {
                     $resolvedValueWidth = [Math]::Max($resolvedValueWidth, [int]$TableFormat["ValueWidth"])
                 }
+                if ($TableFormat.ContainsKey("MaxValueChars")) {
+                    $maxValueChars = [int]$TableFormat["MaxValueChars"]
+                }
 
                 $resolvedKeyWidth = [Math]::Max($resolvedKeyWidth, 5)
                 $resolvedValueWidth = [Math]::Max($resolvedValueWidth, 5)
+                $maxValueChars = [Math]::Max(16, $maxValueChars)
 
                 $renderLines += (("Field").PadRight($resolvedKeyWidth) + " | " + ("Value").PadRight($resolvedValueWidth))
                 $renderLines += (("-" * $resolvedKeyWidth) + "-+-" + ("-" * $resolvedValueWidth))
@@ -119,9 +128,49 @@ function Render-TextOverlay {
                         $rowValue = ""
                     }
 
-                    $keyPart = $rowKey.PadRight($resolvedKeyWidth)
-                    $valuePart = if ($rowValue.Length -lt $resolvedValueWidth) { $rowValue.PadRight($resolvedValueWidth) } else { $rowValue }
-                    $renderLines += ($keyPart + " | " + $valuePart)
+                    if ($rowValue.Length -le $maxValueChars) {
+                        $keyPart = $rowKey.PadRight($resolvedKeyWidth)
+                        $valuePart = if ($rowValue.Length -lt $resolvedValueWidth) { $rowValue.PadRight($resolvedValueWidth) } else { $rowValue }
+                        $renderLines += ($keyPart + " | " + $valuePart)
+                    }
+                    else {
+                        $remaining = $rowValue
+                        $isFirstChunk = $true
+
+                        while ($remaining.Length -gt 0) {
+                            $fitLen = [Math]::Min($remaining.Length, $maxValueChars)
+
+                            if ($fitLen -lt $remaining.Length) {
+                                $candidate = $remaining.Substring(0, $fitLen)
+                                $splitPosComma = $candidate.LastIndexOf(',')
+                                if ($splitPosComma -ge 1) {
+                                    $fitLen = $splitPosComma + 1
+                                }
+                                else {
+                                    $splitPosSlash = $candidate.LastIndexOf('\\')
+                                    if ($splitPosSlash -ge 1) {
+                                        $fitLen = $splitPosSlash
+                                    }
+                                    else {
+                                        $splitPosSpace = $candidate.LastIndexOf(' ')
+                                        if ($splitPosSpace -ge 1) {
+                                            $fitLen = $splitPosSpace
+                                        }
+                                    }
+                                }
+                            }
+
+                            if ($fitLen -lt 1) { $fitLen = 1 }
+
+                            $chunk = $remaining.Substring(0, $fitLen).Trim()
+                            $displayKey = if ($isFirstChunk) { $rowKey } else { "" }
+                            $keyPart = $displayKey.PadRight($resolvedKeyWidth)
+                            $renderLines += ($keyPart + " | " + $chunk)
+
+                            $remaining = $remaining.Substring($fitLen).TrimStart(' ', ',')
+                            $isFirstChunk = $false
+                        }
+                    }
                 }
             }
             else {
@@ -140,11 +189,8 @@ function Render-TextOverlay {
             }
 
             $desiredPanelW = [int][Math]::Ceiling($contentWidth + $leftPadding + $rightPadding)
-            $panelW = [Math]::Max(320, [Math]::Min($base.Width - 80, $desiredPanelW))
+            $panelW = [Math]::Max(320, [Math]::Min($maxPanelWidth, $desiredPanelW))
             $panelX = $base.Width - $panelW - 40
-
-            $gfx.FillRectangle($panelBrush, $panelX, $panelY, $panelW, $panelH)
-            $gfx.DrawString($Title, $titleFont, $textBrush, ($panelX + $leftPadding), ($panelY + 20))
 
             $maxWidth = $panelW - 48
             $lineHeight = [int][Math]::Ceiling($bodyFont.GetHeight($gfx) + 8)
@@ -202,7 +248,18 @@ function Render-TextOverlay {
                 }
             }
 
-            $y = $panelY + 130
+            $titleTopPadding = 20
+            $textStartOffset = 86
+            $bottomReserve = 28
+            $desiredPanelH = $textStartOffset + ($expandedLines.Count * $lineHeight) + $bottomReserve
+            $minPanelH = 180
+            $maxPanelH = [Math]::Max($minPanelH, $base.Height - $panelY - 32)
+            $panelH = [Math]::Min($maxPanelH, [Math]::Max($minPanelH, $desiredPanelH))
+
+            $gfx.FillRectangle($panelBrush, $panelX, $panelY, $panelW, $panelH)
+            $gfx.DrawString($Title, $titleFont, $textBrush, ($panelX + $leftPadding), ($panelY + $titleTopPadding))
+
+            $y = $panelY + $textStartOffset
             foreach ($line in $expandedLines) {
                 if ([string]::IsNullOrWhiteSpace($line)) { continue }
 
