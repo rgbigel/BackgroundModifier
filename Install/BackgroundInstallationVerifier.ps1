@@ -63,7 +63,11 @@ if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started"
 $DeployedRoot = Split-Path $PSScriptRoot -Parent
 $SeedAssetsRoot = Join-Path $DeployedRoot "assets"
 $SeedStateFile = Join-Path $SeedAssetsRoot "state.json"
+$SeedDesktopBase = Join-Path $SeedAssetsRoot "DesktopBase.jpg"
+$SeedLogonBase = Join-Path $SeedAssetsRoot "LogonBase.jpg"
 $RuntimeStateFile = "C:\BackgroundMotives\assets\state.json"
+$RuntimeDesktopBase = "C:\BackgroundMotives\assets\DesktopBase.jpg"
+$RuntimeLogonBase = "C:\BackgroundMotives\assets\LogonBase.jpg"
 $OrchestratorScript = Join-Path $DeployedRoot "Source\BackgroundModifier.ps1"
 $RendererScript = Join-Path $DeployedRoot "Source\BackgroundRenderer.ps1"
 $SetterScript = Join-Path $DeployedRoot "Source\BackgroundSetter.ps1"
@@ -84,7 +88,11 @@ $RequiredFiles = @(
     $SetterScript,
     $RenderToolsModule,
     $SeedStateFile,
-    $RuntimeStateFile
+    $SeedDesktopBase,
+    $SeedLogonBase,
+    $RuntimeStateFile,
+    $RuntimeDesktopBase,
+    $RuntimeLogonBase
 )
 
 Write-Host "--- Directory check ---"

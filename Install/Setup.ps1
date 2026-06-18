@@ -286,6 +286,20 @@ function Initialize-SeedAssets {
     }
 
     try {
+        $requiredSeedFiles = @(
+            "DesktopBase.jpg",
+            "LogonBase.jpg",
+            "state.json"
+        )
+
+        foreach ($requiredSeedFile in $requiredSeedFiles) {
+            $requiredPath = Join-Path $SeedRoot $requiredSeedFile
+            if (-not (Test-Path $requiredPath)) {
+                Write-Host "[X] Required seed asset missing: $requiredPath"
+                return $false
+            }
+        }
+
         $resolvedSeedRoot = (Resolve-Path $SeedRoot).Path
         $seedFiles = Get-ChildItem -Path $SeedRoot -File -Recurse -ErrorAction Stop
 
@@ -293,20 +307,27 @@ function Initialize-SeedAssets {
             $relativePath = $seedFile.FullName.Substring($resolvedSeedRoot.Length).TrimStart('\\')
             $targetPath = Join-Path $RuntimeAssetsRoot $relativePath
             $targetParent = Split-Path $targetPath -Parent
+            $fileName = [System.IO.Path]::GetFileName($targetPath)
+            $isRenderedArtifact = ($fileName -match '(?i)_rendered\.(jpg|jpeg)$')
 
             if (-not (Test-Path $targetParent)) {
                 New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
                 Write-MutationLog -Operation "NewDirectory" -Path $targetParent -Target ""
             }
 
-            if (Test-Path $targetPath) {
+            if ((Test-Path $targetPath) -and -not $isRenderedArtifact) {
                 Write-Host "[OK] Preserving existing runtime asset: $targetPath"
                 continue
             }
 
             Copy-Item -Path $seedFile.FullName -Destination $targetPath -Force
             Write-MutationLog -Operation "CopyItem" -Path $seedFile.FullName -Target $targetPath
-            Write-Host "[OK] Seeded runtime asset: $targetPath"
+            if ($isRenderedArtifact) {
+                Write-Host "[OK] Refreshed runtime rendered asset: $targetPath"
+            }
+            else {
+                Write-Host "[OK] Seeded runtime asset: $targetPath"
+            }
         }
 
         if (-not (Test-Path $RuntimeStateFilePath)) {

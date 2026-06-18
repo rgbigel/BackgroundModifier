@@ -244,6 +244,32 @@ if ($missingDirs.Count -gt 0) {
 }
 Write-Host "[OK] Source layout verified"
 
+Write-Host "--- Verifying required seed assets ---"
+$requiredSeedAssets = @(
+    (Join-Path $AssetsSrc "state.json"),
+    (Join-Path $AssetsSrc "DesktopBase.jpg"),
+    (Join-Path $AssetsSrc "LogonBase.jpg")
+)
+
+$missingSeedAssets = @()
+foreach ($assetPath in $requiredSeedAssets) {
+    if (Test-Path $assetPath) {
+        if ($TraceMode) { Write-Host "[OK] Seed asset: $assetPath" }
+    }
+    else {
+        Write-Host "[X] Missing required seed asset: $assetPath"
+        $missingSeedAssets += $assetPath
+    }
+}
+
+if ($missingSeedAssets.Count -gt 0) {
+    Write-Host "[X] Required seed assets are missing. Cannot continue."
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+Write-Host "[OK] Required seed assets verified"
+
 # --- Create runtime deployment directories ---
 Write-Host "--- Creating runtime directories ---"
 foreach ($dir in @($RuntimeBase, $RuntimeDir, $SourceDst, $ModulesDst, $InstallDst, $AssetsDst)) {
