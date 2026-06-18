@@ -65,10 +65,12 @@ $RuntimeDir  = Join-Path $RuntimeBase $ProjectName
 $SourceSrc  = Join-Path $RepoRoot "Source"
 $ModulesSrc = Join-Path $RepoRoot "Modules"
 $InstallSrc = Join-Path $RepoRoot "Install"
+$AssetsSrc  = Join-Path $RepoRoot "assets"
 
 $SourceDst  = Join-Path $RuntimeDir "Source"
 $ModulesDst = Join-Path $RuntimeDir "Modules"
 $InstallDst = Join-Path $RuntimeDir "Install"
+$AssetsDst  = Join-Path $RuntimeDir "assets"
 
 $SetupDeployed = Join-Path $InstallDst "Setup.ps1"
 $LogRoot       = "C:\BackgroundMotives\logs"
@@ -227,7 +229,7 @@ if (-not (Test-IsWindows11)) {
 # --- Verify source layout ---
 Write-Host "--- Verifying source layout ---"
 $missingDirs = @()
-foreach ($dir in @($SourceSrc, $ModulesSrc, $InstallSrc)) {
+foreach ($dir in @($SourceSrc, $ModulesSrc, $InstallSrc, $AssetsSrc)) {
     if (Test-Path $dir) {
         if ($TraceMode) { Write-Host "[OK] Found: $dir" }
     } else {
@@ -244,7 +246,7 @@ Write-Host "[OK] Source layout verified"
 
 # --- Create runtime deployment directories ---
 Write-Host "--- Creating runtime directories ---"
-foreach ($dir in @($RuntimeBase, $RuntimeDir, $SourceDst, $ModulesDst, $InstallDst)) {
+foreach ($dir in @($RuntimeBase, $RuntimeDir, $SourceDst, $ModulesDst, $InstallDst, $AssetsDst)) {
     if (-not (Test-Path $dir)) {
         try {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -292,6 +294,18 @@ try {
 }
 catch {
     Write-Host "[X] Failed deploying Install scripts: $($_.Exception.Message)"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+# --- Deploy Assets ---
+Write-Host "--- Deploying Assets ---"
+try {
+    Copy-Item -Path "$AssetsSrc\*" -Destination $AssetsDst -Recurse -Force
+    Write-Host "[OK] Assets deployed -> $AssetsDst"
+}
+catch {
+    Write-Host "[X] Failed deploying Assets: $($_.Exception.Message)"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
@@ -365,6 +379,7 @@ try {
         cmdRoot           = $CmdRoot
         runtimeBase       = $RuntimeBase
         deployedRuntimeRoot = $RuntimeDir
+        deployedAssetsRoot = $AssetsDst
         setupScriptPath   = $SetupDeployed
         installerScriptPath = $PSCommandPath
     })

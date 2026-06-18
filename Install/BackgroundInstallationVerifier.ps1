@@ -61,6 +61,9 @@ Write-Host "=== BackgroundModifier Installation Verifier (v$ScriptVersion) ==="
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 $DeployedRoot = Split-Path $PSScriptRoot -Parent
+$SeedAssetsRoot = Join-Path $DeployedRoot "assets"
+$SeedStateFile = Join-Path $SeedAssetsRoot "state.json"
+$RuntimeStateFile = "C:\BackgroundMotives\assets\state.json"
 $OrchestratorScript = Join-Path $DeployedRoot "Source\BackgroundModifier.ps1"
 $RendererScript = Join-Path $DeployedRoot "Source\BackgroundRenderer.ps1"
 $SetterScript = Join-Path $DeployedRoot "Source\BackgroundSetter.ps1"
@@ -71,14 +74,17 @@ $RequiredDirectories = @(
     "C:\BackgroundMotives",
     "C:\BackgroundMotives\assets",
     "C:\BackgroundMotives\logs",
-    (Join-Path $DeployedRoot "Modules")
+    (Join-Path $DeployedRoot "Modules"),
+    $SeedAssetsRoot
 )
 
 $RequiredFiles = @(
     $OrchestratorScript,
     $RendererScript,
     $SetterScript,
-    $RenderToolsModule
+    $RenderToolsModule,
+    $SeedStateFile,
+    $RuntimeStateFile
 )
 
 Write-Host "--- Directory check ---"

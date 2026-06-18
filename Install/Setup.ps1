@@ -56,10 +56,12 @@ $LogRoot         = "C:\BackgroundMotives\logs"
 $DeployedRoot    = Split-Path $PSScriptRoot -Parent
 $SourceRoot      = Join-Path $DeployedRoot "Source"
 $ModulesRoot     = Join-Path $DeployedRoot "Modules"
+$SeedAssetsRoot  = Join-Path $DeployedRoot "assets"
 $OrchestratorScript = Join-Path $SourceRoot "BackgroundModifier.ps1"
 $RendererScript  = Join-Path $SourceRoot "BackgroundRenderer.ps1"
 $SetterScript    = Join-Path $SourceRoot "BackgroundSetter.ps1"
 $VerifierScript  = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"
+$RuntimeStateFile = Join-Path $AssetsRoot "state.json"
 
 $TaskNameStartup  = "BackgroundModifier-Startup"
 $TaskNameRenderer = "BackgroundModifier-Renderer"
@@ -213,7 +215,7 @@ Write-Host "[OK] Running as Administrator"
 # --- Source script checks ---
 Write-Host "--- Source script check ---"
 $missingSource = @()
-foreach ($s in @($OrchestratorScript, $RendererScript, $SetterScript, $VerifierScript, $ModulesRoot)) {
+foreach ($s in @($OrchestratorScript, $RendererScript, $SetterScript, $VerifierScript, $ModulesRoot, $SeedAssetsRoot)) {
     if (Test-Path $s) {
         if ($TraceMode) { Write-Host "[OK] Found: $s" }
     } else {
@@ -269,6 +271,58 @@ function Write-MutationLog {
     Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
 }
 
+function Initialize-SeedAssets {
+    param(
+        [string]$SeedRoot,
+        [string]$RuntimeAssetsRoot,
+        [string]$RuntimeStateFilePath
+    )
+
+    Write-Host "--- Runtime asset initialization from deployed seed ---"
+
+    if (-not (Test-Path $SeedRoot)) {
+        Write-Host "[X] Seed assets folder missing: $SeedRoot"
+        return $false
+    }
+
+    try {
+        $resolvedSeedRoot = (Resolve-Path $SeedRoot).Path
+        $seedFiles = Get-ChildItem -Path $SeedRoot -File -Recurse -ErrorAction Stop
+
+        foreach ($seedFile in $seedFiles) {
+            $relativePath = $seedFile.FullName.Substring($resolvedSeedRoot.Length).TrimStart('\\')
+            $targetPath = Join-Path $RuntimeAssetsRoot $relativePath
+            $targetParent = Split-Path $targetPath -Parent
+
+            if (-not (Test-Path $targetParent)) {
+                New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
+                Write-MutationLog -Operation "NewDirectory" -Path $targetParent -Target ""
+            }
+
+            if (Test-Path $targetPath) {
+                Write-Host "[OK] Preserving existing runtime asset: $targetPath"
+                continue
+            }
+
+            Copy-Item -Path $seedFile.FullName -Destination $targetPath -Force
+            Write-MutationLog -Operation "CopyItem" -Path $seedFile.FullName -Target $targetPath
+            Write-Host "[OK] Seeded runtime asset: $targetPath"
+        }
+
+        if (-not (Test-Path $RuntimeStateFilePath)) {
+            Set-Content -Path $RuntimeStateFilePath -Value "{}" -Encoding UTF8 -Force
+            Write-MutationLog -Operation "SetContent" -Path $RuntimeStateFilePath -Target ""
+            Write-Host "[OK] Initialized fallback state file: $RuntimeStateFilePath"
+        }
+
+        return $true
+    }
+    catch {
+        Write-Host "[X] Runtime asset initialization failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
 # --- Runtime directory creation ---
 Write-Host "--- Directory setup ---"
 foreach ($dir in @($RuntimeRoot, $AssetsRoot, $LogRoot)) {
@@ -286,6 +340,11 @@ foreach ($dir in @($RuntimeRoot, $AssetsRoot, $LogRoot)) {
             exit 1
         }
     }
+}
+
+if (-not (Initialize-SeedAssets -SeedRoot $SeedAssetsRoot -RuntimeAssetsRoot $AssetsRoot -RuntimeStateFilePath $RuntimeStateFile)) {
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
 }
 
 # --- Scheduled tasks ---
