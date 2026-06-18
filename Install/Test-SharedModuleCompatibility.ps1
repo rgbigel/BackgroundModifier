@@ -4,7 +4,10 @@
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [string]$MinimumRuntimeContextVersion = "1.0.0",
+    [string]$MinimumStateToolsVersion = "1.0.0"
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -22,6 +25,20 @@ foreach ($modulePath in @($runtimeContextModule, $stateToolsModule)) {
 
 Import-Module $runtimeContextModule -Force
 Import-Module $stateToolsModule -Force
+
+function Test-MinVersion {
+    param(
+        [string]$Actual,
+        [string]$Minimum
+    )
+
+    try {
+        return ([version]$Actual -ge [version]$Minimum)
+    }
+    catch {
+        return $false
+    }
+}
 
 $requiredRuntimeContextFunctions = @(
     "New-RepoRuntimeContext",
@@ -65,9 +82,22 @@ if (-not (Test-RepoRuntimeContext -Context $context)) {
     throw "Runtime context validation failed."
 }
 
-$contract = Get-StateToolsContract
-if ($contract.ContractVersion -ne "1.0.0") {
-    throw "Unexpected StateTools contract version: $($contract.ContractVersion)"
+$runtimeContextContract = Get-RepoRuntimeContextContract
+if (-not $runtimeContextContract) {
+    throw "RuntimeContext contract metadata is unavailable."
+}
+
+if (-not (Test-MinVersion -Actual ([string]$runtimeContextContract.ContractVersion) -Minimum $MinimumRuntimeContextVersion)) {
+    throw "RuntimeContext contract version $($runtimeContextContract.ContractVersion) is below required minimum $MinimumRuntimeContextVersion"
+}
+
+$stateToolsContract = Get-StateToolsContract
+if (-not $stateToolsContract) {
+    throw "StateTools contract metadata is unavailable."
+}
+
+if (-not (Test-MinVersion -Actual ([string]$stateToolsContract.ContractVersion) -Minimum $MinimumStateToolsVersion)) {
+    throw "StateTools contract version $($stateToolsContract.ContractVersion) is below required minimum $MinimumStateToolsVersion"
 }
 
 Write-Host "[OK] Shared module compatibility check passed."

@@ -154,6 +154,23 @@ Inventory tracks deployed runtime and command exposure mappings. Minimum fields:
 8. enabled
 9. lastUpdatedUtc
 
+Contract and install/setup support fields:
+
+1. inventorySchemaVersion
+2. contracts.runtimeContext.contractName
+3. contracts.runtimeContext.contractVersion
+4. contracts.stateTools.contractName
+5. contracts.stateTools.contractVersion
+6. installSupport.installStatus
+7. installSupport.setupStatus
+8. installSupport.setupScriptPath
+9. installSupport.verifierScriptPath
+10. installSupport.compatibilityScriptPath
+11. setupSupport.setupStatus
+12. setupSupport.verifierExitCode
+13. setupSupport.taskNames
+14. setupSupport.stateFilePath
+
 ---
 
 ## 7. Sequencing and Guards
@@ -176,8 +193,10 @@ Contract sources:
 Compatibility enforcement:
 
 1. Install/Test-SharedModuleCompatibility.ps1 validates required exported function names.
-2. Contract-breaking changes require a major version bump and consumer validation.
-3. Contract-compatible additive changes require a minor version bump.
+2. Installer and Setup invoke the compatibility script as a hard gate before proceeding.
+3. Minimum contract versions are enforced (module contract version must be >= required minimum).
+4. Contract-breaking changes require a major version bump and consumer validation.
+5. Contract-compatible additive changes require a minor version bump.
 
 ---
 

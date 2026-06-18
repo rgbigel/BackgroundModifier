@@ -62,6 +62,108 @@ $VerifierScript  = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"
 
 $TaskNameRenderer = "BackgroundModifier-Renderer"
 $TaskNameSetter   = "BackgroundModifier-Setter"
+$ProjectName      = Split-Path $DeployedRoot -Leaf
+$BToolsRoot       = "D:\OneDrive\BTools"
+$InventoryRoot    = Join-Path $BToolsRoot "Inventory"
+$InventoryFile    = Join-Path $InventoryRoot "$ProjectName.json"
+$MinimumRuntimeContextContractVersion = "1.0.0"
+$MinimumStateToolsContractVersion = "1.0.0"
+$CompatibilityScript = Join-Path $PSScriptRoot "Test-SharedModuleCompatibility.ps1"
+
+function Get-ContractSnapshot {
+    param(
+        [string]$ModulePath
+    )
+
+    $snapshot = [pscustomobject]@{
+        runtimeContext = [pscustomobject]@{ contractName = "RepoRuntimeContext"; contractVersion = "(unavailable)" }
+        stateTools     = [pscustomobject]@{ contractName = "StateTools"; contractVersion = "(unavailable)" }
+    }
+
+    try {
+        $runtimeContextModule = Join-Path $ModulePath "RuntimeContext.psm1"
+        $stateToolsModule = Join-Path $ModulePath "StateTools.psm1"
+
+        if (Test-Path $runtimeContextModule) {
+            Import-Module $runtimeContextModule -Force -DisableNameChecking
+            $ctxContract = Get-RepoRuntimeContextContract
+            if ($ctxContract) {
+                $snapshot.runtimeContext = [pscustomobject]@{
+                    contractName    = [string]$ctxContract.ContractName
+                    contractVersion = [string]$ctxContract.ContractVersion
+                }
+            }
+        }
+
+        if (Test-Path $stateToolsModule) {
+            Import-Module $stateToolsModule -Force -DisableNameChecking
+            $stateContract = Get-StateToolsContract
+            if ($stateContract) {
+                $snapshot.stateTools = [pscustomobject]@{
+                    contractName    = [string]$stateContract.ContractName
+                    contractVersion = [string]$stateContract.ContractVersion
+                }
+            }
+        }
+    }
+    catch {}
+
+    return $snapshot
+}
+
+function Read-InventoryRecord {
+    param(
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return [pscustomobject]@{}
+    }
+
+    try {
+        $raw = Get-Content -Path $Path -Raw
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return [pscustomobject]@{}
+        }
+
+        return ($raw | ConvertFrom-Json -ErrorAction Stop)
+    }
+    catch {
+        return [pscustomobject]@{}
+    }
+}
+
+function Write-InventoryRecord {
+    param(
+        [string]$Path,
+        [object]$Record
+    )
+
+    $parent = Split-Path $Path -Parent
+    if (-not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    $json = $Record | ConvertTo-Json -Depth 20
+    Set-Content -Path $Path -Value $json -Encoding UTF8 -Force
+}
+
+function Set-ObjectProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [object]$Value
+    )
+
+    if ($Object.PSObject.Properties.Name -contains $Name) {
+        $Object.$Name = $Value
+    }
+    else {
+        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+    }
+}
 
 # --- Transcript ---
 if ($TraceMode) {
@@ -123,6 +225,31 @@ if ($missingSource.Count -gt 0) {
     exit 1
 }
 Write-Host "[OK] Source scripts and Modules present"
+
+# --- Compatibility gate ---
+Write-Host "--- Verifying shared module contracts ---"
+if (-not (Test-Path $CompatibilityScript)) {
+    Write-Host "[X] Compatibility script missing: $CompatibilityScript"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+try {
+    $compatParams = @{
+        MinimumRuntimeContextVersion = $MinimumRuntimeContextContractVersion
+        MinimumStateToolsVersion     = $MinimumStateToolsContractVersion
+    }
+    & $CompatibilityScript @compatParams
+    if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) {
+        throw "Compatibility gate failed with exit code $LASTEXITCODE"
+    }
+    Write-Host "[OK] Shared module contracts satisfy minimum versions"
+}
+catch {
+    Write-Host "[X] Compatibility gate failed: $($_.Exception.Message)"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
 
 # Import logging after module location has been validated.
 Import-Module (Join-Path $ModulesRoot "Logging.psm1") -Force
@@ -230,6 +357,39 @@ try {
 catch {
     Write-Host "[X] Verifier invocation failed: $($_.Exception.Message)"
     $verifierExit = 1
+}
+
+# --- Inventory update (setup phase) ---
+Write-Host "--- Updating BTools inventory (setup phase) ---"
+try {
+    $contracts = Get-ContractSnapshot -ModulePath $ModulesRoot
+    $record = Read-InventoryRecord -Path $InventoryFile
+
+    if (-not ($record.PSObject.Properties.Name -contains "inventorySchemaVersion")) {
+        $record | Add-Member -NotePropertyName "inventorySchemaVersion" -NotePropertyValue "1.0.0"
+    }
+
+    Set-ObjectProperty -Object $record -Name "repositoryName" -Value $ProjectName
+    Set-ObjectProperty -Object $record -Name "solutionVersion" -Value $ScriptVersion
+    Set-ObjectProperty -Object $record -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
+    Set-ObjectProperty -Object $record -Name "contracts" -Value $contracts
+
+    Set-ObjectProperty -Object $record -Name "setupSupport" -Value ([pscustomobject]@{
+        setupStatus      = (if ($verifierExit -eq 0) { "completed" } else { "completed-with-warnings" })
+        setupUpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
+        verifierExitCode = $verifierExit
+        taskNames        = @($TaskNameRenderer, $TaskNameSetter)
+        runtimeRoot      = $RuntimeRoot
+        assetsRoot       = $AssetsRoot
+        logRoot          = $LogRoot
+        stateFilePath    = (Join-Path $AssetsRoot "state.json")
+    })
+
+    Write-InventoryRecord -Path $InventoryFile -Record $record
+    Write-Host "[OK] Inventory updated: $InventoryFile"
+}
+catch {
+    Write-Host "[WARN] Failed to update inventory ${InventoryFile}: $($_.Exception.Message)"
 }
 
 # --- Summary ---

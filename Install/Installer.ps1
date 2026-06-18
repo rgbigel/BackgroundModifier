@@ -72,6 +72,129 @@ $InstallDst = Join-Path $RuntimeDir "Install"
 
 $SetupDeployed = Join-Path $InstallDst "Setup.ps1"
 $LogRoot       = "C:\BackgroundMotives\logs"
+$BToolsRoot    = "D:\OneDrive\BTools"
+$InventoryRoot = Join-Path $BToolsRoot "Inventory"
+$InventoryFile = Join-Path $InventoryRoot "$ProjectName.json"
+$MinimumRuntimeContextContractVersion = "1.0.0"
+$MinimumStateToolsContractVersion = "1.0.0"
+
+function Get-CurrentSourceCommit {
+    param(
+        [string]$RepoPath
+    )
+
+    try {
+        $git = Get-Command git -ErrorAction SilentlyContinue
+        if (-not $git) {
+            return "(git-unavailable)"
+        }
+
+        $sha = (& $git.Source -C $RepoPath rev-parse --short HEAD 2>$null | Select-Object -First 1)
+        if ([string]::IsNullOrWhiteSpace($sha)) {
+            return "(unknown)"
+        }
+
+        return $sha.Trim()
+    }
+    catch {
+        return "(unknown)"
+    }
+}
+
+function Get-ContractSnapshot {
+    param(
+        [string]$ModulePath
+    )
+
+    $snapshot = [pscustomobject]@{
+        runtimeContext = [pscustomobject]@{ contractName = "RepoRuntimeContext"; contractVersion = "(unavailable)" }
+        stateTools     = [pscustomobject]@{ contractName = "StateTools"; contractVersion = "(unavailable)" }
+    }
+
+    try {
+        $runtimeContextModule = Join-Path $ModulePath "RuntimeContext.psm1"
+        $stateToolsModule = Join-Path $ModulePath "StateTools.psm1"
+
+        if (Test-Path $runtimeContextModule) {
+            Import-Module $runtimeContextModule -Force -DisableNameChecking
+            $ctxContract = Get-RepoRuntimeContextContract
+            if ($ctxContract) {
+                $snapshot.runtimeContext = [pscustomobject]@{
+                    contractName    = [string]$ctxContract.ContractName
+                    contractVersion = [string]$ctxContract.ContractVersion
+                }
+            }
+        }
+
+        if (Test-Path $stateToolsModule) {
+            Import-Module $stateToolsModule -Force -DisableNameChecking
+            $stateContract = Get-StateToolsContract
+            if ($stateContract) {
+                $snapshot.stateTools = [pscustomobject]@{
+                    contractName    = [string]$stateContract.ContractName
+                    contractVersion = [string]$stateContract.ContractVersion
+                }
+            }
+        }
+    }
+    catch {}
+
+    return $snapshot
+}
+
+function Read-InventoryRecord {
+    param(
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return [pscustomobject]@{}
+    }
+
+    try {
+        $raw = Get-Content -Path $Path -Raw
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return [pscustomobject]@{}
+        }
+
+        return ($raw | ConvertFrom-Json -ErrorAction Stop)
+    }
+    catch {
+        return [pscustomobject]@{}
+    }
+}
+
+function Write-InventoryRecord {
+    param(
+        [string]$Path,
+        [object]$Record
+    )
+
+    $parent = Split-Path $Path -Parent
+    if (-not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    $json = $Record | ConvertTo-Json -Depth 20
+    Set-Content -Path $Path -Value $json -Encoding UTF8 -Force
+}
+
+function Set-ObjectProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [object]$Value
+    )
+
+    if ($Object.PSObject.Properties.Name -contains $Name) {
+        $Object.$Name = $Value
+    }
+    else {
+        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+    }
+}
 
 # --- Bootstrap transcript before LogRoot is guaranteed ---
 if ($TraceMode) {
@@ -173,6 +296,32 @@ catch {
     exit 1
 }
 
+# --- Compatibility gate ---
+$CompatibilityScript = Join-Path $InstallDst "Test-SharedModuleCompatibility.ps1"
+Write-Host "--- Verifying shared module contracts ---"
+if (-not (Test-Path $CompatibilityScript)) {
+    Write-Host "[X] Compatibility script missing: $CompatibilityScript"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+try {
+    $compatParams = @{
+        MinimumRuntimeContextVersion = $MinimumRuntimeContextContractVersion
+        MinimumStateToolsVersion     = $MinimumStateToolsContractVersion
+    }
+    & $CompatibilityScript @compatParams
+    if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) {
+        throw "Compatibility gate failed with exit code $LASTEXITCODE"
+    }
+    Write-Host "[OK] Shared module contracts satisfy minimum versions"
+}
+catch {
+    Write-Host "[X] Compatibility gate failed: $($_.Exception.Message)"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
 # --- Stop bootstrap transcript before Setup.ps1 starts its own ---
 if ($TraceMode) {
     Stop-Transcript | Out-Null
@@ -194,6 +343,46 @@ Write-Host "--- Handing off to Setup.ps1 ---"
 if (-not (Test-Path $SetupDeployed)) {
     Write-Host "[X] Deployed Setup.ps1 not found -> $SetupDeployed"
     exit 1
+}
+
+# --- Inventory update (install phase) ---
+Write-Host "--- Updating BTools inventory (install phase) ---"
+try {
+    $contracts = Get-ContractSnapshot -ModulePath $ModulesDst
+    $record = Read-InventoryRecord -Path $InventoryFile
+
+    if (-not ($record.PSObject.Properties.Name -contains "inventorySchemaVersion")) {
+        $record | Add-Member -NotePropertyName "inventorySchemaVersion" -NotePropertyValue "1.0.0"
+    }
+
+    Set-ObjectProperty -Object $record -Name "repositoryName" -Value $ProjectName
+    Set-ObjectProperty -Object $record -Name "solutionVersion" -Value $ScriptVersion
+    Set-ObjectProperty -Object $record -Name "sourceCommit" -Value (Get-CurrentSourceCommit -RepoPath $RepoRoot)
+    Set-ObjectProperty -Object $record -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
+    Set-ObjectProperty -Object $record -Name "contracts" -Value $contracts
+
+    Set-ObjectProperty -Object $record -Name "deployment" -Value ([pscustomobject]@{
+        cmdRoot           = $CmdRoot
+        runtimeBase       = $RuntimeBase
+        deployedRuntimeRoot = $RuntimeDir
+        setupScriptPath   = $SetupDeployed
+        installerScriptPath = $PSCommandPath
+    })
+
+    Set-ObjectProperty -Object $record -Name "installSupport" -Value ([pscustomobject]@{
+        installStatus = "deployed"
+        installUpdatedUtc = (Get-Date).ToUniversalTime().ToString("o")
+        setupStatus = "pending"
+        setupScriptPath = $SetupDeployed
+        verifierScriptPath = (Join-Path $InstallDst "BackgroundInstallationVerifier.ps1")
+        compatibilityScriptPath = (Join-Path $InstallDst "Test-SharedModuleCompatibility.ps1")
+    })
+
+    Write-InventoryRecord -Path $InventoryFile -Record $record
+    Write-Host "[OK] Inventory updated: $InventoryFile"
+}
+catch {
+    Write-Host "[WARN] Failed to update inventory ${InventoryFile}: $($_.Exception.Message)"
 }
 
 $setupParams = @{}

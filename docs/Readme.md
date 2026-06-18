@@ -68,4 +68,10 @@ All active scripts, modules, and active documentation pages use the same visible
 ## Shared Module Contracts
 1. Runtime context and state helper interfaces are documented under `docs/contracts`.
 2. Compatibility can be pre-checked with `Install/Test-SharedModuleCompatibility.ps1`.
+3. Installer and Setup enforce minimum required contract versions before continuing.
+
+## Inventory As Control Surface
+1. Installer writes `D:\OneDrive\BTools\Inventory\<RepositoryName>.json` during deploy handoff.
+2. Setup updates the same record after verifier completion.
+3. Inventory includes module contract versions and install/setup support metadata.
 
