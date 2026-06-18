@@ -28,6 +28,9 @@ param(
     [switch]$TraceMode,
     [Alias("h","?")]
     [switch]$HelpMode,
+    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$StateFilePath,
+    [string]$LogRoot,
     [switch]$CaptureDesktopAsBase,
     [switch]$PromoteDesktopBaseToLogonBase,
     [switch]$RenderDesktop,
@@ -42,9 +45,6 @@ if ($HelpMode) {
 
 $ScriptVersion = "8.0.0"
 
-$LogRoot = "C:\BackgroundMotives\logs"
-$StateFile = "C:\BackgroundMotives\assets\state.json"
-
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
 $WarningPreference = "SilentlyContinue"
@@ -57,10 +57,17 @@ Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ImageTools.psm1") -Force
 
 $WarningPreference = $prev
+
+$RuntimeContext = New-RepoRuntimeContext -RepoName "BackgroundModifier" -RuntimeRoot $RuntimeRoot -LogRoot $LogRoot -StateFilePath $StateFilePath
+$LogRoot = $RuntimeContext.LogRoot
+$StateFile = $RuntimeContext.StateFilePath
+$AssetsRoot = $RuntimeContext.AssetsRoot
 
 if ($TraceMode) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
@@ -386,27 +393,7 @@ function Get-RuntimeState {
         [string]$StateFilePath
     )
 
-    if (-not (Test-Path $StateFilePath)) {
-        return [pscustomobject]@{}
-    }
-
-    try {
-        $raw = Get-Content -Path $StateFilePath -Raw
-        if ([string]::IsNullOrWhiteSpace($raw)) {
-            return [pscustomobject]@{}
-        }
-
-        $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
-        if ($null -eq $parsed) {
-            return [pscustomobject]@{}
-        }
-
-        return $parsed
-    }
-    catch {
-        Write-Host "[WARN] State file is unreadable and will be re-initialized when updated: $StateFilePath"
-        return [pscustomobject]@{}
-    }
+    return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
 }
 
 function Save-RuntimeState {
@@ -415,21 +402,10 @@ function Save-RuntimeState {
         [object]$StateObject
     )
 
-    try {
-        $stateDir = Split-Path $StateFilePath -Parent
-        if (-not (Test-Path $stateDir)) {
-            New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
-        }
-
-        $json = $StateObject | ConvertTo-Json -Depth 20
-        Set-Content -Path $StateFilePath -Value $json -Encoding UTF8 -Force
-        Write-MutationLog -Operation "SetContent" -Path $StateFilePath -Target ""
-        return $true
-    }
-    catch {
-        Write-Host "[WARN] Failed to persist runtime state to ${StateFilePath}: $($_.Exception.Message)"
-        return $false
-    }
+    return (Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath -StateObject $StateObject -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
+    })
 }
 
 function Update-Phase1State {
@@ -440,22 +416,10 @@ function Update-Phase1State {
         [string]$BlockedReason = $null
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-
-    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
-        Set-ObjectProperty -Object $state -Name "phase" -Value ([pscustomobject]@{})
+    Update-PhaseState -Context $RuntimeContext -StateFilePath $StateFilePath -PhaseKey "phase1" -Status $Status -CurrentPhase $CurrentPhase -BlockedReason $BlockedReason -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
     }
-
-    Set-ObjectProperty -Object $state.phase -Name "currentPhase" -Value $CurrentPhase
-    Set-ObjectProperty -Object $state.phase -Name "phase1Status" -Value $Status
-    Set-ObjectProperty -Object $state.phase -Name "blockedReason" -Value $BlockedReason
-
-    if (-not ($state.PSObject.Properties.Name -contains "meta") -or $null -eq $state.meta) {
-        Set-ObjectProperty -Object $state -Name "meta" -Value ([pscustomobject]@{})
-    }
-    Set-ObjectProperty -Object $state.meta -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
-
-    [void](Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
 }
 
 if (-not (Test-IsWindows11)) {
@@ -466,12 +430,12 @@ if (-not (Test-IsWindows11)) {
 }
 
 # --- Correct asset names (JPG) ---
-$DesktopImage = "C:\BackgroundMotives\assets\Desktop.jpg"
-$DesktopBase = "C:\BackgroundMotives\assets\DesktopBase.jpg"
-$DesktopRendered = "C:\BackgroundMotives\assets\desktop_rendered.jpg"
-$LogonImage = "C:\BackgroundMotives\assets\Logon.jpg"
-$LogonBase   = "C:\BackgroundMotives\assets\LogonBase.jpg"
-$LogonRendered = "C:\BackgroundMotives\assets\logon_rendered.jpg"
+$DesktopImage = Join-Path $AssetsRoot "Desktop.jpg"
+$DesktopBase = Join-Path $AssetsRoot "DesktopBase.jpg"
+$DesktopRendered = Join-Path $AssetsRoot "desktop_rendered.jpg"
+$LogonImage = Join-Path $AssetsRoot "Logon.jpg"
+$LogonBase   = Join-Path $AssetsRoot "LogonBase.jpg"
+$LogonRendered = Join-Path $AssetsRoot "logon_rendered.jpg"
 
 Update-Phase1State -StateFilePath $StateFile -Status "running" -CurrentPhase "Phase1" -BlockedReason $null
 

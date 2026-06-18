@@ -7,21 +7,16 @@
 - Provide an end-user architecture view of the solution.
 - Explain the solution as an ordered runtime flow.
 - Clarify phase responsibilities and sequencing rules.
-
-## Scope Note
-
-- Installer/setup execution requires PowerShell 7 (pwsh).
-
----
-
-## 9. Cross-Document Consistency Rules
+- Document Consistency Rules
 
 1. Requirements.md: functional outcomes and contracts.
 2. Architecture.md: user-visible runtime behavior and phase model.
 3. Implementation.md: state contract, orchestration, and technical wiring.
 4. ModuleDocumentation.md: module-level boundaries.
 
----
+## Scope Note
+
+- Installer/setup execution requires PowerShell 7 (pwsh).
 
 ## 1. End-User Time Flow
 
@@ -73,6 +68,12 @@ This state contains:
 
 No separate pending marker file is required in the target architecture.
 
+State path ownership rule:
+
+1. Each repository builds its own runtime context object.
+2. Context carries the repository-private runtime roots, log root, and state.json path.
+3. Shared modules consume only the provided context and do not hardcode cross-repository state paths.
+
 ---
 
 ## 4. Deployment and Exposure Planes
@@ -116,6 +117,12 @@ The operational orchestrator (BackgroundModifier) controls execution by:
 5. Handling interactive lifecycle operations (enable, disable, cleanup, uninstall) from the user exposure layer.
 
 The orchestrator is the sequence authority for runtime execution.
+
+Shared-module interface governance:
+
+1. Runtime context and state helper interfaces are versioned contracts.
+2. Contract docs are maintained under docs/contracts.
+3. Module updates require compatibility pre-check before rollout to consuming repositories.
 
 ---
 

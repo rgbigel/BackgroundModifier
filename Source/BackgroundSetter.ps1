@@ -28,6 +28,9 @@ param(
     [switch]$TraceMode,
     [Alias("h","?")]
     [switch]$HelpMode,
+    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$StateFilePath,
+    [string]$LogRoot,
     [switch]$ApplyDesktop,
     [switch]$ApplyLockScreen,
     [switch]$CaptureDesktopAsBase,
@@ -40,9 +43,6 @@ if ($HelpMode) {
     exit 0
 }
 
-# --- Absolute log root ---
-$LogRoot = "C:\BackgroundMotives\logs"
-
 # --- Import modules ---
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 Import-Module (Join-Path $ModuleRoot "Constants.psm1") -Force
@@ -53,6 +53,13 @@ Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
+
+$RuntimeContext = New-RepoRuntimeContext -RepoName "BackgroundModifier" -RuntimeRoot $RuntimeRoot -LogRoot $LogRoot -StateFilePath $StateFilePath
+$LogRoot = $RuntimeContext.LogRoot
+$StateFile = $RuntimeContext.StateFilePath
+$AssetsRoot = $RuntimeContext.AssetsRoot
 
 # --- Transcript handling ---
 if ($TraceMode) {
@@ -336,27 +343,7 @@ function Get-RuntimeState {
         [string]$StateFilePath
     )
 
-    if (-not (Test-Path $StateFilePath)) {
-        return [pscustomobject]@{}
-    }
-
-    try {
-        $raw = Get-Content -Path $StateFilePath -Raw
-        if ([string]::IsNullOrWhiteSpace($raw)) {
-            return [pscustomobject]@{}
-        }
-
-        $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
-        if ($null -eq $parsed) {
-            return [pscustomobject]@{}
-        }
-
-        return $parsed
-    }
-    catch {
-        Write-Host "[WARN] State file is unreadable and will be re-initialized when updated: $StateFilePath"
-        return [pscustomobject]@{}
-    }
+    return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
 }
 
 function Save-RuntimeState {
@@ -365,21 +352,10 @@ function Save-RuntimeState {
         [object]$StateObject
     )
 
-    try {
-        $stateDir = Split-Path $StateFilePath -Parent
-        if (-not (Test-Path $stateDir)) {
-            New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
-        }
-
-        $json = $StateObject | ConvertTo-Json -Depth 20
-        Set-Content -Path $StateFilePath -Value $json -Encoding UTF8 -Force
-        Write-MutationLog -Operation "SetContent" -Path $StateFilePath -Target ""
-        return $true
-    }
-    catch {
-        Write-Host "[WARN] Failed to persist runtime state to ${StateFilePath}: $($_.Exception.Message)"
-        return $false
-    }
+    return (Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath -StateObject $StateObject -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
+    })
 }
 
 function Get-PendingLogonSourceFromState {
@@ -387,35 +363,7 @@ function Get-PendingLogonSourceFromState {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-
-    if (-not ($state.PSObject.Properties.Name -contains "transient")) {
-        return $null
-    }
-
-    $transient = $state.transient
-    if ($null -eq $transient) {
-        return $null
-    }
-
-    if (-not ($transient.PSObject.Properties.Name -contains "pendingLogon")) {
-        return $null
-    }
-
-    $pending = $transient.pendingLogon
-    if ($null -eq $pending) {
-        return $null
-    }
-
-    if ($pending -is [string]) {
-        return $pending
-    }
-
-    if ($pending.PSObject.Properties.Name -contains "sourcePath") {
-        return [string]$pending.sourcePath
-    }
-
-    return $null
+    return Get-PendingLogonSource -Context $RuntimeContext -StateFilePath $StateFilePath
 }
 
 function Set-PendingLogonSourceInState {
@@ -425,22 +373,10 @@ function Set-PendingLogonSourceInState {
         [string]$Reason = "LockScreenApplyRequiresElevation"
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-
-    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
-        Set-ObjectProperty -Object $state -Name "transient" -Value ([pscustomobject]@{})
-    }
-
-    $pending = [pscustomobject]@{
-        sourcePath         = $SourcePath
-        requestedAtUtc     = (Get-Date).ToUniversalTime().ToString("o")
-        reason             = $Reason
-        requiresElevation  = $true
-        status             = "pending"
-    }
-
-    Set-ObjectProperty -Object $state.transient -Name "pendingLogon" -Value $pending
-    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+    return (Set-PendingLogonSource -Context $RuntimeContext -StateFilePath $StateFilePath -SourcePath $SourcePath -Reason $Reason -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
+    })
 }
 
 function Clear-PendingLogonSourceInState {
@@ -448,13 +384,10 @@ function Clear-PendingLogonSourceInState {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
-        return $true
-    }
-
-    Set-ObjectProperty -Object $state.transient -Name "pendingLogon" -Value $null
-    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+    return (Clear-PendingLogonSource -Context $RuntimeContext -StateFilePath $StateFilePath -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
+    })
 }
 
 function Mark-InteractiveElevationRelaunchRequested {
@@ -462,22 +395,10 @@ function Mark-InteractiveElevationRelaunchRequested {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
-        Set-ObjectProperty -Object $state -Name "transient" -Value ([pscustomobject]@{})
-    }
-
-    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchRequestedAtUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
-    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchPid" -Value $PID
-
-    if ($state.transient.PSObject.Properties.Name -contains "pendingLogon" -and $null -ne $state.transient.pendingLogon) {
-        $pending = $state.transient.pendingLogon
-        if ($pending -isnot [string]) {
-            Set-ObjectProperty -Object $pending -Name "status" -Value "relaunch_requested"
-        }
-    }
-
-    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+    return (Mark-InteractiveElevationRelaunch -Context $RuntimeContext -StateFilePath $StateFilePath -ProcessId $PID -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
+    })
 }
 
 function Clear-InteractiveElevationRelaunchRequested {
@@ -485,14 +406,10 @@ function Clear-InteractiveElevationRelaunchRequested {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
-        return $true
-    }
-
-    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchRequestedAtUtc" -Value $null
-    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchPid" -Value $null
-    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+    return (Clear-InteractiveElevationRelaunch -Context $RuntimeContext -StateFilePath $StateFilePath -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
+    })
 }
 
 function Test-InteractiveElevationRelaunchRecentlyRequested {
@@ -501,28 +418,7 @@ function Test-InteractiveElevationRelaunchRecentlyRequested {
         [int]$WindowSeconds = 20
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
-        return $false
-    }
-
-    $transient = $state.transient
-    if (-not ($transient.PSObject.Properties.Name -contains "interactiveElevationRelaunchRequestedAtUtc")) {
-        return $false
-    }
-
-    $stampRaw = [string]$transient.interactiveElevationRelaunchRequestedAtUtc
-    if ([string]::IsNullOrWhiteSpace($stampRaw)) {
-        return $false
-    }
-
-    [datetime]$stamp = [datetime]::MinValue
-    if (-not [datetime]::TryParse($stampRaw, [ref]$stamp)) {
-        return $false
-    }
-
-    $age = ((Get-Date).ToUniversalTime() - $stamp.ToUniversalTime()).TotalSeconds
-    return ($age -ge 0 -and $age -lt $WindowSeconds)
+    return (StateTools\Test-InteractiveElevationRelaunchRecentlyRequested -Context $RuntimeContext -StateFilePath $StateFilePath -WindowSeconds $WindowSeconds)
 }
 
 function Update-Phase2State {
@@ -533,22 +429,10 @@ function Update-Phase2State {
         [string]$BlockedReason = $null
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-
-    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
-        Set-ObjectProperty -Object $state -Name "phase" -Value ([pscustomobject]@{})
+    Update-PhaseState -Context $RuntimeContext -StateFilePath $StateFilePath -PhaseKey "phase2" -Status $Status -CurrentPhase $CurrentPhase -BlockedReason $BlockedReason -OnPersist {
+        param($persistedPath)
+        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
     }
-
-    Set-ObjectProperty -Object $state.phase -Name "currentPhase" -Value $CurrentPhase
-    Set-ObjectProperty -Object $state.phase -Name "phase2Status" -Value $Status
-    Set-ObjectProperty -Object $state.phase -Name "blockedReason" -Value $BlockedReason
-
-    if (-not ($state.PSObject.Properties.Name -contains "meta") -or $null -eq $state.meta) {
-        Set-ObjectProperty -Object $state -Name "meta" -Value ([pscustomobject]@{})
-    }
-    Set-ObjectProperty -Object $state.meta -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
-
-    [void](Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
 }
 
 function Get-Phase1ReadinessFromState {
@@ -556,24 +440,7 @@ function Get-Phase1ReadinessFromState {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
-        return [pscustomobject]@{ Known = $false; IsReady = $true; Status = $null }
-    }
-
-    $phase = $state.phase
-    if (-not ($phase.PSObject.Properties.Name -contains "phase1Status")) {
-        return [pscustomobject]@{ Known = $false; IsReady = $true; Status = $null }
-    }
-
-    $status = [string]$phase.phase1Status
-    if ([string]::IsNullOrWhiteSpace($status)) {
-        return [pscustomobject]@{ Known = $false; IsReady = $true; Status = $null }
-    }
-
-    $readyStatuses = @("ready", "completed", "success", "ok")
-    $isReady = $readyStatuses -contains $status.ToLowerInvariant()
-    return [pscustomobject]@{ Known = $true; IsReady = $isReady; Status = $status }
+    return Get-PhaseReadiness -Context $RuntimeContext -StateFilePath $StateFilePath -PhaseKey "phase1" -UnknownIsReady $true
 }
 
 if (-not (Test-IsWindows11)) {
@@ -583,13 +450,13 @@ if (-not (Test-IsWindows11)) {
 }
 
 # --- Paths ---
-$DesktopImage    = "C:\BackgroundMotives\assets\Desktop.jpg"
-$DesktopBase     = "C:\BackgroundMotives\assets\DesktopBase.jpg"
-$DesktopRendered = "C:\BackgroundMotives\assets\desktop_rendered.jpg"
-$LogonImage      = "C:\BackgroundMotives\assets\Logon.jpg"
-$LogonBase       = "C:\BackgroundMotives\assets\LogonBase.jpg"
-$LogonRendered   = "C:\BackgroundMotives\assets\logon_rendered.jpg"
-$StateFile       = "C:\BackgroundMotives\assets\state.json"
+$DesktopImage    = Join-Path $AssetsRoot "Desktop.jpg"
+$DesktopBase     = Join-Path $AssetsRoot "DesktopBase.jpg"
+$DesktopRendered = Join-Path $AssetsRoot "desktop_rendered.jpg"
+$LogonImage      = Join-Path $AssetsRoot "Logon.jpg"
+$LogonBase       = Join-Path $AssetsRoot "LogonBase.jpg"
+$LogonRendered   = Join-Path $AssetsRoot "logon_rendered.jpg"
+$StateFile       = $RuntimeContext.StateFilePath
 
 $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
 

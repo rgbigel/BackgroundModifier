@@ -11,6 +11,9 @@ param(
     [switch]$TraceMode,
     [Alias("h","?")]
     [switch]$HelpMode,
+    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$StateFilePath,
+    [string]$LogRoot,
     [switch]$Phase1Only,
     [switch]$Phase2Only,
     [switch]$Interactive
@@ -25,49 +28,18 @@ if ($HelpMode) {
     exit 0
 }
 
-function Set-ObjectProperty {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Object,
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [object]$Value
-    )
+$ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
+Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
 
-    if ($Object.PSObject.Properties.Name -contains $Name) {
-        $Object.$Name = $Value
-    }
-    else {
-        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
-    }
-}
+$RuntimeContext = New-RepoRuntimeContext -RepoName "BackgroundModifier" -RuntimeRoot $RuntimeRoot -LogRoot $LogRoot -StateFilePath $StateFilePath
 
 function Get-RuntimeState {
     param(
         [string]$StateFilePath
     )
 
-    if (-not (Test-Path $StateFilePath)) {
-        return [pscustomobject]@{}
-    }
-
-    try {
-        $raw = Get-Content -Path $StateFilePath -Raw
-        if ([string]::IsNullOrWhiteSpace($raw)) {
-            return [pscustomobject]@{}
-        }
-
-        $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
-        if ($null -eq $parsed) {
-            return [pscustomobject]@{}
-        }
-
-        return $parsed
-    }
-    catch {
-        Write-Host "[WARN] State file unreadable: $StateFilePath"
-        return [pscustomobject]@{}
-    }
+    return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
 }
 
 function Save-RuntimeState {
@@ -76,20 +48,7 @@ function Save-RuntimeState {
         [object]$StateObject
     )
 
-    try {
-        $stateDir = Split-Path $StateFilePath -Parent
-        if (-not (Test-Path $stateDir)) {
-            New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
-        }
-
-        $json = $StateObject | ConvertTo-Json -Depth 20
-        Set-Content -Path $StateFilePath -Value $json -Encoding UTF8 -Force
-        return $true
-    }
-    catch {
-        Write-Host "[WARN] Failed writing state file ${StateFilePath}: $($_.Exception.Message)"
-        return $false
-    }
+    return (Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath -StateObject $StateObject)
 }
 
 function Set-OrchestratorBlockedReason {
@@ -100,16 +59,11 @@ function Set-OrchestratorBlockedReason {
 
     $state = Get-RuntimeState -StateFilePath $StateFilePath
     if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
-        Set-ObjectProperty -Object $state -Name "phase" -Value ([pscustomobject]@{})
+        Set-StateObjectProperty -Object $state -Name "phase" -Value ([pscustomobject]@{})
     }
 
-    Set-ObjectProperty -Object $state.phase -Name "currentPhase" -Value "Blocked"
-    Set-ObjectProperty -Object $state.phase -Name "blockedReason" -Value $Reason
-
-    if (-not ($state.PSObject.Properties.Name -contains "meta") -or $null -eq $state.meta) {
-        Set-ObjectProperty -Object $state -Name "meta" -Value ([pscustomobject]@{})
-    }
-    Set-ObjectProperty -Object $state.meta -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
+    Set-StateObjectProperty -Object $state.phase -Name "currentPhase" -Value "Blocked"
+    Set-StateObjectProperty -Object $state.phase -Name "blockedReason" -Value $Reason
 
     [void](Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
 }
@@ -119,24 +73,7 @@ function Get-Phase1Readiness {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
-    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
-        return [pscustomobject]@{ Known = $false; IsReady = $false; Status = $null }
-    }
-
-    $phase = $state.phase
-    if (-not ($phase.PSObject.Properties.Name -contains "phase1Status")) {
-        return [pscustomobject]@{ Known = $false; IsReady = $false; Status = $null }
-    }
-
-    $status = [string]$phase.phase1Status
-    if ([string]::IsNullOrWhiteSpace($status)) {
-        return [pscustomobject]@{ Known = $false; IsReady = $false; Status = $null }
-    }
-
-    $readyStatuses = @("ready", "completed", "success", "ok")
-    $isReady = $readyStatuses -contains $status.ToLowerInvariant()
-    return [pscustomobject]@{ Known = $true; IsReady = $isReady; Status = $status }
+    return Get-PhaseReadiness -Context $RuntimeContext -StateFilePath $StateFilePath -PhaseKey "phase1" -UnknownIsReady $false
 }
 
 function Test-IsInteractiveSession {
@@ -174,7 +111,7 @@ function Invoke-ToolScript {
     return [int]$p.ExitCode
 }
 
-$stateFile = "C:\BackgroundMotives\assets\state.json"
+$stateFile = $RuntimeContext.StateFilePath
 $rendererScript = Join-Path $PSScriptRoot "BackgroundRenderer.ps1"
 $setterScript = Join-Path $PSScriptRoot "BackgroundSetter.ps1"
 

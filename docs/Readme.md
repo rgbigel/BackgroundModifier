@@ -16,6 +16,8 @@ Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 4. Structured runtime logging is mandatory for diagnostics and recovery.
 5. Installer-managed runtime deployment plane in `D:\OneDrive\BTools`.
 6. Installer-managed user exposure layer in `D:\OneDrive\cmd`.
+7. Context-driven runtime path ownership for per-repository private state/log roots.
+8. Versioned module contracts with compatibility pre-check script.
 
 ## Repository Layout
 1. `Install`: installation and verification entry scripts.
@@ -62,4 +64,8 @@ All active scripts, modules, and active documentation pages use the same visible
 1. Phase 1 does not invoke phase 2 setter behavior.
 2. Phase 2 runs only when orchestrator validation confirms phase 1 readiness.
 3. Transient pending intent is represented in `state.json`, not in a separate marker file.
+
+## Shared Module Contracts
+1. Runtime context and state helper interfaces are documented under `docs/contracts`.
+2. Compatibility can be pre-checked with `Install/Test-SharedModuleCompatibility.ps1`.
 

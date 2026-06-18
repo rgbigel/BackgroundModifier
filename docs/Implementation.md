@@ -3,7 +3,7 @@
 **Profile:** default
 **Author:** Rolf Bercht
 
-## Purpose
+## Purpose of this Document
 - Define the technical realization of the runtime flow.
 - Define the state contract used across runtime phases.
 - Define sequencing and guard rules for renderer and setter execution.
@@ -44,6 +44,12 @@ All runtime state is represented in one file:
 - C:\BackgroundMotives\assets\state.json
 
 No separate pending marker file is used in the target design. Transient intent is represented inside state.json.
+
+Parameterization rule:
+
+1. Runtime scripts accept context-relevant path parameters.
+2. Default context uses C:\BackgroundMotives roots.
+3. A repository can override RuntimeRoot, LogRoot, and StateFilePath without code changes in shared modules.
 
 ---
 
@@ -160,7 +166,22 @@ Inventory tracks deployed runtime and command exposure mappings. Minimum fields:
 
 ---
 
-## 8. Orchestrator Responsibilities
+## 8. Shared Module Contracts
+
+Contract sources:
+
+1. docs/contracts/RuntimeContext-Contract.md
+2. docs/contracts/StateTools-Contract.md
+
+Compatibility enforcement:
+
+1. Install/Test-SharedModuleCompatibility.ps1 validates required exported function names.
+2. Contract-breaking changes require a major version bump and consumer validation.
+3. Contract-compatible additive changes require a minor version bump.
+
+---
+
+## 9. Orchestrator Responsibilities
 
 A single operational entrypoint (BackgroundModifier) is responsible for:
 
@@ -180,7 +201,7 @@ Post-logon scheduled autorun behavior:
 
 ---
 
-## 9. Error and Recovery Rules
+## 10. Error and Recovery Rules
 
 1. Invalid sequence transitions move state to Blocked with blockedReason.
 2. Missing artifacts are represented in state and surfaced in logs.
@@ -189,7 +210,7 @@ Post-logon scheduled autorun behavior:
 
 ---
 
-## 10. Paths
+## 11. Paths
 
 1. Deployment root: D:\OneDrive\BTools
 2. Per-repository runtime root: D:\OneDrive\BTools\<RepositoryName>
