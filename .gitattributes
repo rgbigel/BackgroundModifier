@@ -6,14 +6,24 @@
 # ----------------------------
 # Line ending normalization
 # ----------------------------
-* text=auto eol=lf
+* text=auto eol=crlf
 
-# PowerShell scripts use LF for consistency
-*.ps1 text eol=lf
-*.psm1 text eol=lf
-*.psd1 text eol=lf
+# Program sources use CRLF
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
 *.cmd text eol=crlf
 *.bat text eol=crlf
+*.cs text eol=crlf
+*.cpp text eol=crlf
+*.c text eol=crlf
+*.h text eol=crlf
+*.hpp text eol=crlf
+
+# Documentation uses CRLF
+*.md text eol=crlf
+*.txt text eol=crlf
+*.rst text eol=crlf
 
 # ----------------------------
 # JSON files (tasks, state, config)
@@ -31,7 +41,7 @@
 # ----------------------------
 # Logs and runtime artifacts
 # ----------------------------
-*.log text eol=lf
+*.log text eol=crlf
 
 # ----------------------------
 # Git diff behavior
