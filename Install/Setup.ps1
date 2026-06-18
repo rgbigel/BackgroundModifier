@@ -440,6 +440,34 @@ Register-BackgroundTask -TaskName $TaskNameStartup  -ScriptPath $OrchestratorScr
 Register-BackgroundTask -TaskName $TaskNameRenderer -ScriptPath $RendererScript -Description "BackgroundModifier: render background at logon"
 Register-BackgroundTask -TaskName $TaskNameSetter   -ScriptPath $SetterScript   -Description "BackgroundModifier: apply background at logon"
 
+# --- Initial elevated phase-2 apply ---
+Write-Host "--- Running initial elevated setter apply ---"
+$initialSetterExit = 0
+try {
+    $setterParams = @{
+        RuntimeRoot   = $RuntimeRoot
+        StateFilePath = $RuntimeStateFile
+        LogRoot       = $LogRoot
+    }
+    if ($TraceMode) { $setterParams.TraceMode = $true }
+
+    & $SetterScript @setterParams
+    if ($LASTEXITCODE -is [int]) {
+        $initialSetterExit = $LASTEXITCODE
+    }
+}
+catch {
+    Write-Host "[X] Initial setter invocation failed: $($_.Exception.Message)"
+    $initialSetterExit = 1
+}
+
+if ($initialSetterExit -eq 0) {
+    Write-Host "[OK] Initial elevated setter apply completed."
+}
+else {
+    Write-Host "[WARN] Initial elevated setter apply reported exit code $initialSetterExit"
+}
+
 # --- Run verifier ---
 Write-Host "--- Running installation verifier ---"
 $verifierParams = @{}
@@ -473,8 +501,9 @@ try {
     Set-ObjectProperty -Object $record -Name "contracts" -Value $contracts
 
     Set-ObjectProperty -Object $record -Name "setupSupport" -Value ([pscustomobject]@{
-        setupStatus      = (if ($verifierExit -eq 0) { "completed" } else { "completed-with-warnings" })
+        setupStatus      = (if ($verifierExit -eq 0 -and $initialSetterExit -eq 0) { "completed" } else { "completed-with-warnings" })
         setupUpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
+        initialSetterExitCode = $initialSetterExit
         verifierExitCode = $verifierExit
         taskNames        = @($TaskNameStartup, $TaskNameRenderer, $TaskNameSetter)
         runtimeRoot      = $RuntimeRoot
@@ -492,15 +521,17 @@ catch {
 
 # --- Summary ---
 Write-Host "=== Setup Summary ==="
-if ($verifierExit -eq 0) {
+if ($verifierExit -eq 0 -and $initialSetterExit -eq 0) {
     Write-Host "[OK] Setup completed successfully."
 } else {
     Write-Host "[WARN] Setup completed but verifier reported issues. Review output above."
 }
+
+$setupExit = if ($verifierExit -eq 0 -and $initialSetterExit -eq 0) { 0 } else { 1 }
 
 if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
 
-exit $verifierExit
+exit $setupExit
