@@ -41,10 +41,19 @@ Quick end-to-end verification of phase state transitions and apply behavior.
 ## D. Non-Interactive Elevation Block Path
 1. Trigger lock/sign-in apply from a non-interactive non-elevated context.
 2. Confirm no UAC relaunch attempt is made.
-3. Verify state:
+3. Verify state outcome by execution token capability:
+
+Outcome D1 (expected when token cannot perform machine-scope lock/sign-in apply):
 - `phase.currentPhase` is `Blocked`.
 - `phase.phase2Status` is `blocked`.
 - `phase.blockedReason` is `LockScreenElevationRequiredNonInteractive`.
+
+Outcome D2 (valid when task token already has sufficient rights and apply succeeds):
+- `phase.currentPhase` is `Phase2`.
+- `phase.phase2Status` is `completed`.
+- `phase.blockedReason` is null or empty.
+
+If D2 is observed (for example `LastTaskResult = 0` with completed state), the non-interactive block branch was not exercised in that run.
 
 ## E. Interactive Elevation Handoff Path
 1. Trigger lock/sign-in apply from interactive non-elevated context.
