@@ -26,6 +26,10 @@
 .PARAMETER RemoveInventory
     Also remove D:\OneDrive\BTools\Inventory\<ProjectName>.json.
 
+.PARAMETER All
+    Full clean-slate wipe. Equivalent to removing deployed runtime, runtime root,
+    and inventory in one operation.
+
 .PARAMETER KeepRuntimeState
     Do not remove C:\BackgroundMotives.
 
@@ -40,6 +44,9 @@
 
 .EXAMPLE
     .\CleanSlate.ps1 -RemoveInventory -TraceMode
+
+.EXAMPLE
+    .\CleanSlate.ps1 -All
 #>
 
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -48,6 +55,7 @@ param(
     [switch]$TraceMode,
     [Alias("h","?")]
     [switch]$HelpMode,
+    [switch]$All,
     [switch]$RemoveInventory,
     [switch]$KeepRuntimeState,
     [switch]$KeepDeployedRuntime
@@ -56,6 +64,15 @@ param(
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
+}
+
+if ($All) {
+    if ($KeepRuntimeState -or $KeepDeployedRuntime) {
+        Write-Host "[X] -All cannot be combined with -KeepRuntimeState or -KeepDeployedRuntime."
+        exit 1
+    }
+
+    $RemoveInventory = $true
 }
 
 $ScriptVersion = "8.0.0"
@@ -136,6 +153,7 @@ if (-not (Test-IsElevated)) {
 
         $forwardArgs = @()
         if ($TraceMode) { $forwardArgs += "-TraceMode" }
+        if ($All) { $forwardArgs += "-All" }
         if ($RemoveInventory) { $forwardArgs += "-RemoveInventory" }
         if ($KeepRuntimeState) { $forwardArgs += "-KeepRuntimeState" }
         if ($KeepDeployedRuntime) { $forwardArgs += "-KeepDeployedRuntime" }
