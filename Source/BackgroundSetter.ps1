@@ -218,6 +218,9 @@ function Set-DesktopWallpaper {
 
     $desktopReg = "HKCU:\Control Panel\Desktop"
     Set-ItemProperty -Path $desktopReg -Name Wallpaper -Value $ImagePath -Force
+    # Ensure the new wallpaper fills the screen instead of inheriting a prior center/fit style.
+    Set-ItemProperty -Path $desktopReg -Name WallpaperStyle -Value "10" -Force
+    Set-ItemProperty -Path $desktopReg -Name TileWallpaper -Value "0" -Force
 
     $signature = @"
 using System;
