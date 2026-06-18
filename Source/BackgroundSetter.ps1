@@ -323,6 +323,268 @@ function Test-ScheduledTasksPresent {
     }
 }
 
+function Set-ObjectProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [object]$Value
+    )
+
+    if ($Object.PSObject.Properties.Name -contains $Name) {
+        $Object.$Name = $Value
+    }
+    else {
+        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+    }
+}
+
+function Get-RuntimeState {
+    param(
+        [string]$StateFilePath
+    )
+
+    if (-not (Test-Path $StateFilePath)) {
+        return [pscustomobject]@{}
+    }
+
+    try {
+        $raw = Get-Content -Path $StateFilePath -Raw
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return [pscustomobject]@{}
+        }
+
+        $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $parsed) {
+            return [pscustomobject]@{}
+        }
+
+        return $parsed
+    }
+    catch {
+        Write-Host "[WARN] State file is unreadable and will be re-initialized when updated: $StateFilePath"
+        return [pscustomobject]@{}
+    }
+}
+
+function Save-RuntimeState {
+    param(
+        [string]$StateFilePath,
+        [object]$StateObject
+    )
+
+    try {
+        $stateDir = Split-Path $StateFilePath -Parent
+        if (-not (Test-Path $stateDir)) {
+            New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+        }
+
+        $json = $StateObject | ConvertTo-Json -Depth 20
+        Set-Content -Path $StateFilePath -Value $json -Encoding UTF8 -Force
+        Write-MutationLog -Operation "SetContent" -Path $StateFilePath -Target ""
+        return $true
+    }
+    catch {
+        Write-Host "[WARN] Failed to persist runtime state to ${StateFilePath}: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Get-PendingLogonSourceFromState {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+
+    if (-not ($state.PSObject.Properties.Name -contains "transient")) {
+        return $null
+    }
+
+    $transient = $state.transient
+    if ($null -eq $transient) {
+        return $null
+    }
+
+    if (-not ($transient.PSObject.Properties.Name -contains "pendingLogon")) {
+        return $null
+    }
+
+    $pending = $transient.pendingLogon
+    if ($null -eq $pending) {
+        return $null
+    }
+
+    if ($pending -is [string]) {
+        return $pending
+    }
+
+    if ($pending.PSObject.Properties.Name -contains "sourcePath") {
+        return [string]$pending.sourcePath
+    }
+
+    return $null
+}
+
+function Set-PendingLogonSourceInState {
+    param(
+        [string]$StateFilePath,
+        [string]$SourcePath,
+        [string]$Reason = "LockScreenApplyRequiresElevation"
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+
+    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
+        Set-ObjectProperty -Object $state -Name "transient" -Value ([pscustomobject]@{})
+    }
+
+    $pending = [pscustomobject]@{
+        sourcePath         = $SourcePath
+        requestedAtUtc     = (Get-Date).ToUniversalTime().ToString("o")
+        reason             = $Reason
+        requiresElevation  = $true
+        status             = "pending"
+    }
+
+    Set-ObjectProperty -Object $state.transient -Name "pendingLogon" -Value $pending
+    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+}
+
+function Clear-PendingLogonSourceInState {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
+        return $true
+    }
+
+    Set-ObjectProperty -Object $state.transient -Name "pendingLogon" -Value $null
+    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+}
+
+function Mark-InteractiveElevationRelaunchRequested {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
+        Set-ObjectProperty -Object $state -Name "transient" -Value ([pscustomobject]@{})
+    }
+
+    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchRequestedAtUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
+    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchPid" -Value $PID
+
+    if ($state.transient.PSObject.Properties.Name -contains "pendingLogon" -and $null -ne $state.transient.pendingLogon) {
+        $pending = $state.transient.pendingLogon
+        if ($pending -isnot [string]) {
+            Set-ObjectProperty -Object $pending -Name "status" -Value "relaunch_requested"
+        }
+    }
+
+    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+}
+
+function Clear-InteractiveElevationRelaunchRequested {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
+        return $true
+    }
+
+    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchRequestedAtUtc" -Value $null
+    Set-ObjectProperty -Object $state.transient -Name "interactiveElevationRelaunchPid" -Value $null
+    return (Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+}
+
+function Test-InteractiveElevationRelaunchRecentlyRequested {
+    param(
+        [string]$StateFilePath,
+        [int]$WindowSeconds = 20
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "transient") -or $null -eq $state.transient) {
+        return $false
+    }
+
+    $transient = $state.transient
+    if (-not ($transient.PSObject.Properties.Name -contains "interactiveElevationRelaunchRequestedAtUtc")) {
+        return $false
+    }
+
+    $stampRaw = [string]$transient.interactiveElevationRelaunchRequestedAtUtc
+    if ([string]::IsNullOrWhiteSpace($stampRaw)) {
+        return $false
+    }
+
+    [datetime]$stamp = [datetime]::MinValue
+    if (-not [datetime]::TryParse($stampRaw, [ref]$stamp)) {
+        return $false
+    }
+
+    $age = ((Get-Date).ToUniversalTime() - $stamp.ToUniversalTime()).TotalSeconds
+    return ($age -ge 0 -and $age -lt $WindowSeconds)
+}
+
+function Update-Phase2State {
+    param(
+        [string]$StateFilePath,
+        [string]$Status,
+        [string]$CurrentPhase = "Phase2",
+        [string]$BlockedReason = $null
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+
+    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
+        Set-ObjectProperty -Object $state -Name "phase" -Value ([pscustomobject]@{})
+    }
+
+    Set-ObjectProperty -Object $state.phase -Name "currentPhase" -Value $CurrentPhase
+    Set-ObjectProperty -Object $state.phase -Name "phase2Status" -Value $Status
+    Set-ObjectProperty -Object $state.phase -Name "blockedReason" -Value $BlockedReason
+
+    if (-not ($state.PSObject.Properties.Name -contains "meta") -or $null -eq $state.meta) {
+        Set-ObjectProperty -Object $state -Name "meta" -Value ([pscustomobject]@{})
+    }
+    Set-ObjectProperty -Object $state.meta -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
+
+    [void](Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+}
+
+function Get-Phase1ReadinessFromState {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
+        return [pscustomobject]@{ Known = $false; IsReady = $true; Status = $null }
+    }
+
+    $phase = $state.phase
+    if (-not ($phase.PSObject.Properties.Name -contains "phase1Status")) {
+        return [pscustomobject]@{ Known = $false; IsReady = $true; Status = $null }
+    }
+
+    $status = [string]$phase.phase1Status
+    if ([string]::IsNullOrWhiteSpace($status)) {
+        return [pscustomobject]@{ Known = $false; IsReady = $true; Status = $null }
+    }
+
+    $readyStatuses = @("ready", "completed", "success", "ok")
+    $isReady = $readyStatuses -contains $status.ToLowerInvariant()
+    return [pscustomobject]@{ Known = $true; IsReady = $isReady; Status = $status }
+}
+
 if (-not (Test-IsWindows11)) {
     Write-Host "[X] Unsupported OS. This solution supports Windows 11 only."
     if ($TraceMode) { Stop-Transcript | Out-Null }
@@ -336,7 +598,7 @@ $DesktopRendered = "C:\BackgroundMotives\assets\desktop_rendered.jpg"
 $LogonImage      = "C:\BackgroundMotives\assets\Logon.jpg"
 $LogonBase       = "C:\BackgroundMotives\assets\LogonBase.jpg"
 $LogonRendered   = "C:\BackgroundMotives\assets\logon_rendered.jpg"
-$PendingLogonStateFile = "C:\BackgroundMotives\assets\pending_logon_source.txt"
+$StateFile       = "C:\BackgroundMotives\assets\state.json"
 
 $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
 
@@ -362,6 +624,16 @@ $DoApplyLockScreen = $ApplyLockScreen.IsPresent
 $DoCapture = $CaptureDesktopAsBase.IsPresent
 $DoPromote = $PromoteDesktopBaseToLogonBase.IsPresent
 
+$SessionIsInteractive = Test-IsInteractiveSession
+$HasExplicitActionRequest = (
+    $ApplyDesktop.IsPresent -or
+    $ApplyLockScreen.IsPresent -or
+    $CaptureDesktopAsBase.IsPresent -or
+    $PromoteDesktopBaseToLogonBase.IsPresent -or
+    $Interactive
+)
+$IsNonInteractiveAutorun = (-not $SessionIsInteractive) -and (-not $HasExplicitActionRequest)
+
 if (-not $ApplyDesktop.IsPresent -and -not $ApplyLockScreen.IsPresent) {
     # Keep backward-compatible behavior for existing automation.
     $DoApplyDesktop = $true
@@ -378,18 +650,20 @@ if ($Interactive) {
 
 # --- Detect pending logon change from a prior non-elevated run ---
 $PendingLogonSource = $null
-if (Test-Path $PendingLogonStateFile) {
-    $stored = (Get-Content $PendingLogonStateFile -Raw).Trim()
+try {
+    $stored = Get-PendingLogonSourceFromState -StateFilePath $StateFile
     if ($stored -and (Test-Path $stored)) {
         $PendingLogonSource = $stored
         Write-Host "[INFO] Pending logon change detected from prior run -> $PendingLogonSource"
     }
-    else {
-        Write-Host "[WARN] Pending logon state file references a missing image: '$stored'"
+    elseif ($stored) {
+        Write-Host "[WARN] Pending logon state references a missing image: '$stored'"
         Write-Host "[WARN] Pending logon change has been discarded."
-        Remove-Item $PendingLogonStateFile -Force
-        Write-MutationLog -Operation "RemoveItem" -Path $PendingLogonStateFile -Target ""
+        [void](Clear-PendingLogonSourceInState -StateFilePath $StateFile)
     }
+}
+catch {
+    Write-Host "[WARN] Failed loading pending logon state from ${StateFile}: $($_.Exception.Message)"
 }
 
 # --- Compute PendingLogonSource from current session if desktop changed and logon apply is intended ---
@@ -403,6 +677,7 @@ if ($DoCapture) {
     $wallpaper = Get-CurrentDesktopWallpaperPath
     if (-not $wallpaper) {
         Write-Host "[X] Could not locate current desktop wallpaper to capture."
+        Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "CaptureWallpaperNotFound"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -417,6 +692,7 @@ if ($DoCapture) {
     }
     catch {
         Write-Host "[X] Failed capturing desktop wallpaper: $($_.Exception.Message)"
+        Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "CaptureDesktopFailed"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -427,6 +703,7 @@ if ($DoPromote) {
     $desktopBaseReady = Restore-BaseFromCurrentImage -BasePath $DesktopBase -CurrentImagePath $DesktopImage -Label "desktop"
     if (-not $desktopBaseReady) {
         Write-Host "[X] Missing DesktopBase for promotion and no usable Desktop image snapshot -> $DesktopBase"
+        Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "PromoteDesktopBaseMissing"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -441,6 +718,7 @@ if ($DoPromote) {
     }
     catch {
         Write-Host "[X] Failed promoting DesktopBase to LogonBase: $($_.Exception.Message)"
+        Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "PromoteDesktopBaseFailed"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -449,6 +727,7 @@ if ($DoPromote) {
 if (-not $DoApplyDesktop -and -not $DoApplyLockScreen) {
     Write-Host "--- Summary ---"
     Write-Host "[OK] No apply targets selected."
+    Update-Phase2State -StateFilePath $StateFile -Status "completed" -CurrentPhase "Phase2" -BlockedReason "NoApplyTargetsSelected"
     if ($TraceMode) {
         Stop-Transcript | Out-Null
         Write-Host "Log written to: $TranscriptPath"
@@ -456,18 +735,36 @@ if (-not $DoApplyDesktop -and -not $DoApplyLockScreen) {
     exit 0
 }
 
+$phase1Readiness = Get-Phase1ReadinessFromState -StateFilePath $StateFile
+if ($phase1Readiness.Known -and -not $phase1Readiness.IsReady) {
+    Write-Host "[X] Phase order guard: phase 1 is not ready (phase1Status='$($phase1Readiness.Status)')."
+    Write-Host "[INFO] Run phase 1/orchestrator flow before running phase 2 apply operations."
+    Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "Phase1NotReady"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+if ($IsNonInteractiveAutorun) {
+    Write-Host "[INFO] Non-interactive autorun mode detected."
+    Write-Host "[INFO] Running simple phase 2 path with error handling only."
+}
+
+Update-Phase2State -StateFilePath $StateFile -Status "running" -CurrentPhase "Phase2" -BlockedReason $null
+
 $LockSignInDeferred = $false
 
 Write-Host "--- File check ---"
 
 if ($DoApplyLockScreen -and -not (Test-Path $LogonRendered)) {
     Write-Host "[X] Missing generated logon image -> $LogonRendered"
+    Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "LogonRenderedMissing"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
 
 if ($DoApplyDesktop -and -not (Test-Path $DesktopRendered)) {
     Write-Host "[X] Missing generated desktop image -> $DesktopRendered"
+    Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "DesktopRenderedMissing"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
@@ -494,6 +791,7 @@ if ($DoApplyDesktop) {
     }
     catch {
         Write-Host "[X] Failed to apply desktop background: $($_.Exception.Message)"
+        Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "ApplyDesktopFailed"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -504,20 +802,53 @@ if ($DoApplyLockScreen) {
     Write-Host "--- Applying lock/sign-in image policy ---"
 
     $isElevated = Test-IsElevated
-    $isInteractive = Test-IsInteractiveSession
+    $isInteractive = $SessionIsInteractive
+
+    if ($isElevated) {
+        [void](Clear-InteractiveElevationRelaunchRequested -StateFilePath $StateFile)
+    }
 
     if (-not $isElevated) {
         Write-Host "[X] Lock/sign-in policy update requires elevation (Administrator)."
+        if (-not $isInteractive) {
+            Write-Host "[WARN] Non-interactive context cannot complete UAC elevation prompt."
+            Write-Host "[INFO] Persisting pending state and exiting with error for later interactive recovery."
+            if ($PendingLogonSource) {
+                if (Set-PendingLogonSourceInState -StateFilePath $StateFile -SourcePath $PendingLogonSource) {
+                    Write-Host "[INFO] Pending logon source saved -> $StateFile (transient.pendingLogon.sourcePath)"
+                }
+                else {
+                    Write-Host "[WARN] Failed saving pending logon source to state file -> $StateFile"
+                }
+            }
+            Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "LockScreenElevationRequiredNonInteractive"
+            if ($TraceMode) { Stop-Transcript | Out-Null }
+            exit 1
+        }
+
         if ($isInteractive) {
             Write-Host "[INFO] You are in a post-logon interactive session without elevation."
             Write-Host "[INFO] Re-run elevated after logon, or run in pre-logon/system context."
         }
         if ($PendingLogonSource) {
-            Set-Content -Path $PendingLogonStateFile -Value $PendingLogonSource -Force
-            Write-MutationLog -Operation "SetContent" -Path $PendingLogonStateFile -Target ""
-            Write-Host "[INFO] Pending logon source saved -> $PendingLogonStateFile"
+            if (Set-PendingLogonSourceInState -StateFilePath $StateFile -SourcePath $PendingLogonSource) {
+                Write-Host "[INFO] Pending logon source saved -> $StateFile (transient.pendingLogon.sourcePath)"
+            }
+            else {
+                Write-Host "[WARN] Failed saving pending logon source to state file -> $StateFile"
+            }
             Write-Host "[INFO] Elevated re-run will apply: $PendingLogonSource"
         }
+
+        if (Test-InteractiveElevationRelaunchRecentlyRequested -StateFilePath $StateFile -WindowSeconds 20) {
+            Write-Host "[WARN] Interactive elevation relaunch already requested recently; suppressing duplicate relaunch."
+            Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "LockScreenElevationRelaunchSuppressedDuplicate"
+            if ($TraceMode) { Stop-Transcript | Out-Null }
+            exit 0
+        }
+
+        [void](Mark-InteractiveElevationRelaunchRequested -StateFilePath $StateFile)
+        Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "LockScreenElevationRequiredInteractiveRelaunch"
         Restart-ScriptElevated -ForwardArgs @(
             if ($DebugMode) { "-DebugMode" }
             if ($TraceMode) { "-TraceMode" }
@@ -536,7 +867,7 @@ if ($DoApplyLockScreen) {
         Write-Host "[INFO] Lock/sign-in changes may not be visible until sign-out/lock/restart."
     }
     elseif ($DoApplyLockScreen) {
-        Write-Host "[INFO] Running in non-interactive pre-logon/system context."
+        Write-Host "[INFO] Running in non-interactive context."
     }
 
     # If a pending logon source exists (desktop changed, stored from prior non-elevated run),
@@ -554,15 +885,15 @@ if ($DoApplyLockScreen) {
             Set-LockScreenImage -ImagePath $LogonRendered
             Copy-Item -Path $LogonRendered -Destination $LogonImage -Force
             Write-MutationLog -Operation "CopyItem" -Path $LogonRendered -Target $LogonImage
-            if (Test-Path $PendingLogonStateFile) {
-                Remove-Item $PendingLogonStateFile -Force
-                Write-MutationLog -Operation "RemoveItem" -Path $PendingLogonStateFile -Target ""
+            if (-not (Clear-PendingLogonSourceInState -StateFilePath $StateFile)) {
+                Write-Host "[WARN] Failed clearing transient.pendingLogon from state file -> $StateFile"
             }
             Write-Host "[OK] Lock/sign-in policy updated -> $LogonRendered"
             Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
         }
         catch {
             Write-Host "[X] Failed to apply lock/sign-in image: $($_.Exception.Message)"
+            Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "ApplyLockScreenFailed"
             if ($TraceMode) { Stop-Transcript | Out-Null }
             exit 1
         }
@@ -574,6 +905,7 @@ Write-Host "--- Summary ---"
 $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
 Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
 Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$($ImageState.LogonMatchesRendered) MatchesBase=$($ImageState.LogonMatchesBase)"
+Update-Phase2State -StateFilePath $StateFile -Status "completed" -CurrentPhase "Phase2" -BlockedReason $null
 Write-Host "[OK] Backgrounds applied successfully."
 
 if ($TraceMode) {

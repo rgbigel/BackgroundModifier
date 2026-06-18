@@ -1,189 +1,152 @@
-﻿# Architecture.md  
-**Version:** 8.0.0  
-**Profile:** default  
-**Author:** Rolf Bercht  
+# Architecture.md
+**Version:** 8.0.0
+**Profile:** default
+**Author:** Rolf Bercht
 
-## Purpose
-- Provide an end‑user architecture view of the solution.  
-- Explain the solution as a time‑flow across phases.  
-- Show what to prepare, what happens during runtime stages, what can be re‑run, and how to disable/uninstall.  
+## Purpose Of Document
+- Provide an end-user architecture view of the solution.
+- Explain the solution as an ordered runtime flow.
+- Clarify phase responsibilities and sequencing rules.
 
 ## Scope Note
-- This document is user‑centric and phase‑centric.  
-- Requirements define functional intent.  
-- Implementation defines runtime wiring and technical mechanics.
-- Platform scope is Windows 11 only.
+
+- Installer/setup execution requires PowerShell 7 (pwsh).
 
 ---
 
-## 1. End‑User Time Flow
+## 9. Cross-Document Consistency Rules
+
+1. Requirements.md: functional outcomes and contracts.
+2. Architecture.md: user-visible runtime behavior and phase model.
+3. Implementation.md: state contract, orchestration, and technical wiring.
+4. ModuleDocumentation.md: module-level boundaries.
+
+---
+
+## 1. End-User Time Flow
 
 The solution is experienced in ordered phases:
 
-1. Preparation before installation  
-2. Installation, configuration, and installation checks  
-3. Runtime Stage A: pre‑logon (startup/system context)  
-4. Runtime Stage B: logon and post‑logon (interactive user context)  
-5. Runtime tests and re‑runnable operations after logon  
-6. Disable and uninstall  
+1. Preparation before installation
+2. Installation, configuration, and installation checks
+3. Runtime Phase 1: pre-logon (startup/system context)
+4a. Runtime Phase 2 autorun: post-logon scheduled non-interactive execution
+4b. Runtime Phase 2 manual run: post-logon interactive execution via BackgroundModifier
+5. Runtime tests and controlled re-runs
+6. Disable and uninstall
 
-**Solution behavior (8.0.0):**
+Solution behavior (8.0.0):
 
-- A single unified background is produced for both the Windows logon screen and the desktop.  
-- The background is refreshed automatically at each logon.  
-- The lock screen displays the background clearly without blur.  
-- System and session information is collected and used to generate the background.
-
----
-
-## 2. Phase 1: Preparation Before Installation
-
-When preparing or installing, be sure that:
-
-1. Required base assets are available.  
-2. Sufficient permissions exist for installation and for startup/logon automation.  
-3. You are aware that the solution operates in two runtime stages:
-   - Pre‑logon stage  
-   - Logon stage  
-
-Be aware that:
-
-1. One stage collects system and boot identity.  
-2. Another stage renders and applies the unified background.  
-3. Each stage produces logs and outputs that can be reviewed later.
+1. A unified background model is produced for desktop and logon usage.
+2. Runtime decisions are made from one shared state file.
+3. Sequencing is enforced by an orchestrator that blocks invalid transitions.
 
 ---
 
-## 3. Phase 2: Installation, Configuration, and Checks
+## 2. Runtime Model
 
-### What Happens
-1. The solution is installed and its runtime structure is set up.  
-2. Startup and logon automation is configured.  
-3. Installation checks verify prerequisites and consistency.  
-4. Operational entry points are placed in the user’s command directory.  
-5. A single elevated admin shell provides a menu‑driven operational interface.
+The runtime model is deliberately split:
 
-### What You See/Do
-1. Review setup and validation results.  
-2. Address any reported prerequisite gaps.  
-3. Re‑run installation checks after making corrections.
+1. Phase 1 (pre-logon, elevated/system)
+- Collect machine and boot identity context.
+- Produce phase 1 artifacts and mark readiness in state.
+- No phase 2 setter path is executed.
 
----
-
-## 4. What Is Created and Provided on the User PC
-
-After installation/configuration, the system contains:
-
-1. A runtime data area used by the solution.  
-2. A shared state file used across startup and logon stages.  
-3. A rendered unified background image for logon and desktop.  
-4. Logs and diagnostics for troubleshooting.  
-5. Automation configuration for startup/logon execution.  
-6. Verification and maintenance routines available after installation.
-
-### Interpretation
-1. These artifacts support predictable behavior, diagnostics, and controlled re‑runs.  
-2. Disable/uninstall options determine whether these artifacts remain or are removed.  
-3. Technical details and paths are documented in *Implementation.md*.
+2. Phase 2 (post-logon, interactive)
+- Validate phase 1 readiness from state.
+- Enrich context with user/session data.
+- Render final output and apply configured targets.
 
 ---
 
-## 5. Phase 3: Runtime Stage A (Pre‑Logon)
+## 3. Shared Runtime State
 
-### What Happens (User‑Level View)
-1. System and boot identity information is collected.  
-2. Shared state is created or updated with startup‑stage data.  
-3. Logs for this stage are recorded.  
-4. The collected information is later used to generate the unified background.
+The solution uses a single source of truth:
 
-### Be Aware
-1. This stage is non‑interactive.  
-2. No background is rendered or applied here.
+- C:\BackgroundMotives\assets\state.json
 
----
+This state contains:
 
-## 6. Phase 4: Runtime Stage B (Logon and Post‑Logon)
+1. Phase status and transition metadata.
+2. Runtime intents and transient pending information.
+3. Artifact/output paths and apply timestamps.
 
-### What Happens (User‑Level View)
-1. Shared state is loaded and enriched with session context.  
-2. The unified background is rendered.  
-3. The rendered background is applied to:
-   - the Windows logon screen  
-   - the desktop wallpaper  
-4. Logs for this stage are recorded.  
-5. The lock screen blur is disabled so the background appears clearly.
-
-### After Logon, You Can
-1. Inspect logs and validation results.  
-2. Run verification tools.  
-3. Re‑run supported configuration or test operations.
+No separate pending marker file is required in the target architecture.
 
 ---
 
-## 7. Phase 5: Runtime Tests and Re‑Run Model
+## 4. Deployment and Exposure Planes
 
-### Available Runtime Tests
-1. Installation/setup verification.  
-2. Startup‑stage verification.  
-3. Logon‑stage verification.  
-4. Configuration verification.  
-5. Non‑destructive repair/update routines.
+The runtime architecture separates source, deployment, and user exposure:
 
-### User‑Level Interpretation
-1. Installation verification checks that prerequisites remain valid.  
-2. Startup‑stage verification checks that identity information can be collected.  
-3. Logon‑stage verification checks that the unified background can be rendered and applied.  
-4. Configuration verification checks that active settings are valid.  
-5. Repair/update routines help recover from partial setup drift.
+1. Source plane (repositories)
+- Canonical code remains in repository roots under Git_Repositories.
 
-### Execution Context
-1. Some checks run during startup, others after logon.  
-2. Implementation defines exact entry points and context rules.
+2. Deployment plane (non-repository runtime)
+- Installer deploys runtime content to `D:\OneDrive\BTools`.
+- Each solution deploys to `D:\OneDrive\BTools\<RepositoryName>`.
+- Shared modules for cross-repository reuse are deployed under `D:\OneDrive\BTools\SharedModules`.
+- Inventory metadata is maintained under `D:\OneDrive\BTools\Inventory`.
+- This plane is deployment-only and does not store live runtime state.
 
-### Rules
-1. Re‑runs should behave predictably.  
-2. Re‑runs avoid destructive side effects.  
-3. Shared‑state integrity is preserved across stages.
+3. Runtime state plane
+- Live runtime state is stored only under `C:\BackgroundMotives`.
+- Install/update initializes runtime state paths from deployed BTools content when required.
+- Runtime logs and `state.json` are part of this state plane.
+- Runtime logging is mandatory and logs are stored only in `C:\BackgroundMotives\logs`.
+- The `C:` runtime-state location is retained intentionally for multi-boot environments.
+
+4. User exposure plane
+- User-facing commands are exposed in `D:\OneDrive\cmd`.
+- Install/update operations create and refresh launchers/links from `cmd` into `BTools` runtime entrypoints.
+- Exposure mappings are Inventory-driven.
+
+The duplicate folder model `SharedModules\SharedModules` is not required by this architecture and is avoided for clarity.
 
 ---
 
-## 8. Phase 6: Disable and Uninstall
+## 5. Orchestrator Behavior
 
-### Disable
-1. Stops startup/logon automation without removing data.  
-2. Can be reversed without reinstalling.
+The operational orchestrator (BackgroundModifier) controls execution by:
 
-### Enable
-1. Restores automation.  
-2. Does not reinstall or remove data.
+1. Reading and validating state.json.
+2. Deciding whether phase 1, phase 2, or no-op is required.
+3. Enforcing sequence rules before invoking renderer/setter logic.
+4. Writing state transitions and terminal outcomes.
+5. Handling interactive lifecycle operations (enable, disable, cleanup, uninstall) from the user exposure layer.
 
-### Uninstall
-1. Removes automation and configuration.  
-2. Removes or preserves runtime data depending on your choice.  
+The orchestrator is the sequence authority for runtime execution.
+
+---
+
+## 6. Re-Run and Recovery Model
+
+Re-runs are supported with these rules:
+
+1. Re-runs are deterministic for equivalent state and inputs.
+2. Invalid states are blocked explicitly and logged with reason.
+3. Missing prerequisites or artifacts are represented in state and logs.
+4. Recovery is performed by valid next transitions, not by bypassing sequence checks.
+
+---
+
+## 7. Disable and Uninstall
+
+Disable:
+
+1. Stops automation without deleting runtime data.
+2. Can be reversed by enable.
+
+Enable:
+
+1. Restores automation with existing runtime state.
+
+Uninstall:
+
+1. Removes automation/configuration.
+2. Removes or preserves runtime artifacts based on selected scope.
 3. Never modifies repository source.
 
-### Cleanup
-1. Removes stale logs/outputs without uninstalling.  
-2. Does not remove automation unless explicitly chosen.  
-3. Disable/enable affects automation only.
-
-### Uninstall Scope Options
-1. Keep diagnostics and state for later analysis.  
-2. Remove diagnostics and state for full removal.  
-3. Keep base assets for later re‑installation.
-
-### Operational Entry‑Point Model
-1. Canonical source remains in repository paths.  
-2. Runtime data resides in the solution’s runtime directory.  
-3. Operational entry points include install, verify, enable/disable, uninstall, cleanup, and source‑level actions.  
-4. Source actions include identity collection, rendering, and apply operations.  
-5. Apply runs automatically after successful rendering.  
-6. Setup may elevate itself when required.
+Lifecycle actions (enable/disable/cleanup/uninstall) are exposed as interactive orchestrator operations.
 
 ---
-
-## 9. Cross‑Document Consistency Rules
-1. *Requirements.md*: functional outcomes and contracts.  
-2. *Architecture.md*: end‑user time‑flow and stage behavior.  
-3. *Implementation.md*: technical realization.  
-4. *ModuleDocumentation.md*: module‑level boundaries.

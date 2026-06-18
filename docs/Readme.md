@@ -8,10 +8,14 @@ Platform scope: Windows 11 only.
 Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 
 ## Key Capabilities
-1. Deterministic identity and environment capture.
-2. Repeatable background rendering pipeline.
-3. Consistent apply stage for generated outputs stored in assets.
-4. Structured runtime logging for diagnostics.
+1. Two-phase runtime model:
+	- Phase 1 pre-logon identity capture and phase preparation.
+	- Phase 2 post-logon enrichment, render completion, and apply.
+2. Single-source runtime state in `C:\BackgroundMotives\assets\state.json`.
+3. Orchestrated sequence enforcement to block invalid phase transitions.
+4. Structured runtime logging is mandatory for diagnostics and recovery.
+5. Installer-managed runtime deployment plane in `D:\OneDrive\BTools`.
+6. Installer-managed user exposure layer in `D:\OneDrive\cmd`.
 
 ## Repository Layout
 1. `Install`: installation and verification entry scripts.
@@ -20,60 +24,42 @@ Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 4. `docs`: requirements, architecture, implementation, and change-history documentation.
 
 ## Runtime Layout
+1. Runtime deployment root (non-repository): `D:\OneDrive\BTools`
+2. Per-repository deployed runtime: `D:\OneDrive\BTools\<RepositoryName>`
+3. Shared module catalog for multi-repository use: `D:\OneDrive\BTools\SharedModules`
+4. Inventory and deployment mapping data: `D:\OneDrive\BTools\Inventory`
+5. User-facing exposed entrypoints: `D:\OneDrive\cmd`
+
+Within `D:\OneDrive\BTools\<RepositoryName>`, deployable content includes:
+1. `Source`
+2. `Modules`
+3. fallback/base assets required to initialize runtime state
+
+BTools does not hold live runtime state. Runtime state is created and maintained under `C:\BackgroundMotives` and initialized from deployed BTools content during install/update.
+
+Runtime state paths:
 1. `C:\BackgroundMotives\assets`
 2. `C:\BackgroundMotives\logs`
+3. `C:\BackgroundMotives\assets\state.json`
 
-Generated output images are also stored in `C:\BackgroundMotives\assets` and are distinguished from base inputs by filename.
+Logging is required and is written only to `C:\BackgroundMotives\logs`, never to `D:\OneDrive\BTools`.
+This placement is intentional for multi-boot stability.
+
+Generated output images are stored in `C:\BackgroundMotives\assets` and are distinguished from base input images by filename.
+
+The duplicate pattern `SharedModules\SharedModules` is intentionally not used in this model. Shared modules are exposed from `D:\OneDrive\BTools\SharedModules`.
+
+## User Exposure Layer
+1. `D:\OneDrive\cmd` is the user-facing command surface.
+2. Installer creates and updates command launchers/links in `cmd` that target runtime entrypoints in `BTools`.
+3. `cmd` exposure is Inventory-driven: stale entries are removed, active entries are refreshed.
+4. Exposed command mappings are validated during install/update.
 
 ## Versioning Rule
 All active scripts, modules, and active documentation pages use the same visible solution version. For this baseline, that value is `8.0.0`.
 
-📁 Directory Layout
-Bootmgr-Solution/
-│
-├─ Modules/
-│   ├─ BootIdentity/
-│   ├─ Overlay-LockScreen/
-│   ├─ Overlay-Desktop/
-│   ├─ Registry-Enforce/
-│   ├─ Diagnostics/
-│   └─ Orchestrator/
-│
-├─ Logs/
-│   ├─ BootIdentity.log
-│   ├─ Overlay-LockScreen.log
-│   ├─ Overlay-Desktop.log
-│   ├─ Registry-Enforce.log
-│   └─ Diagnostics.log
-│
-├─ Output/
-│   ├─ LockScreen/
-│   └─ Desktop/
-│
-└─ README.md
-
-
-
-🔧 Extensibility Hooks
-Each module exposes hooks for:
-- Additional metadata fields
-- Alternate overlay layouts
-- Custom color schemes
-- Alternate ESP ID derivation strategies
-- Future Python migration
-These hooks are documented in each module’s header.
-
-📜 License
-To be defined by the repository owner.
-
-🤝 Contributing
-Contributions are welcome.
-Please follow the module conventions:
-- Deterministic logic
-- Stateless design
-- Per‑module logging
-- Version headers
-- Architectural notes
-- Changelogs
-- Extensibility hooks
+## Runtime Sequencing
+1. Phase 1 does not invoke phase 2 setter behavior.
+2. Phase 2 runs only when orchestrator validation confirms phase 1 readiness.
+3. Transient pending intent is represented in `state.json`, not in a separate marker file.
 

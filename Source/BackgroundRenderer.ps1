@@ -51,6 +51,7 @@ if ($DebugMode -and -not $TraceMode) {
 $ScriptVersion = "8.0.0"
 
 $LogRoot = "C:\BackgroundMotives\logs"
+$StateFile = "C:\BackgroundMotives\assets\state.json"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
@@ -372,8 +373,103 @@ function Get-VolumeInventorySummary {
     }
 }
 
+function Set-ObjectProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [object]$Value
+    )
+
+    if ($Object.PSObject.Properties.Name -contains $Name) {
+        $Object.$Name = $Value
+    }
+    else {
+        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+    }
+}
+
+function Get-RuntimeState {
+    param(
+        [string]$StateFilePath
+    )
+
+    if (-not (Test-Path $StateFilePath)) {
+        return [pscustomobject]@{}
+    }
+
+    try {
+        $raw = Get-Content -Path $StateFilePath -Raw
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return [pscustomobject]@{}
+        }
+
+        $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $parsed) {
+            return [pscustomobject]@{}
+        }
+
+        return $parsed
+    }
+    catch {
+        Write-Host "[WARN] State file is unreadable and will be re-initialized when updated: $StateFilePath"
+        return [pscustomobject]@{}
+    }
+}
+
+function Save-RuntimeState {
+    param(
+        [string]$StateFilePath,
+        [object]$StateObject
+    )
+
+    try {
+        $stateDir = Split-Path $StateFilePath -Parent
+        if (-not (Test-Path $stateDir)) {
+            New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+        }
+
+        $json = $StateObject | ConvertTo-Json -Depth 20
+        Set-Content -Path $StateFilePath -Value $json -Encoding UTF8 -Force
+        Write-MutationLog -Operation "SetContent" -Path $StateFilePath -Target ""
+        return $true
+    }
+    catch {
+        Write-Host "[WARN] Failed to persist runtime state to ${StateFilePath}: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Update-Phase1State {
+    param(
+        [string]$StateFilePath,
+        [string]$Status,
+        [string]$CurrentPhase = "Phase1",
+        [string]$BlockedReason = $null
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+
+    if (-not ($state.PSObject.Properties.Name -contains "phase") -or $null -eq $state.phase) {
+        Set-ObjectProperty -Object $state -Name "phase" -Value ([pscustomobject]@{})
+    }
+
+    Set-ObjectProperty -Object $state.phase -Name "currentPhase" -Value $CurrentPhase
+    Set-ObjectProperty -Object $state.phase -Name "phase1Status" -Value $Status
+    Set-ObjectProperty -Object $state.phase -Name "blockedReason" -Value $BlockedReason
+
+    if (-not ($state.PSObject.Properties.Name -contains "meta") -or $null -eq $state.meta) {
+        Set-ObjectProperty -Object $state -Name "meta" -Value ([pscustomobject]@{})
+    }
+    Set-ObjectProperty -Object $state.meta -Name "lastUpdatedUtc" -Value ((Get-Date).ToUniversalTime().ToString("o"))
+
+    [void](Save-RuntimeState -StateFilePath $StateFilePath -StateObject $state)
+}
+
 if (-not (Test-IsWindows11)) {
     Write-Host "[X] Unsupported OS. This solution supports Windows 11 only."
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "UnsupportedOS"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
@@ -385,6 +481,8 @@ $DesktopRendered = "C:\BackgroundMotives\assets\desktop_rendered.jpg"
 $LogonImage = "C:\BackgroundMotives\assets\Logon.jpg"
 $LogonBase   = "C:\BackgroundMotives\assets\LogonBase.jpg"
 $LogonRendered = "C:\BackgroundMotives\assets\logon_rendered.jpg"
+
+Update-Phase1State -StateFilePath $StateFile -Status "running" -CurrentPhase "Phase1" -BlockedReason $null
 
 $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
 
@@ -410,6 +508,7 @@ if ($CaptureDesktopAsBase) {
     $wallpaper = Get-CurrentDesktopWallpaperPath
     if (-not $wallpaper) {
         Write-Host "[X] Could not locate current desktop wallpaper to capture."
+        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "CaptureWallpaperNotFound"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -424,6 +523,7 @@ if ($CaptureDesktopAsBase) {
     }
     catch {
         Write-Host "[X] Failed capturing desktop wallpaper: $($_.Exception.Message)"
+        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "CaptureDesktopFailed"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -433,6 +533,7 @@ if ($PromoteDesktopBaseToLogonBase) {
     Write-Host "--- Promote DesktopBase to LogonBase ---"
     if (-not (Test-Path $DesktopBase)) {
         Write-Host "[X] Missing DesktopBase for promotion -> $DesktopBase"
+        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "PromoteDesktopBaseMissing"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -447,6 +548,7 @@ if ($PromoteDesktopBaseToLogonBase) {
     }
     catch {
         Write-Host "[X] Failed promoting DesktopBase to LogonBase: $($_.Exception.Message)"
+        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "PromoteDesktopBaseFailed"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -455,6 +557,7 @@ if ($PromoteDesktopBaseToLogonBase) {
 if (-not $DoRenderDesktop -and -not $DoRenderLogon) {
     Write-Host "--- Summary ---"
     Write-Host "[OK] No render targets selected."
+    Update-Phase1State -StateFilePath $StateFile -Status "completed" -CurrentPhase "Phase1" -BlockedReason $null
     if ($TraceMode) {
         Stop-Transcript | Out-Null
         Write-Host "Log written to: $TranscriptPath"
@@ -478,6 +581,7 @@ if ($DoRenderDesktop) {
     }
     if (-not $desktopBaseReady) {
         Write-Host "[X] Missing DesktopBase and no usable Desktop image snapshot -> $DesktopBase"
+        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "DesktopBaseMissing"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -494,6 +598,7 @@ if ($DoRenderLogon) {
     }
     if (-not $logonBaseReady) {
         Write-Host "[X] Missing LogonBase and no usable Logon image snapshot -> $LogonBase"
+        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "LogonBaseMissing"
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 1
     }
@@ -501,12 +606,14 @@ if ($DoRenderLogon) {
 
 if ($DoRenderDesktop -and -not (Test-Path $DesktopBase)) {
     Write-Host "[X] Missing DesktopBase -> $DesktopBase"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "DesktopBaseNotFound"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
 
 if ($DoRenderLogon -and -not (Test-Path $LogonBase)) {
     Write-Host "[X] Missing LogonBase -> $LogonBase"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "LogonBaseNotFound"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
@@ -562,6 +669,7 @@ try {
 }
 catch {
     Write-Host "[X] Rendering failed: $($_.Exception.Message)"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "RenderFailed"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
@@ -570,6 +678,7 @@ Write-Host "--- Summary ---"
 $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
 Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
 Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$($ImageState.LogonMatchesRendered) MatchesBase=$($ImageState.LogonMatchesBase)"
+Update-Phase1State -StateFilePath $StateFile -Status "ready" -CurrentPhase "Phase1" -BlockedReason $null
 Write-Host "[OK] Rendering completed successfully."
 
 if ($TraceMode) {
