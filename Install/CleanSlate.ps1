@@ -181,6 +181,7 @@ if ($TraceMode) {
 }
 
 $errors = @()
+$transcriptStarted = [bool]$TraceMode
 
 Write-Host "--- Removing scheduled tasks ---"
 foreach ($taskName in $TaskNames) {
@@ -221,6 +222,11 @@ else {
 if (-not $KeepRuntimeState) {
     Write-Host "--- Removing runtime state/log/assets root ---"
     try {
+        if ($transcriptStarted) {
+            Stop-Transcript | Out-Null
+            $transcriptStarted = $false
+        }
+
         Remove-PathIfExists -Path $RuntimeRoot -Label "RuntimeRoot"
     }
     catch {
@@ -255,14 +261,14 @@ if ($errors.Count -gt 0) {
         Write-Host "[WARN] $err"
     }
 
-    if ($TraceMode) {
+    if ($transcriptStarted) {
         try { Stop-Transcript | Out-Null } catch {}
     }
     exit 1
 }
 
 Write-Host "[OK] Clean-slate operation completed successfully."
-if ($TraceMode) {
+if ($transcriptStarted) {
     try { Stop-Transcript | Out-Null } catch {}
 }
 
