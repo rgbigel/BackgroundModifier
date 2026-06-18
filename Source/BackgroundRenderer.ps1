@@ -325,7 +325,8 @@ function Get-EfiVolumeLabel {
 
         $efiVolume = Get-Volume -Partition $efiPartition -ErrorAction SilentlyContinue
         if (-not $efiVolume) {
-            return "Disk $($efiPartition.DiskNumber) Part $($efiPartition.PartitionNumber)"
+            $displayPartition = [Math]::Max(0, ([int]$efiPartition.PartitionNumber - 1))
+            return "Disk $($efiPartition.DiskNumber) Part $displayPartition"
         }
 
         $label = if ([string]::IsNullOrWhiteSpace($efiVolume.FileSystemLabel)) {
@@ -335,7 +336,8 @@ function Get-EfiVolumeLabel {
             $efiVolume.FileSystemLabel
         }
 
-        return "$label (D$($efiPartition.DiskNumber)P$($efiPartition.PartitionNumber))"
+        $displayPartition = [Math]::Max(0, ([int]$efiPartition.PartitionNumber - 1))
+        return "$label (D$($efiPartition.DiskNumber)P$displayPartition)"
     }
     catch {
         return "(error)"

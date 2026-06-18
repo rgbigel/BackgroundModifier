@@ -227,11 +227,21 @@ Register-BackgroundTask -TaskName $TaskNameSetter   -ScriptPath $SetterScript   
 
 # --- Run verifier ---
 Write-Host "--- Running installation verifier ---"
-$verifierArgs = @()
-if ($DebugMode) { $verifierArgs += "-DebugMode" }
-if ($TraceMode) { $verifierArgs += "-TraceMode" }
-& $VerifierScript @verifierArgs
-$verifierExit = $LASTEXITCODE
+$verifierParams = @{}
+if ($DebugMode) { $verifierParams.DebugMode = $true }
+if ($TraceMode) { $verifierParams.TraceMode = $true }
+
+$verifierExit = 0
+try {
+    & $VerifierScript @verifierParams
+    if ($LASTEXITCODE -is [int]) {
+        $verifierExit = $LASTEXITCODE
+    }
+}
+catch {
+    Write-Host "[X] Verifier invocation failed: $($_.Exception.Message)"
+    $verifierExit = 1
+}
 
 # --- Summary ---
 Write-Host "=== Setup Summary ==="
@@ -245,3 +255,5 @@ if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
 }
+
+exit $verifierExit
