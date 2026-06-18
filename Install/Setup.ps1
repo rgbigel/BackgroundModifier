@@ -440,24 +440,57 @@ Register-BackgroundTask -TaskName $TaskNameStartup  -ScriptPath $OrchestratorScr
 Register-BackgroundTask -TaskName $TaskNameRenderer -ScriptPath $RendererScript -Description "BackgroundModifier: render background at logon"
 Register-BackgroundTask -TaskName $TaskNameSetter   -ScriptPath $SetterScript   -Description "BackgroundModifier: apply background at logon"
 
-# --- Initial elevated phase-2 apply ---
-Write-Host "--- Running initial elevated setter apply ---"
+# --- Initial elevated render/apply sequence ---
+Write-Host "--- Running initial elevated render/apply sequence ---"
+$initialRendererExit = 0
 $initialSetterExit = 0
+
 try {
-    $setterParams = @{
+    $rendererParams = @{
         RuntimeRoot   = $RuntimeRoot
         StateFilePath = $RuntimeStateFile
         LogRoot       = $LogRoot
     }
-    if ($TraceMode) { $setterParams.TraceMode = $true }
+    if ($TraceMode) { $rendererParams.TraceMode = $true }
 
-    & $SetterScript @setterParams
+    & $RendererScript @rendererParams
     if ($LASTEXITCODE -is [int]) {
-        $initialSetterExit = $LASTEXITCODE
+        $initialRendererExit = $LASTEXITCODE
     }
 }
 catch {
-    Write-Host "[X] Initial setter invocation failed: $($_.Exception.Message)"
+    Write-Host "[X] Initial renderer invocation failed: $($_.Exception.Message)"
+    $initialRendererExit = 1
+}
+
+if ($initialRendererExit -eq 0) {
+    Write-Host "[OK] Initial elevated renderer run completed."
+}
+else {
+    Write-Host "[WARN] Initial elevated renderer run reported exit code $initialRendererExit"
+}
+
+if ($initialRendererExit -eq 0) {
+    try {
+        $setterParams = @{
+            RuntimeRoot   = $RuntimeRoot
+            StateFilePath = $RuntimeStateFile
+            LogRoot       = $LogRoot
+        }
+        if ($TraceMode) { $setterParams.TraceMode = $true }
+
+        & $SetterScript @setterParams
+        if ($LASTEXITCODE -is [int]) {
+            $initialSetterExit = $LASTEXITCODE
+        }
+    }
+    catch {
+        Write-Host "[X] Initial setter invocation failed: $($_.Exception.Message)"
+        $initialSetterExit = 1
+    }
+}
+else {
+    Write-Host "[WARN] Skipping initial setter run because renderer failed."
     $initialSetterExit = 1
 }
 
@@ -501,8 +534,9 @@ try {
     Set-ObjectProperty -Object $record -Name "contracts" -Value $contracts
 
     Set-ObjectProperty -Object $record -Name "setupSupport" -Value ([pscustomobject]@{
-        setupStatus      = (if ($verifierExit -eq 0 -and $initialSetterExit -eq 0) { "completed" } else { "completed-with-warnings" })
+        setupStatus      = (if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initialSetterExit -eq 0) { "completed" } else { "completed-with-warnings" })
         setupUpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
+        initialRendererExitCode = $initialRendererExit
         initialSetterExitCode = $initialSetterExit
         verifierExitCode = $verifierExit
         taskNames        = @($TaskNameStartup, $TaskNameRenderer, $TaskNameSetter)
@@ -521,13 +555,13 @@ catch {
 
 # --- Summary ---
 Write-Host "=== Setup Summary ==="
-if ($verifierExit -eq 0 -and $initialSetterExit -eq 0) {
+if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initialSetterExit -eq 0) {
     Write-Host "[OK] Setup completed successfully."
 } else {
     Write-Host "[WARN] Setup completed but verifier reported issues. Review output above."
 }
 
-$setupExit = if ($verifierExit -eq 0 -and $initialSetterExit -eq 0) { 0 } else { 1 }
+$setupExit = if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initialSetterExit -eq 0) { 0 } else { 1 }
 
 if ($TraceMode) {
     Stop-Transcript | Out-Null
