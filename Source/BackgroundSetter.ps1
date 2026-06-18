@@ -13,9 +13,6 @@
     Validates generated assets, applies desktop wallpaper, and updates
     lock/sign-in policy with elevation-aware flow.
 
-.PARAMETER DebugMode
-    Enables debug output.
-
 .PARAMETER TraceMode
     Enables transcript logging for setter execution.
     Alias: t
@@ -27,7 +24,6 @@
 
 [CmdletBinding()]
 param(
-    [switch]$DebugMode,
     [Alias("t")]
     [switch]$TraceMode,
     [Alias("h","?")]
@@ -42,10 +38,6 @@ param(
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
-}
-
-if ($DebugMode -and -not $TraceMode) {
-    $TraceMode = $true
 }
 
 # --- Absolute log root ---
@@ -71,7 +63,6 @@ if ($TraceMode) {
 
 Write-Host "=== BackgroundModifier Setter (v8.0.0) ==="
 
-if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 $MutationScriptName = "BackgroundSetter.ps1"
@@ -611,7 +602,7 @@ if (-not $TaskState.BothPresent) {
     Write-Host "[INFO] Automatic post-logon render and apply are not active."
     Write-Host "[INFO] Run Installer.ps1 to restore automation, or run renderer and setter manually."
     Write-Host "[INFO] For lock/sign-in apply, elevation will still be required."
-} elseif ($DebugMode) {
+} elseif ($TraceMode) {
     Write-Host "[OK] Scheduled tasks present (BackgroundModifier-Renderer, BackgroundModifier-Setter)"
 }
 
@@ -850,7 +841,6 @@ if ($DoApplyLockScreen) {
         [void](Mark-InteractiveElevationRelaunchRequested -StateFilePath $StateFile)
         Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "LockScreenElevationRequiredInteractiveRelaunch"
         Restart-ScriptElevated -ForwardArgs @(
-            if ($DebugMode) { "-DebugMode" }
             if ($TraceMode) { "-TraceMode" }
             if ($DoApplyDesktop) { "-ApplyDesktop" }
             if ($DoApplyLockScreen) { "-ApplyLockScreen" }

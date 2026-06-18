@@ -13,9 +13,6 @@
     Validates prerequisites, resolves base images, collects system metadata,
     and renders overlay text onto desktop/logon outputs.
 
-.PARAMETER DebugMode
-    Enables debug output.
-
 .PARAMETER TraceMode
     Enables transcript logging for renderer execution.
     Alias: t
@@ -27,7 +24,6 @@
 
 [CmdletBinding()]
 param(
-    [switch]$DebugMode,
     [Alias("t")]
     [switch]$TraceMode,
     [Alias("h","?")]
@@ -42,10 +38,6 @@ param(
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
-}
-
-if ($DebugMode -and -not $TraceMode) {
-    $TraceMode = $true
 }
 
 $ScriptVersion = "8.0.0"
@@ -78,7 +70,6 @@ if ($TraceMode) {
 
 Write-Host "=== BackgroundModifier Renderer (v$ScriptVersion) ==="
 
-if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 $MutationScriptName = "BackgroundRenderer.ps1"

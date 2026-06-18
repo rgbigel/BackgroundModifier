@@ -19,9 +19,6 @@
     Copies Source, Modules, and Install content from the repository into the
     runtime target folder and then invokes deployed Setup.ps1.
 
-.PARAMETER DebugMode
-    Enables debug output.
-
 .PARAMETER TraceMode
     Enables installer transcript logging.
     Alias: t
@@ -42,7 +39,6 @@
 
 [CmdletBinding()]
 param(
-    [switch]$DebugMode,
     [Alias("t")]
     [switch]$TraceMode,
     [Alias("h","?")]
@@ -52,10 +48,6 @@ param(
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
-}
-
-if ($DebugMode -and -not $TraceMode) {
-    $TraceMode = $true
 }
 
 $ScriptVersion = "8.0.0"
@@ -92,7 +84,6 @@ Write-Host "=== BackgroundModifier Installer (v$ScriptVersion) ==="
 Write-Host "Project : $ProjectName"
 Write-Host "Source  : $RepoRoot"
 Write-Host "Target  : $RuntimeDir"
-if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled" }
 
 # --- Windows 11 check ---
@@ -115,7 +106,7 @@ Write-Host "--- Verifying source layout ---"
 $missingDirs = @()
 foreach ($dir in @($SourceSrc, $ModulesSrc, $InstallSrc)) {
     if (Test-Path $dir) {
-        if ($DebugMode) { Write-Host "[OK] Found: $dir" }
+        if ($TraceMode) { Write-Host "[OK] Found: $dir" }
     } else {
         Write-Host "[X] Missing: $dir"
         $missingDirs += $dir
@@ -142,7 +133,7 @@ foreach ($dir in @($RuntimeBase, $RuntimeDir, $SourceDst, $ModulesDst, $InstallD
             exit 1
         }
     } else {
-        if ($DebugMode) { Write-Host "[OK] Exists: $dir" }
+        if ($TraceMode) { Write-Host "[OK] Exists: $dir" }
     }
 }
 
@@ -206,7 +197,6 @@ if (-not (Test-Path $SetupDeployed)) {
 }
 
 $setupParams = @{}
-if ($DebugMode) { $setupParams.DebugMode = $true }
 if ($TraceMode) { $setupParams.TraceMode = $true }
 
 & $SetupDeployed @setupParams

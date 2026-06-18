@@ -14,9 +14,6 @@
     Validates source layout, ensures required runtime folders exist, (re)registers
     logon tasks for renderer and setter, then runs installation verification.
 
-.PARAMETER DebugMode
-    Enables debug output.
-
 .PARAMETER TraceMode
     Enables setup transcript logging and registers tasks with trace-mode arguments.
     Alias: t
@@ -37,7 +34,6 @@
 
 [CmdletBinding()]
 param(
-    [switch]$DebugMode,
     [Alias("t")]
     [switch]$TraceMode,
     [Alias("h","?")]
@@ -47,10 +43,6 @@ param(
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
-}
-
-if ($DebugMode -and -not $TraceMode) {
-    $TraceMode = $true
 }
 
 # --- Constants ---
@@ -80,7 +72,6 @@ if ($TraceMode) {
 }
 
 Write-Host "=== BackgroundModifier Setup (v$ScriptVersion) ==="
-if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript started" }
 
 # --- Windows 11 check ---
@@ -108,7 +99,6 @@ function Test-IsElevated {
 if (-not (Test-IsElevated)) {
     Write-Host "[X] Setup requires elevation. Re-launching as Administrator..."
     $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"")
-    if ($DebugMode) { $args += "-DebugMode" }
     if ($TraceMode) { $args += "-TraceMode" }
     Start-Process pwsh -Verb RunAs -ArgumentList $args
     exit 0
@@ -121,7 +111,7 @@ Write-Host "--- Source script check ---"
 $missingSource = @()
 foreach ($s in @($RendererScript, $SetterScript, $VerifierScript, $ModulesRoot)) {
     if (Test-Path $s) {
-        if ($DebugMode) { Write-Host "[OK] Found: $s" }
+        if ($TraceMode) { Write-Host "[OK] Found: $s" }
     } else {
         Write-Host "[X] Missing: $s"
         $missingSource += $s
@@ -217,7 +207,7 @@ function Register-BackgroundTask {
 
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description $Description -Force | Out-Null
     Write-Host "[OK] Registered task: $TaskName"
-    if ($DebugMode -or $TraceMode) {
+    if ($TraceMode) {
         Write-Host "[INFO] $TaskName args: $taskArgLine"
     }
 }
@@ -228,7 +218,6 @@ Register-BackgroundTask -TaskName $TaskNameSetter   -ScriptPath $SetterScript   
 # --- Run verifier ---
 Write-Host "--- Running installation verifier ---"
 $verifierParams = @{}
-if ($DebugMode) { $verifierParams.DebugMode = $true }
 if ($TraceMode) { $verifierParams.TraceMode = $true }
 
 $verifierExit = 0

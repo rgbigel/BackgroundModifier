@@ -13,9 +13,6 @@
     Checks required runtime directories and files, then validates scheduled
     task action paths against the deployed renderer and setter scripts.
 
-.PARAMETER DebugMode
-    Enables debug output.
-
 .PARAMETER TraceMode
     Enables transcript logging for verifier execution.
     Alias: t
@@ -36,7 +33,6 @@
 
 [CmdletBinding()]
 param(
-    [switch]$DebugMode,
     [Alias("t")]
     [switch]$TraceMode,
     [Alias("h","?")]
@@ -46,10 +42,6 @@ param(
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
-}
-
-if ($DebugMode -and -not $TraceMode) {
-    $TraceMode = $true
 }
 
 $ScriptVersion = "8.0.0"
@@ -66,7 +58,6 @@ if ($TraceMode) {
 
 Write-Host "=== BackgroundModifier Installation Verifier (v$ScriptVersion) ==="
 
-if ($DebugMode) { Write-Host "Debug mode enabled" }
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 $DeployedRoot = Split-Path $PSScriptRoot -Parent
