@@ -468,7 +468,7 @@ if (-not (Test-IsWindows11)) {
 
 if (-not (Test-AutomationEnabledMode -StateFilePath $StateFile)) {
     Write-Host "[X] Apply operations rejected because automation is disabled (automation.enabledmode=False)."
-    Write-Host "[INFO] Run BackgroundModifier -EnableAutomation with elevation before phase 2 operations."
+    Write-Host "[INFO] Set automation.enabledmode=True in state and run BackgroundModifier -Action Run in an interactive session."
     Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "AutomationDisabledMode"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1

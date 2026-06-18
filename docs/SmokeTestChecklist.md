@@ -87,13 +87,15 @@ Note: If elevation is accepted and the elevated apply completes quickly, state m
 - `phase.blockedReason` is `LockScreenElevationRelaunchSuppressedDuplicate`.
 
 ## I. Automation Enable/Disable Lifecycle (Elevation Required)
-1. Run `BackgroundModifier.ps1 -DisableAutomation` from a non-elevated interactive session.
-2. Confirm UAC prompt appears and elevated relaunch is requested.
-3. Verify scheduled tasks `BackgroundModifier-Startup`, `BackgroundModifier-Renderer`, and `BackgroundModifier-Setter` are disabled.
-4. Run `BackgroundModifier.ps1 -EnableAutomation` from a non-elevated interactive session.
-5. Confirm UAC prompt appears and elevated relaunch is requested.
-6. Verify all three scheduled tasks are enabled again.
+1. Set `automation.enabledmode` to `false` in `state.json`.
+2. Run `BackgroundModifier.ps1 -Action Run` from a non-elevated interactive session.
+3. Confirm UAC prompt appears and elevated relaunch is requested to sync scheduled task state.
+4. Verify scheduled tasks `BackgroundModifier-Startup`, `BackgroundModifier-Renderer`, and `BackgroundModifier-Setter` are disabled.
+5. Set `automation.enabledmode` to `true` in `state.json`.
+6. Run `BackgroundModifier.ps1 -Action Run` again from a non-elevated interactive session.
+7. Confirm UAC prompt appears and elevated relaunch is requested to sync scheduled task state.
+8. Verify all three scheduled tasks are enabled again.
 7. Verify `state.json` lifecycle section updates:
-- `lifecycle.lastAction` equals `DisableAutomation` then `EnableAutomation`.
+- `lifecycle.lastAction` equals `SyncAutomationMode`.
 - `lifecycle.lastStatus` equals `completed` after each successful run.
 - `automation.enabledmode` equals `False` after disable and `True` after enable.
