@@ -534,7 +534,7 @@ try {
     Set-ObjectProperty -Object $record -Name "contracts" -Value $contracts
 
     Set-ObjectProperty -Object $record -Name "setupSupport" -Value ([pscustomobject]@{
-        setupStatus      = (if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initialSetterExit -eq 0) { "completed" } else { "completed-with-warnings" })
+        setupStatus      = $(if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initialSetterExit -eq 0) { "completed" } else { "completed-with-warnings" })
         setupUpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
         initialRendererExitCode = $initialRendererExit
         initialSetterExitCode = $initialSetterExit
