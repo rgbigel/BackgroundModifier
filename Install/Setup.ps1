@@ -56,10 +56,12 @@ $LogRoot         = "C:\BackgroundMotives\logs"
 $DeployedRoot    = Split-Path $PSScriptRoot -Parent
 $SourceRoot      = Join-Path $DeployedRoot "Source"
 $ModulesRoot     = Join-Path $DeployedRoot "Modules"
+$OrchestratorScript = Join-Path $SourceRoot "BackgroundModifier.ps1"
 $RendererScript  = Join-Path $SourceRoot "BackgroundRenderer.ps1"
 $SetterScript    = Join-Path $SourceRoot "BackgroundSetter.ps1"
 $VerifierScript  = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"
 
+$TaskNameStartup  = "BackgroundModifier-Startup"
 $TaskNameRenderer = "BackgroundModifier-Renderer"
 $TaskNameSetter   = "BackgroundModifier-Setter"
 $ProjectName      = Split-Path $DeployedRoot -Leaf
@@ -211,7 +213,7 @@ Write-Host "[OK] Running as Administrator"
 # --- Source script checks ---
 Write-Host "--- Source script check ---"
 $missingSource = @()
-foreach ($s in @($RendererScript, $SetterScript, $VerifierScript, $ModulesRoot)) {
+foreach ($s in @($OrchestratorScript, $RendererScript, $SetterScript, $VerifierScript, $ModulesRoot)) {
     if (Test-Path $s) {
         if ($TraceMode) { Write-Host "[OK] Found: $s" }
     } else {
@@ -293,7 +295,10 @@ function Register-BackgroundTask {
     param(
         [string]$TaskName,
         [string]$ScriptPath,
-        [string]$Description
+        [string]$Description,
+        [ValidateSet("AtLogOn","AtStartup")]
+        [string]$TriggerType = "AtLogOn",
+        [string[]]$ScriptArgs = @()
     )
 
     $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -322,14 +327,26 @@ function Register-BackgroundTask {
         "`"$ScriptPath`""
     )
 
+    foreach ($scriptArg in $ScriptArgs) {
+        $taskArgs += $scriptArg
+    }
+
     if ($TraceMode) {
         $taskArgs += "-TraceMode"
     }
 
     $taskArgLine = ($taskArgs -join " ")
     $action  = New-ScheduledTaskAction -Execute $pwsh -Argument $taskArgLine
-    $trigger = New-ScheduledTaskTrigger -AtLogOn
-    $principal = New-ScheduledTaskPrincipal -UserId (whoami) -LogonType Interactive -RunLevel Highest
+
+    if ($TriggerType -eq "AtStartup") {
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    }
+    else {
+        $trigger = New-ScheduledTaskTrigger -AtLogOn
+        $principal = New-ScheduledTaskPrincipal -UserId (whoami) -LogonType Interactive -RunLevel Highest
+    }
+
     $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -StartWhenAvailable
 
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description $Description -Force | Out-Null
@@ -339,6 +356,7 @@ function Register-BackgroundTask {
     }
 }
 
+Register-BackgroundTask -TaskName $TaskNameStartup  -ScriptPath $OrchestratorScript -Description "BackgroundModifier: orchestrate pre-logon phase at startup" -TriggerType "AtStartup" -ScriptArgs @("-Phase1Only")
 Register-BackgroundTask -TaskName $TaskNameRenderer -ScriptPath $RendererScript -Description "BackgroundModifier: render background at logon"
 Register-BackgroundTask -TaskName $TaskNameSetter   -ScriptPath $SetterScript   -Description "BackgroundModifier: apply background at logon"
 
@@ -378,7 +396,7 @@ try {
         setupStatus      = (if ($verifierExit -eq 0) { "completed" } else { "completed-with-warnings" })
         setupUpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
         verifierExitCode = $verifierExit
-        taskNames        = @($TaskNameRenderer, $TaskNameSetter)
+        taskNames        = @($TaskNameStartup, $TaskNameRenderer, $TaskNameSetter)
         runtimeRoot      = $RuntimeRoot
         assetsRoot       = $AssetsRoot
         logRoot          = $LogRoot

@@ -61,6 +61,7 @@ Write-Host "=== BackgroundModifier Installation Verifier (v$ScriptVersion) ==="
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
 $DeployedRoot = Split-Path $PSScriptRoot -Parent
+$OrchestratorScript = Join-Path $DeployedRoot "Source\BackgroundModifier.ps1"
 $RendererScript = Join-Path $DeployedRoot "Source\BackgroundRenderer.ps1"
 $SetterScript = Join-Path $DeployedRoot "Source\BackgroundSetter.ps1"
 $RenderToolsModule = Join-Path $DeployedRoot "Modules\RenderTools.psm1"
@@ -74,6 +75,7 @@ $RequiredDirectories = @(
 )
 
 $RequiredFiles = @(
+    $OrchestratorScript,
     $RendererScript,
     $SetterScript,
     $RenderToolsModule
@@ -127,16 +129,32 @@ function Test-TaskActionPath {
     }
 
     $normalizedArgs = [string]$action.Arguments
+    $isEnabled = $true
+    try {
+        $isEnabled = [bool]$task.Settings.Enabled
+    }
+    catch {
+        $isEnabled = $true
+    }
+
+    $enabledLabel = if ($isEnabled) { "Enabled" } else { "Disabled" }
+
     if ($normalizedArgs -like "*${ExpectedScriptPath}*") {
-        Write-Host "[OK] $TaskName -> $ExpectedScriptPath"
+        Write-Host "[OK] $TaskName -> $ExpectedScriptPath [$enabledLabel]"
     }
     else {
         Write-Host "[WARN] $TaskName action path differs from deployed runtime"
         Write-Host "[WARN]   Expected contains: $ExpectedScriptPath"
         Write-Host "[WARN]   Actual args: $normalizedArgs"
+        Write-Host "[WARN]   Task state: $enabledLabel"
+    }
+
+    if (-not $isEnabled) {
+        Write-Host "[WARN] Task is currently disabled: $TaskName"
     }
 }
 
+Test-TaskActionPath -TaskName "BackgroundModifier-Startup"  -ExpectedScriptPath $OrchestratorScript
 Test-TaskActionPath -TaskName "BackgroundModifier-Renderer" -ExpectedScriptPath $RendererScript
 Test-TaskActionPath -TaskName "BackgroundModifier-Setter" -ExpectedScriptPath $SetterScript
 

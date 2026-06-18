@@ -422,9 +422,35 @@ function Update-Phase1State {
     }
 }
 
+function Test-AutomationEnabledMode {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "automation") -or $null -eq $state.automation) {
+        return $true
+    }
+
+    $automation = $state.automation
+    if (-not ($automation.PSObject.Properties.Name -contains "enabledmode")) {
+        return $true
+    }
+
+    return [bool]$automation.enabledmode
+}
+
 if (-not (Test-IsWindows11)) {
     Write-Host "[X] Unsupported OS. This solution supports Windows 11 only."
     Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "UnsupportedOS"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+if (-not (Test-AutomationEnabledMode -StateFilePath $StateFile)) {
+    Write-Host "[X] Rendering rejected because automation is disabled (automation.enabledmode=False)."
+    Write-Host "[INFO] Run BackgroundModifier -EnableAutomation with elevation before rendering."
+    Update-Phase1State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "AutomationDisabledMode"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }

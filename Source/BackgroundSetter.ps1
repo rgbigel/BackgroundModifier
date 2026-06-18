@@ -34,8 +34,7 @@ param(
     [switch]$ApplyDesktop,
     [switch]$ApplyLockScreen,
     [switch]$CaptureDesktopAsBase,
-    [switch]$PromoteDesktopBaseToLogonBase,
-    [switch]$Interactive
+    [switch]$PromoteDesktopBaseToLogonBase
 )
 
 if ($HelpMode) {
@@ -443,8 +442,34 @@ function Get-Phase1ReadinessFromState {
     return Get-PhaseReadiness -Context $RuntimeContext -StateFilePath $StateFilePath -PhaseKey "phase1" -UnknownIsReady $true
 }
 
+function Test-AutomationEnabledMode {
+    param(
+        [string]$StateFilePath
+    )
+
+    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    if (-not ($state.PSObject.Properties.Name -contains "automation") -or $null -eq $state.automation) {
+        return $true
+    }
+
+    $automation = $state.automation
+    if (-not ($automation.PSObject.Properties.Name -contains "enabledmode")) {
+        return $true
+    }
+
+    return [bool]$automation.enabledmode
+}
+
 if (-not (Test-IsWindows11)) {
     Write-Host "[X] Unsupported OS. This solution supports Windows 11 only."
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+if (-not (Test-AutomationEnabledMode -StateFilePath $StateFile)) {
+    Write-Host "[X] Apply operations rejected because automation is disabled (automation.enabledmode=False)."
+    Write-Host "[INFO] Run BackgroundModifier -EnableAutomation with elevation before phase 2 operations."
+    Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "AutomationDisabledMode"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
@@ -487,8 +512,7 @@ $HasExplicitActionRequest = (
     $ApplyDesktop.IsPresent -or
     $ApplyLockScreen.IsPresent -or
     $CaptureDesktopAsBase.IsPresent -or
-    $PromoteDesktopBaseToLogonBase.IsPresent -or
-    $Interactive
+    $PromoteDesktopBaseToLogonBase.IsPresent
 )
 $IsNonInteractiveAutorun = (-not $SessionIsInteractive) -and (-not $HasExplicitActionRequest)
 
@@ -496,14 +520,6 @@ if (-not $ApplyDesktop.IsPresent -and -not $ApplyLockScreen.IsPresent) {
     # Keep backward-compatible behavior for existing automation.
     $DoApplyDesktop = $true
     $DoApplyLockScreen = $true
-}
-
-if ($Interactive) {
-    Write-Host "--- Interactive action selection ---"
-    $DoCapture = ((Read-Host "Capture current desktop wallpaper as DesktopBase.jpg? (y/N)") -match '^(y|yes)$')
-    $DoPromote = ((Read-Host "Promote DesktopBase.jpg to LogonBase.jpg? (y/N)") -match '^(y|yes)$')
-    $DoApplyDesktop = ((Read-Host "Apply Desktop.jpg to desktop now? (y/N)") -match '^(y|yes)$')
-    $DoApplyLockScreen = ((Read-Host "Apply Logon.jpg as Windows lock/sign-in image policy? (y/N)") -match '^(y|yes)$')
 }
 
 # --- Detect pending logon change from a prior non-elevated run ---
@@ -713,7 +729,6 @@ if ($DoApplyLockScreen) {
             if ($DoApplyLockScreen) { "-ApplyLockScreen" }
             if ($DoCapture) { "-CaptureDesktopAsBase" }
             if ($DoPromote) { "-PromoteDesktopBaseToLogonBase" }
-            if ($Interactive) { "-Interactive" }
         )
         if ($TraceMode) { Stop-Transcript | Out-Null }
         exit 0

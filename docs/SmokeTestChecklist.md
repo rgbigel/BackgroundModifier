@@ -85,3 +85,15 @@ Note: If elevation is accepted and the elevated apply completes quickly, state m
 - `phase.currentPhase` is `Blocked`.
 - `phase.phase2Status` is `blocked`.
 - `phase.blockedReason` is `LockScreenElevationRelaunchSuppressedDuplicate`.
+
+## I. Automation Enable/Disable Lifecycle (Elevation Required)
+1. Run `BackgroundModifier.ps1 -DisableAutomation` from a non-elevated interactive session.
+2. Confirm UAC prompt appears and elevated relaunch is requested.
+3. Verify scheduled tasks `BackgroundModifier-Startup`, `BackgroundModifier-Renderer`, and `BackgroundModifier-Setter` are disabled.
+4. Run `BackgroundModifier.ps1 -EnableAutomation` from a non-elevated interactive session.
+5. Confirm UAC prompt appears and elevated relaunch is requested.
+6. Verify all three scheduled tasks are enabled again.
+7. Verify `state.json` lifecycle section updates:
+- `lifecycle.lastAction` equals `DisableAutomation` then `EnableAutomation`.
+- `lifecycle.lastStatus` equals `completed` after each successful run.
+- `automation.enabledmode` equals `False` after disable and `True` after enable.
