@@ -95,6 +95,18 @@ function Test-AutomationEnabledMode {
     return [bool]$automation.enabledmode
 }
 
+function Write-AutomationModeStatusBox {
+    param(
+        [bool]$EnabledMode
+    )
+
+    $stateLabel = if ($EnabledMode) { "ENABLED" } else { "DISABLED" }
+
+    Write-Host "+----------------------------------------------+"
+    Write-Host "| Automation Mode: $($stateLabel.PadRight(29))|"
+    Write-Host "+----------------------------------------------+"
+}
+
 function Get-OrchestratorForwardArgsForRelaunch {
     $forwardArgs = @(
         if ($TraceMode) { "-TraceMode" }
@@ -407,6 +419,9 @@ function Invoke-ToolScript {
 $stateFile = $RuntimeContext.StateFilePath
 $rendererScript = Join-Path $PSScriptRoot "BackgroundRenderer.ps1"
 $setterScript = Join-Path $PSScriptRoot "BackgroundSetter.ps1"
+$automationEnabledMode = Test-AutomationEnabledMode -StateFilePath $stateFile
+
+Write-AutomationModeStatusBox -EnabledMode $automationEnabledMode
 
 if ($Action -eq "Setup") {
     if (Invoke-SetupAction -StateFilePath $stateFile) {
@@ -419,7 +434,7 @@ if (-not (Ensure-AutomationTaskModeFromState -StateFilePath $stateFile)) {
     exit 1
 }
 
-if (-not (Test-AutomationEnabledMode -StateFilePath $stateFile)) {
+if (-not $automationEnabledMode) {
     Write-Host "[X] Automation is disabled (automation.enabledmode=False)."
     Write-Host "[INFO] Update state automation.enabledmode=True and run orchestrator in an interactive session."
     Set-OrchestratorBlockedReason -StateFilePath $stateFile -Reason "AutomationDisabledMode"
