@@ -251,22 +251,20 @@ function Set-LockScreenImage {
     )
 
     if (-not (Test-Path $ImagePath)) {
-        throw "Lock screen image missing: $ImagePath"
+        throw "Logon screen image missing: $ImagePath"
     }
 
-    $personalizationPolicy = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
-    if (-not (Test-Path $personalizationPolicy)) {
-        New-Item -Path $personalizationPolicy -Force | Out-Null
-    }
-
-    Set-ItemProperty -Path $personalizationPolicy -Name LockScreenImage -Value $ImagePath -Type String
-
-    # Keep sign-in background enabled where this policy is honored.
+    # Set logon screen background (sign-in/login screen at boot/user switch)
     $systemPolicy = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
     if (-not (Test-Path $systemPolicy)) {
         New-Item -Path $systemPolicy -Force | Out-Null
     }
+    
+    # Enable logon background image display
     Set-ItemProperty -Path $systemPolicy -Name DisableLogonBackgroundImage -Value 0 -Type DWord
+    
+    # Set the actual logon background image path
+    Set-ItemProperty -Path $systemPolicy -Name LogonBackgroundImage -Value $ImagePath -Type String
 }
 
 function Test-IsElevated {
@@ -545,8 +543,8 @@ catch {
 
 # --- Compute PendingLogonSource from current session if desktop changed and logon apply is intended ---
 if (-not $PendingLogonSource -and $ImageState.UserChangedDesktop -and $DoApplyLockScreen) {
-    $PendingLogonSource = if ($DoApplyDesktop) { $DesktopRendered } else { $DesktopImage }
-    Write-Host "[INFO] Desktop changed since last render. Logon update pending -> $PendingLogonSource"
+    $PendingLogonSource = if ($ImageState.LogonMatchesRendered) { $LogonRendered } else { $LogonImage }
+    Write-Host "[INFO] Applying logon screen from rendered source -> $PendingLogonSource"
 }
 
 if ($DoCapture) {
@@ -674,9 +672,9 @@ if ($DoApplyDesktop) {
     }
 }
 
-# --- Apply lock/sign-in background ---
+# --- Apply logon screen background ---
 if ($DoApplyLockScreen) {
-    Write-Host "--- Applying lock/sign-in image policy ---"
+    Write-Host "--- Applying logon screen background ---"
 
     $isElevated = Test-IsElevated
     $isInteractive = $SessionIsInteractive
@@ -686,7 +684,7 @@ if ($DoApplyLockScreen) {
     }
 
     if (-not $isElevated) {
-        Write-Host "[X] Lock/sign-in policy update requires elevation (Administrator)."
+        Write-Host "[X] Logon screen background update requires elevation (Administrator)."
         if (-not $isInteractive) {
             Write-Host "[WARN] Non-interactive context cannot complete UAC elevation prompt."
             Write-Host "[INFO] Persisting pending state and exiting with error for later interactive recovery."
@@ -728,8 +726,7 @@ if ($DoApplyLockScreen) {
         Update-Phase2State -StateFilePath $StateFile -Status "blocked" -CurrentPhase "Blocked" -BlockedReason "LockScreenElevationRequiredInteractiveRelaunch"
         Restart-ScriptElevated -ForwardArgs @(
             if ($TraceMode) { "-TraceMode" }
-            if ($DoApplyDesktop) { "-ApplyDesktop" }
-            if ($DoApplyLockScreen) { "-ApplyLockScreen" }
+            "-ApplyLockScreen"
             if ($DoCapture) { "-CaptureDesktopAsBase" }
             if ($DoPromote) { "-PromoteDesktopBaseToLogonBase" }
         )
@@ -739,7 +736,7 @@ if ($DoApplyLockScreen) {
 
     if ($DoApplyLockScreen -and $isInteractive) {
         Write-Host "[INFO] Running in post-logon interactive session (elevated)."
-        Write-Host "[INFO] Lock/sign-in changes may not be visible until sign-out/lock/restart."
+        Write-Host "[INFO] Logon screen changes may not be visible until next login/user switch."
     }
     elseif ($DoApplyLockScreen) {
         Write-Host "[INFO] Running in non-interactive context."

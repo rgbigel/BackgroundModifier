@@ -378,6 +378,52 @@ if ($TraceMode) {
     Start-Job -ScriptBlock $moveScript -ArgumentList $tempLog, $LogRoot | Out-Null
 }
 
+# --- Create command-hub launchers ---
+Write-Host "--- Provisioning command-hub launchers ---"
+try {
+    $RuntimeLauncherPath = Join-Path $CmdRoot "$ProjectName.cmd"
+    $InstallerLauncherPath = Join-Path $CmdRoot "${ProjectName}_Install.cmd"
+    
+    # Runtime launcher template (points to deployed runtime)
+    $runtimeLauncherContent = @"
+@echo off
+setlocal
+set "TARGET_SCRIPT=$SourceDst\BackgroundModifier.ps1"
+where pwsh >nul 2>nul
+if %ERRORLEVEL% EQU 0 (
+    pwsh -NoProfile -ExecutionPolicy Bypass -File "%TARGET_SCRIPT%" %*
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%TARGET_SCRIPT%" %*
+)
+set "EXITCODE=%ERRORLEVEL%"
+endlocal & exit /b %EXITCODE%
+"@
+
+    # Installer launcher template (points to source repository)
+    $installerLauncherContent = @"
+@echo off
+setlocal
+set "TARGET_SCRIPT=$PSCommandPath"
+where pwsh >nul 2>nul
+if %ERRORLEVEL% EQU 0 (
+    pwsh -NoProfile -ExecutionPolicy Bypass -File "%TARGET_SCRIPT%" %*
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%TARGET_SCRIPT%" %*
+)
+set "EXITCODE=%ERRORLEVEL%"
+endlocal & exit /b %EXITCODE%
+"@
+
+    Set-Content -Path $RuntimeLauncherPath -Value $runtimeLauncherContent -Encoding ASCII -Force
+    Write-Host "[OK] Runtime launcher created: $RuntimeLauncherPath"
+
+    Set-Content -Path $InstallerLauncherPath -Value $installerLauncherContent -Encoding ASCII -Force
+    Write-Host "[OK] Installer launcher created: $InstallerLauncherPath"
+}
+catch {
+    Write-Host "[WARN] Failed to create command-hub launchers: $($_.Exception.Message)"
+}
+
 # --- Hand off to deployed Setup.ps1 ---
 Write-Host "--- Handing off to Setup.ps1 ---"
 if (-not (Test-Path $SetupDeployed)) {

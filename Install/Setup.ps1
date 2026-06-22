@@ -566,6 +566,11 @@ $setupExit = if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initi
 if ($TraceMode) {
     Stop-Transcript | Out-Null
     Write-Host "Log written to: $TranscriptPath"
+    Write-Host ""
+    Write-Host "=== Production Phase Ready ==="
+    Write-Host "Review the output above before closing this window."
+    Write-Host ""
+    $null = Read-Host "Press Enter to exit"
 }
 
 exit $setupExit

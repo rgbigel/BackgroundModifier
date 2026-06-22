@@ -298,13 +298,38 @@ function Get-DefaultBcdIdentifier {
             return "(unavailable)"
         }
 
+        $defaultGuid = $null
         foreach ($line in $bootMgrLines) {
-            if ($line -match '^\s*default\s+(.+)$') {
+            if ($line -match '^\s*default\s+' -or $line -match 'default\s+(.+)') {
+                $matches[0] -match '({[^}]+})' | Out-Null
+                if ($matches -and $matches.Count -gt 0) {
+                    $defaultGuid = $matches[1]
+                    break
+                }
+                elseif ($line -match 'default\s+(.+)$') {
+                    $defaultGuid = $matches[1].Trim()
+                    break
+                }
+            }
+        }
+
+        if (-not $defaultGuid) {
+            return "(not set)"
+        }
+
+        # Get the description for the default entry
+        $entryLines = & $bcdEdit /enum $defaultGuid 2>$null
+        if (-not $entryLines) {
+            return $defaultGuid
+        }
+
+        foreach ($line in $entryLines) {
+            if ($line -match '^\s*description\s+(.+)$') {
                 return $matches[1].Trim()
             }
         }
 
-        return "(not set)"
+        return $defaultGuid
     }
     catch {
         return "(error)"
@@ -608,11 +633,31 @@ $hostname    = $env:COMPUTERNAME
 $username    = $env:USERNAME
 $osVersion   = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "DisplayVersion" -ErrorAction SilentlyContinue)
 $buildNumber = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber" -ErrorAction SilentlyContinue)
-$ipAddresses = (Get-NetIPConfiguration -ErrorAction SilentlyContinue |
+
+# Collect IP addresses with LAN/WLAN detection
+$ipInfo = @()
+Get-NetIPConfiguration -ErrorAction SilentlyContinue |
     Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address } |
-    ForEach-Object { $_.IPv4Address.IPAddress } |
-    Where-Object { $_ -and $_ -notmatch '^169\.254\.' } |
-    Select-Object -Unique) -join ", "
+    ForEach-Object {
+        $ip = $_.IPv4Address.IPAddress
+        $adapter = $_.NetAdapter
+        
+        # Skip APIPA addresses
+        if ($ip -match '^169\.254\.') {
+            return
+        }
+        
+        # Detect LAN vs WLAN based on adapter type
+        $adapterType = if ($adapter.InterfaceDescription -match '(wireless|wi-fi|wifi|wlan)') {
+            "WLAN"
+        } else {
+            "LAN"
+        }
+        
+        $ipInfo += "$ip ($adapterType)"
+    }
+
+$ipAddresses = ($ipInfo | Select-Object -Unique) -join ", "
 $renderTime  = (Get-Date).ToString("yyyy-MM-dd HH:mm")
 $efiLabel    = Get-EfiVolumeLabel
 $bcdDefault  = Get-DefaultBcdIdentifier
