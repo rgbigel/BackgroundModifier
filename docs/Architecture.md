@@ -1,5 +1,5 @@
 # Architecture.md
-**Version:** 8.0.0
+**Version:** 8.0.2
 **Profile:** default
 **Author:** Rolf Bercht
 
@@ -43,14 +43,19 @@ Solution behavior (8.0.0):
 The runtime model is deliberately split:
 
 1. Phase 1 (pre-logon, elevated/system)
-- Collect machine and boot identity context.
-- Produce phase 1 artifacts and mark readiness in state.
-- No phase 2 setter path is executed.
+- Collect machine and boot identity context (hostname, OS, IP, BCD, EFI, volumes).
+- Write structured systemInfo to state.json.
+- Compute and store systemInfo hash for change detection.
+- Mark phase1Status = ready.
+- **No rendering is performed in Phase 1.**
 
-2. Phase 2 (post-logon, interactive)
-- Validate phase 1 readiness from state.
-- Enrich context with user/session data.
-- Render final output and apply configured targets.
+2. Phase 2 (post-logon, user context)
+- Validate phase 1 systemInfo availability in state.
+- Compare systemInfo.hash with render.lastSystemInfoHash.
+- If changed or no prior render: render desktop and logon overlay images.
+- Apply rendered images to desktop and logon/lock screen targets.
+- Update render tracking in state.
+- In scheduled post-logon autoruns, execution is non-interactive and not user-visible.
 
 ---
 

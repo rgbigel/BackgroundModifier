@@ -1,5 +1,5 @@
 # Implementation.md
-**Version:** 8.0.0
+**Version:** 8.0.2
 **Profile:** default
 **Author:** Rolf Bercht
 
@@ -11,7 +11,7 @@
 ## Scope
 - Platform: Windows 11 only.
 - Installer/setup execution: PowerShell 7 (pwsh).
-- Runtime model: two-phase rendering with single-source state in state.json.
+- Runtime model: Phase 1 collects system info, Phase 2 renders and applies from that info.
 - Deployment model: non-repository runtime in BTools plus cmd exposure layer.
 
 ---
@@ -21,19 +21,58 @@
 The runtime is split into two technical phases:
 
 1. Phase 1 (pre-logon, elevated/system):
-- Collect machine and boot identity context.
-- Produce machine-valid render artifacts.
-- Update state.json with phase 1 completion metadata.
-- Do not invoke phase 2 setter behavior.
+- Collect machine and boot identity context (hostname, OS, IP, BCD, EFI, volumes).
+- Compute SHA256 hash of collected systemInfo fields (excluding timestamp).
+- Write systemInfo object + hash to state.json.systemInfo.
+- Mark phase1Status = ready.
+- **No rendering is performed in Phase 1.**
 
 2. Phase 2 (post-logon user context):
-- Load and validate phase 1 output from state.json.
-- Enrich state with session/user context.
-- Produce final render artifacts for desktop and next logon cycle.
-- Apply requested targets through setter operations.
-- In scheduled post-logon autoruns, execution is normally non-interactive and not user-visible.
+- Read systemInfo from state.json (written by Phase 1).
+- Compare state.systemInfo.hash with state.render.lastSystemInfoHash.
+- If hash differs or no prior render: render desktop and logon overlay images from systemInfo.
+- Apply rendered images to desktop (via SystemParametersInfo) and logon/lock screen (via registry policy).
+- Update state.render section (lastSystemInfoHash, lastRenderedAtUtc, scriptVersion).
+- In scheduled post-logon autoruns, execution is non-interactive and not user-visible.
 - In non-interactive autoruns, run the simple phase 2 path and handle errors only.
 - Cleanup and corrective actions are intentionally deferred to a later manual BackgroundModifier run.
+
+---
+
+## 1b. System Info State Contract
+
+Phase 1 writes the following to state.json:
+
+```json
+{
+  "systemInfo": {
+    "hostname": "...",
+    "username": "...",
+    "osVersion": "...",
+    "buildNumber": "...",
+    "ipAddresses": "...",
+    "efiLabel": "...",
+    "bcdDefault": "...",
+    "volumeInventory": "...",
+    "hash": "...",
+    "collectedAtUtc": "..."
+  }
+}
+```
+
+Phase 2 writes the following to state.json after rendering:
+
+```json
+{
+  "render": {
+    "lastSystemInfoHash": "...",
+    "lastRenderedAtUtc": "...",
+    "scriptVersion": "..."
+  }
+}
+```
+
+**Hash rule:** SHA256 of hostname+username+osVersion+buildNumber+ipAddresses+efiLabel+bcdDefault+volumeInventory (JSON-serialized, excludes collectedAtUtc and render timestamp).
 
 ---
 
