@@ -1,6 +1,6 @@
 <#
     Module: StateTools.psm1
-    Version: 1.0.0
+    Version: 1.0.1
     Purpose: Shared state.json helpers with explicit context and contract surface.
 #>
 
@@ -291,7 +291,7 @@ function Clear-PendingLogonSource {
     return (Write-RuntimeState -Context $Context -StateObject $state -StateFilePath $StateFilePath -OnPersist $OnPersist)
 }
 
-function Mark-InteractiveElevationRelaunch {
+function Set-InteractiveElevationRelaunchMarker {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -390,14 +390,14 @@ function Get-StateToolsContract {
             "Get-PendingLogonSource",
             "Set-PendingLogonSource",
             "Clear-PendingLogonSource",
-            "Mark-InteractiveElevationRelaunch",
+            "Set-InteractiveElevationRelaunchMarker",
             "Clear-InteractiveElevationRelaunch",
             "Test-InteractiveElevationRelaunchRecentlyRequested"
         )
     }
 }
 
-Export-ModuleMember -Function Set-StateObjectProperty, Read-RuntimeState, Write-RuntimeState, Update-PhaseState, Get-PhaseReadiness, Get-PendingLogonSource, Set-PendingLogonSource, Clear-PendingLogonSource, Mark-InteractiveElevationRelaunch, Clear-InteractiveElevationRelaunch, Test-InteractiveElevationRelaunchRecentlyRequested, Get-StateToolsContract
+Export-ModuleMember -Function Set-StateObjectProperty, Read-RuntimeState, Write-RuntimeState, Update-PhaseState, Get-PhaseReadiness, Get-PendingLogonSource, Set-PendingLogonSource, Clear-PendingLogonSource, Set-InteractiveElevationRelaunchMarker, Clear-InteractiveElevationRelaunch, Test-InteractiveElevationRelaunchRecentlyRequested, Get-StateToolsContract
 <#
     Module: StateTools.psm1
     Version: 1.0.0
@@ -529,7 +529,7 @@ function Save-RepoRuntimeState {
     }
 }
 
-function Ensure-StateSections {
+function Add-StateSections {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -566,7 +566,7 @@ function Update-RepoPhaseState {
     )
 
     $state = Get-RepoRuntimeState -Context $Context -WarnOnUnreadable
-    Ensure-StateSections -StateObject $state
+    Add-StateSections -StateObject $state
 
     Set-StateObjectProperty -Object $state.phase -Name "currentPhase" -Value $CurrentPhase
     Set-StateObjectProperty -Object $state.phase -Name "$($Phase)Status" -Value $Status
@@ -778,7 +778,7 @@ function Set-RepoBlockedReason {
     )
 
     $state = Get-RepoRuntimeState -Context $Context -WarnOnUnreadable
-    Ensure-StateSections -StateObject $state
+    Add-StateSections -StateObject $state
 
     Set-StateObjectProperty -Object $state.phase -Name "currentPhase" -Value $CurrentPhase
     Set-StateObjectProperty -Object $state.phase -Name "blockedReason" -Value $Reason

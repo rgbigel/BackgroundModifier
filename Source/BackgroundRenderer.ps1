@@ -1,6 +1,6 @@
 ﻿<#
     Script: BackgroundRenderer.ps1
-    Version: 8.0.0
+    Version: 8.0.1
     Author: Rolf Bercht
     Purpose: Deterministic generation of logon and desktop background output images.
 #>
@@ -43,7 +43,7 @@ if ($HelpMode) {
     exit 0
 }
 
-$ScriptVersion = "8.0.0"
+$ScriptVersion = "8.0.1"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
@@ -61,6 +61,10 @@ Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ImageTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "SystemInfoTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "FileTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "ImageStateTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RuntimeStateTools.psm1") -Force
 
 $WarningPreference = $prev
 
@@ -90,128 +94,6 @@ function Write-MutationLog {
     )
 
     Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
-}
-function Test-IsWindows11 {
-    try {
-        $build = [int](Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber")
-        return ($build -ge 22000)
-    }
-    catch {
-        return $false
-    }
-}
-
-function Get-CurrentDesktopWallpaperPath {
-    $wallpaperPath = ""
-
-    try {
-        $wallpaperPath = (Get-ItemPropertyValue -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper" -ErrorAction SilentlyContinue)
-    }
-    catch {
-        $wallpaperPath = ""
-    }
-
-    if ($wallpaperPath -and (Test-Path $wallpaperPath)) {
-        return $wallpaperPath
-    }
-
-    $transcoded = Join-Path $env:APPDATA "Microsoft\Windows\Themes\TranscodedWallpaper"
-    if (Test-Path $transcoded) {
-        return $transcoded
-    }
-
-    return $null
-}
-
-function Get-FileHashOrNull {
-    param(
-        [string]$Path
-    )
-
-    if (-not (Test-Path $Path)) {
-        return $null
-    }
-
-    try {
-        return (Get-FileHash -Path $Path -Algorithm SHA256).Hash
-    }
-    catch {
-        return $null
-    }
-}
-
-function Test-FileContentEqual {
-    param(
-        [string]$PathA,
-        [string]$PathB
-    )
-
-    $hashA = Get-FileHashOrNull -Path $PathA
-    $hashB = Get-FileHashOrNull -Path $PathB
-
-    if (-not $hashA -or -not $hashB) {
-        return $false
-    }
-
-    return ($hashA -eq $hashB)
-}
-
-function Get-ImageState {
-    param(
-        [string]$DesktopImage,
-        [string]$DesktopBase,
-        [string]$DesktopRendered,
-        [string]$LogonImage,
-        [string]$LogonBase,
-        [string]$LogonRendered
-    )
-
-    $desktopMatchesRendered = Test-FileContentEqual -PathA $DesktopImage -PathB $DesktopRendered
-    $desktopMatchesBase = Test-FileContentEqual -PathA $DesktopImage -PathB $DesktopBase
-    $logonMatchesRendered = Test-FileContentEqual -PathA $LogonImage -PathB $LogonRendered
-    $logonMatchesBase = Test-FileContentEqual -PathA $LogonImage -PathB $LogonBase
-
-    return [pscustomobject]@{
-        DesktopImageExists = (Test-Path $DesktopImage)
-        DesktopBaseExists = (Test-Path $DesktopBase)
-        DesktopRenderedExists = (Test-Path $DesktopRendered)
-        LogonImageExists = (Test-Path $LogonImage)
-        LogonBaseExists = (Test-Path $LogonBase)
-        LogonRenderedExists = (Test-Path $LogonRendered)
-        DesktopMatchesRendered = $desktopMatchesRendered
-        DesktopMatchesBase = $desktopMatchesBase
-        LogonMatchesRendered = $logonMatchesRendered
-        LogonMatchesBase = $logonMatchesBase
-        UserChangedDesktop = ((Test-Path $DesktopImage) -and (Test-Path $DesktopRendered) -and -not $desktopMatchesRendered)
-        UserChangedLogon = ((Test-Path $LogonImage) -and (Test-Path $LogonRendered) -and -not $logonMatchesRendered)
-    }
-}
-
-function Restore-BaseFromCurrentImage {
-    param(
-        [string]$BasePath,
-        [string]$CurrentImagePath,
-        [string]$Label
-    )
-
-    if (Test-Path $BasePath) {
-        return $true
-    }
-
-    if (-not (Test-Path $CurrentImagePath)) {
-        return $false
-    }
-
-    try {
-        Copy-Item -Path $CurrentImagePath -Destination $BasePath -Force
-        Write-MutationLog -Operation "CopyItem" -Path $CurrentImagePath -Target $BasePath
-        Write-Host "[OK] Restored $Label base from current image -> $BasePath"
-        return $true
-    }
-    catch {
-        Write-Host "[X] Failed restoring $Label base from current image: $($_.Exception.Message)"
-        return $false
-    }
 }
 
 function New-SolidColorJpeg {
@@ -284,153 +166,6 @@ function Get-WallpaperOrSolidColor {
         New-SolidColorJpeg -OutputPath $DestinationPath
         return $true
     }
-}
-
-function Get-DefaultBcdIdentifier {
-    try {
-        $bcdEdit = Join-Path $env:WINDIR "System32\bcdedit.exe"
-        if (-not (Test-Path $bcdEdit)) {
-            return "(bcdedit missing)"
-        }
-
-        $bootMgrLines = & $bcdEdit /enum "{bootmgr}" 2>$null
-        if (-not $bootMgrLines) {
-            return "(unavailable)"
-        }
-
-        $defaultGuid = $null
-        foreach ($line in $bootMgrLines) {
-            if ($line -match '^\s*default\s+' -or $line -match 'default\s+(.+)') {
-                $matches[0] -match '({[^}]+})' | Out-Null
-                if ($matches -and $matches.Count -gt 0) {
-                    $defaultGuid = $matches[1]
-                    break
-                }
-                elseif ($line -match 'default\s+(.+)$') {
-                    $defaultGuid = $matches[1].Trim()
-                    break
-                }
-            }
-        }
-
-        if (-not $defaultGuid) {
-            return "(not set)"
-        }
-
-        # Get the description for the default entry
-        $entryLines = & $bcdEdit /enum $defaultGuid 2>$null
-        if (-not $entryLines) {
-            return $defaultGuid
-        }
-
-        foreach ($line in $entryLines) {
-            if ($line -match '^\s*description\s+(.+)$') {
-                return $matches[1].Trim()
-            }
-        }
-
-        return $defaultGuid
-    }
-    catch {
-        return "(error)"
-    }
-}
-
-function Get-EfiVolumeLabel {
-    try {
-        $efiGuid = '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}'
-        $efiPartition = Get-Partition -ErrorAction SilentlyContinue |
-            Where-Object { $_.GptType -eq $efiGuid } |
-            Select-Object -First 1
-
-        if (-not $efiPartition) {
-            return "(not found)"
-        }
-
-        $efiVolume = Get-Volume -Partition $efiPartition -ErrorAction SilentlyContinue
-        if (-not $efiVolume) {
-            $displayPartition = [Math]::Max(0, ([int]$efiPartition.PartitionNumber - 1))
-            return "Disk $($efiPartition.DiskNumber) Part $displayPartition"
-        }
-
-        $label = if ([string]::IsNullOrWhiteSpace($efiVolume.FileSystemLabel)) {
-            "(no label)"
-        }
-        else {
-            $efiVolume.FileSystemLabel
-        }
-
-        $displayPartition = [Math]::Max(0, ([int]$efiPartition.PartitionNumber - 1))
-        return "$label (D$($efiPartition.DiskNumber)P$displayPartition)"
-    }
-    catch {
-        return "(error)"
-    }
-}
-
-function Get-VolumeInventorySummary {
-    try {
-        $volumes = @(Get-Volume -ErrorAction SilentlyContinue)
-        $volumeCount = $volumes.Count
-
-        $bcdRefCount = 0
-        try {
-            $bcdEdit = Join-Path $env:WINDIR "System32\bcdedit.exe"
-            if (Test-Path $bcdEdit) {
-                $bcdText = (& $bcdEdit /enum all /v 2>$null | Out-String)
-                if ($bcdText) {
-                    $bcdRefCount = ([regex]::Matches($bcdText, '\\\\Device\\\\HarddiskVolume\d+') |
-                        ForEach-Object { $_.Value.ToLowerInvariant() } |
-                        Select-Object -Unique).Count
-                }
-            }
-        }
-        catch {
-            $bcdRefCount = 0
-        }
-
-        return "Volumes=$volumeCount; BCDRefs=$bcdRefCount"
-    }
-    catch {
-        return "(error)"
-    }
-}
-
-function Set-ObjectProperty {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Object,
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [object]$Value
-    )
-
-    if ($Object.PSObject.Properties.Name -contains $Name) {
-        $Object.$Name = $Value
-    }
-    else {
-        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
-    }
-}
-
-function Get-RuntimeState {
-    param(
-        [string]$StateFilePath
-    )
-
-    return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
-}
-
-function Save-RuntimeState {
-    param(
-        [string]$StateFilePath,
-        [object]$StateObject
-    )
-
-    return (Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath -StateObject $StateObject -OnPersist {
-        param($persistedPath)
-        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
-    })
 }
 
 function Update-Phase1State {
@@ -634,33 +369,67 @@ $username    = $env:USERNAME
 $osVersion   = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "DisplayVersion" -ErrorAction SilentlyContinue)
 $buildNumber = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber" -ErrorAction SilentlyContinue)
 
-# Collect IP addresses with LAN/WLAN detection
-$ipInfo = @()
+# Collect IP addresses with LAN/WLAN detection (1 LAN, 1 WLAN only)
+$lanAddresses = @()
+$wlanAddresses = @()
 Get-NetIPConfiguration -ErrorAction SilentlyContinue |
     Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address } |
     ForEach-Object {
         $ip = $_.IPv4Address.IPAddress
         $adapter = $_.NetAdapter
+        $adapterName = $adapter.Name
+        $description = $adapter.InterfaceDescription
         
         # Skip APIPA addresses
         if ($ip -match '^169\.254\.') {
+            if ($TraceMode) { Write-Host "[SKIP] $adapterName - APIPA address $ip" }
+            return
+        }
+        
+        # Skip VLAN, Bluetooth, and VPN/Tunnel adapters
+        if ($description -match '(vlan|virtual.*lan|bluetooth|bnep|tun|tap|vpn|tunnel|openvpn)') {
+            if ($TraceMode) {
+                $reason = if ($description -match 'vlan|virtual') { "VLAN" }
+                          elseif ($description -match 'bluetooth|bnep') { "Bluetooth" }
+                          else { "VPN/Tunnel" }
+                Write-Host "[SKIP] $adapterName - $reason adapter ($description)"
+            }
             return
         }
         
         # Detect LAN vs WLAN based on adapter type
-        $adapterType = if ($adapter.InterfaceDescription -match '(wireless|wi-fi|wifi|wlan)') {
-            "WLAN"
+        if ($description -match '(wireless|wi-fi|wifi|wlan)') {
+            if ($wlanAddresses.Count -lt 1) {
+                if ($TraceMode) { Write-Host "[ACCEPT] $adapterName - WLAN at $ip" }
+                $wlanAddresses += $ip
+            } else {
+                if ($TraceMode) { Write-Host "[SKIP] $adapterName - WLAN slot filled (additional WLAN $ip)" }
+            }
         } else {
-            "LAN"
+            if ($lanAddresses.Count -lt 1) {
+                if ($TraceMode) { Write-Host "[ACCEPT] $adapterName - LAN at $ip" }
+                $lanAddresses += $ip
+            } else {
+                if ($TraceMode) { Write-Host "[SKIP] $adapterName - LAN slot filled (additional LAN $ip)" }
+            }
         }
-        
-        $ipInfo += "$ip ($adapterType)"
     }
 
-$ipAddresses = ($ipInfo | Select-Object -Unique) -join ", "
+$ipInfo = @()
+if ($lanAddresses.Count -gt 0) { $ipInfo += "$($lanAddresses[0]) (LAN)" }
+if ($wlanAddresses.Count -gt 0) { $ipInfo += "$($wlanAddresses[0]) (WLAN)" }
+$ipAddresses = if ($ipInfo.Count -gt 0) { $ipInfo -join "`n" } else { "(none)" }
 $renderTime  = (Get-Date).ToString("yyyy-MM-dd HH:mm")
 $efiLabel    = Get-EfiVolumeLabel
 $bcdDefault  = Get-DefaultBcdIdentifier
+
+if ($bcdDefault -in @("(unavailable)", "(error)")) {
+    Write-Host "[X] Failed to retrieve BCD information: $bcdDefault"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "BcdInfoUnavailable"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
 $volInv      = Get-VolumeInventorySummary
 
 $tableRows = @(

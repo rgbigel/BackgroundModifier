@@ -54,7 +54,7 @@ $requiredStateToolsFunctions = @(
     "Get-PendingLogonSource",
     "Set-PendingLogonSource",
     "Clear-PendingLogonSource",
-    "Mark-InteractiveElevationRelaunch",
+    "Set-InteractiveElevationRelaunchMarker",
     "Clear-InteractiveElevationRelaunch",
     "Test-InteractiveElevationRelaunchRecentlyRequested",
     "Get-StateToolsContract"

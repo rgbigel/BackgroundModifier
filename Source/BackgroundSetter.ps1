@@ -1,6 +1,6 @@
 ﻿<#
     Script: BackgroundSetter.ps1
-    Version: 8.0.0
+    Version: 8.0.1
     Author: Rolf Bercht
     Purpose: Deterministic application of generated background output images to logon and desktop.
 #>
@@ -54,6 +54,11 @@ Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "ImageTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "SystemInfoTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "FileTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "ImageStateTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RuntimeStateTools.psm1") -Force
 
 $RuntimeContext = New-RepoRuntimeContext -RepoName "BackgroundModifier" -RuntimeRoot $RuntimeRoot -LogRoot $LogRoot -StateFilePath $StateFilePath
 $LogRoot = $RuntimeContext.LogRoot
@@ -67,7 +72,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setter (v8.0.0) ==="
+Write-Host "=== BackgroundModifier Setter (v8.0.1) ==="
 
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
@@ -82,129 +87,6 @@ function Write-MutationLog {
     )
 
     Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
-}
-
-function Test-IsWindows11 {
-    try {
-        $build = [int](Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber")
-        return ($build -ge 22000)
-    }
-    catch {
-        return $false
-    }
-}
-
-function Get-CurrentDesktopWallpaperPath {
-    $wallpaperPath = ""
-
-    try {
-        $wallpaperPath = (Get-ItemPropertyValue -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper" -ErrorAction SilentlyContinue)
-    }
-    catch {
-        $wallpaperPath = ""
-    }
-
-    if ($wallpaperPath -and (Test-Path $wallpaperPath)) {
-        return $wallpaperPath
-    }
-
-    $transcoded = Join-Path $env:APPDATA "Microsoft\Windows\Themes\TranscodedWallpaper"
-    if (Test-Path $transcoded) {
-        return $transcoded
-    }
-
-    return $null
-}
-
-function Get-FileHashOrNull {
-    param(
-        [string]$Path
-    )
-
-    if (-not (Test-Path $Path)) {
-        return $null
-    }
-
-    try {
-        return (Get-FileHash -Path $Path -Algorithm SHA256).Hash
-    }
-    catch {
-        return $null
-    }
-}
-
-function Test-FileContentEqual {
-    param(
-        [string]$PathA,
-        [string]$PathB
-    )
-
-    $hashA = Get-FileHashOrNull -Path $PathA
-    $hashB = Get-FileHashOrNull -Path $PathB
-
-    if (-not $hashA -or -not $hashB) {
-        return $false
-    }
-
-    return ($hashA -eq $hashB)
-}
-
-function Get-ImageState {
-    param(
-        [string]$DesktopImage,
-        [string]$DesktopBase,
-        [string]$DesktopRendered,
-        [string]$LogonImage,
-        [string]$LogonBase,
-        [string]$LogonRendered
-    )
-
-    $desktopMatchesRendered = Test-FileContentEqual -PathA $DesktopImage -PathB $DesktopRendered
-    $desktopMatchesBase = Test-FileContentEqual -PathA $DesktopImage -PathB $DesktopBase
-    $logonMatchesRendered = Test-FileContentEqual -PathA $LogonImage -PathB $LogonRendered
-    $logonMatchesBase = Test-FileContentEqual -PathA $LogonImage -PathB $LogonBase
-
-    return [pscustomobject]@{
-        DesktopImageExists = (Test-Path $DesktopImage)
-        DesktopBaseExists = (Test-Path $DesktopBase)
-        DesktopRenderedExists = (Test-Path $DesktopRendered)
-        LogonImageExists = (Test-Path $LogonImage)
-        LogonBaseExists = (Test-Path $LogonBase)
-        LogonRenderedExists = (Test-Path $LogonRendered)
-        DesktopMatchesRendered = $desktopMatchesRendered
-        DesktopMatchesBase = $desktopMatchesBase
-        LogonMatchesRendered = $logonMatchesRendered
-        LogonMatchesBase = $logonMatchesBase
-        UserChangedDesktop = ((Test-Path $DesktopImage) -and (Test-Path $DesktopRendered) -and -not $desktopMatchesRendered)
-        UserChangedLogon = ((Test-Path $LogonImage) -and (Test-Path $LogonRendered) -and -not $logonMatchesRendered)
-    }
-}
-
-function Restore-BaseFromCurrentImage {
-    param(
-        [string]$BasePath,
-        [string]$CurrentImagePath,
-        [string]$Label
-    )
-
-    if (Test-Path $BasePath) {
-        return $true
-    }
-
-    if (-not (Test-Path $CurrentImagePath)) {
-        return $false
-    }
-
-    try {
-        Copy-Item -Path $CurrentImagePath -Destination $BasePath -Force
-        Write-MutationLog -Operation "CopyItem" -Path $CurrentImagePath -Target $BasePath
-        Write-Host "[OK] Restored $Label base from current image -> $BasePath"
-        return $true
-    }
-    catch {
-        Write-Host "[X] Failed restoring $Label base from current image: $($_.Exception.Message)"
-        return $false
-    }
 }
 
 function Set-DesktopWallpaper {
@@ -251,20 +133,31 @@ function Set-LockScreenImage {
     )
 
     if (-not (Test-Path $ImagePath)) {
-        throw "Logon screen image missing: $ImagePath"
+        throw "Lock screen image missing: $ImagePath"
     }
 
-    # Set logon screen background (sign-in/login screen at boot/user switch)
+    # Set the lock screen background image
+    $personalizationPolicy = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
+    if (-not (Test-Path $personalizationPolicy)) {
+        New-Item -Path $personalizationPolicy -Force | Out-Null
+    }
+    Set-ItemProperty -Path $personalizationPolicy -Name LockScreenImage -Value $ImagePath -Type String
+}
+
+function Set-LogonScreenConfiguration {
+    # Configure logon screen display and blur settings.
+    # Note: These settings control how the logon screen (password/PIN input) displays.
+    
     $systemPolicy = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
     if (-not (Test-Path $systemPolicy)) {
         New-Item -Path $systemPolicy -Force | Out-Null
     }
     
-    # Enable logon background image display
+    # Enable logon background to display the image (instead of solid accent color)
     Set-ItemProperty -Path $systemPolicy -Name DisableLogonBackgroundImage -Value 0 -Type DWord
     
-    # Set the actual logon background image path
-    Set-ItemProperty -Path $systemPolicy -Name LogonBackgroundImage -Value $ImagePath -Type String
+    # Control blur effect on logon screen (0 = allow blur, 1 = disable blur)
+    Set-ItemProperty -Path $systemPolicy -Name DisableAcrylicBackgroundOnLogon -Value 0 -Type DWord
 }
 
 function Test-IsElevated {
@@ -321,43 +214,6 @@ function Test-ScheduledTasksPresent {
     }
 }
 
-function Set-ObjectProperty {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Object,
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [object]$Value
-    )
-
-    if ($Object.PSObject.Properties.Name -contains $Name) {
-        $Object.$Name = $Value
-    }
-    else {
-        $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
-    }
-}
-
-function Get-RuntimeState {
-    param(
-        [string]$StateFilePath
-    )
-
-    return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
-}
-
-function Save-RuntimeState {
-    param(
-        [string]$StateFilePath,
-        [object]$StateObject
-    )
-
-    return (Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath -StateObject $StateObject -OnPersist {
-        param($persistedPath)
-        Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
-    })
-}
-
 function Get-PendingLogonSourceFromState {
     param(
         [string]$StateFilePath
@@ -395,7 +251,7 @@ function Mark-InteractiveElevationRelaunchRequested {
         [string]$StateFilePath
     )
 
-    return (Mark-InteractiveElevationRelaunch -Context $RuntimeContext -StateFilePath $StateFilePath -ProcessId $PID -OnPersist {
+    return (Set-InteractiveElevationRelaunchMarker -Context $RuntimeContext -StateFilePath $StateFilePath -ProcessId $PID -OnPersist {
         param($persistedPath)
         Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
     })
@@ -755,6 +611,7 @@ if ($DoApplyLockScreen) {
     if ($DoApplyLockScreen) {
         try {
             Set-LockScreenImage -ImagePath $LogonRendered
+            Set-LogonScreenConfiguration
             Copy-Item -Path $LogonRendered -Destination $LogonImage -Force
             Write-MutationLog -Operation "CopyItem" -Path $LogonRendered -Target $LogonImage
             if (-not (Clear-PendingLogonSourceInState -StateFilePath $StateFile)) {
