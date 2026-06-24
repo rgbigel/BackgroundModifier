@@ -18,6 +18,7 @@
 # =================================================================================================
 
 function Merge-Image {
+    [CmdletBinding()]
     param(
         [string]$BaseImage,
         [string]$OverlayImage,
@@ -56,6 +57,7 @@ function Merge-Image {
 }
 
 function Render-TextOverlay {
+    [CmdletBinding()]
     param(
         [string]$BaseImage,
         [string]$OutputPath,

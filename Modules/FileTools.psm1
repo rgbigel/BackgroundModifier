@@ -17,6 +17,11 @@
 ============================================================================================ #>
 
 function Get-FileHashOrNull {
+    [CmdletBinding()]
+    param(
+        [string]$Path
+    )
+
     <#
     .SYNOPSIS
         Computes SHA256 hash of a file, returning null on error.
@@ -28,9 +33,6 @@ function Get-FileHashOrNull {
     .OUTPUTS
         [string] SHA256 hash value or $null if unavailable.
     #>
-    param(
-        [string]$Path
-    )
 
     if (-not (Test-Path $Path)) {
         return $null
@@ -45,6 +47,12 @@ function Get-FileHashOrNull {
 }
 
 function Test-FileContentEqual {
+    [CmdletBinding()]
+    param(
+        [string]$PathA,
+        [string]$PathB
+    )
+
     <#
     .SYNOPSIS
         Compares file contents by SHA256 hash.
@@ -58,10 +66,6 @@ function Test-FileContentEqual {
     .OUTPUTS
         [bool] True if both files exist and have identical content, false otherwise.
     #>
-    param(
-        [string]$PathA,
-        [string]$PathB
-    )
 
     $hashA = Get-FileHashOrNull -Path $PathA
     $hashB = Get-FileHashOrNull -Path $PathB

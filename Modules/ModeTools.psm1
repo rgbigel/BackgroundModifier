@@ -11,6 +11,7 @@
 ============================================================================================ #>
 
 function Apply-DebugMode {
+    [CmdletBinding()]
     param(
         [switch]$DebugMode
     )

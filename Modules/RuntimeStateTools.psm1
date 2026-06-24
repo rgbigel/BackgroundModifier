@@ -19,6 +19,15 @@
 ============================================================================================ #>
 
 function Set-ObjectProperty {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [object]$Value
+    )
+
     <#
     .SYNOPSIS
         Sets or adds a property on a PSCustomObject.
@@ -34,13 +43,6 @@ function Set-ObjectProperty {
     .OUTPUTS
         None. Modifies object in-place.
     #>
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Object,
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [object]$Value
-    )
 
     if ($Object.PSObject.Properties.Name -contains $Name) {
         $Object.$Name = $Value
@@ -51,6 +53,11 @@ function Set-ObjectProperty {
 }
 
 function Get-RuntimeState {
+    [CmdletBinding()]
+    param(
+        [string]$StateFilePath
+    )
+
     <#
     .SYNOPSIS
         Reads runtime state from state file using RuntimeContext.
@@ -62,14 +69,18 @@ function Get-RuntimeState {
     .OUTPUTS
         [PSCustomObject] containing persisted runtime state.
     #>
-    param(
-        [string]$StateFilePath
-    )
 
     return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
 }
 
 function Save-RuntimeState {
+    [CmdletBinding()]
+    param(
+        [string]$StateFilePath,
+        [object]$StateObject,
+        [bool]$TraceMode = $false
+    )
+
     <#
     .SYNOPSIS
         Persists runtime state to state file using RuntimeContext with change detection.
@@ -88,11 +99,6 @@ function Save-RuntimeState {
     .OUTPUTS
         [bool] $true if state was written or unchanged (always success).
     #>
-    param(
-        [string]$StateFilePath,
-        [object]$StateObject,
-        [bool]$TraceMode = $false
-    )
 
     # Serialize new state to JSON
     $newStateJson = $StateObject | ConvertTo-Json -Depth 10 -Compress

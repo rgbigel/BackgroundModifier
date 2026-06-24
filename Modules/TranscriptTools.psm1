@@ -11,6 +11,7 @@
 ============================================================================================ #>
 
 function Start-TraceTranscript {
+    [CmdletBinding()]
     param(
         [string]$Path
     )
@@ -19,6 +20,9 @@ function Start-TraceTranscript {
 }
 
 function Stop-TraceTranscript {
+    [CmdletBinding()]
+    param()
+
     Stop-Transcript | Out-Null
 }
 

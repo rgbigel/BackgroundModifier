@@ -23,6 +23,7 @@
 $script:Errors = @()
 
 function Add-ErrorMessage {
+    [CmdletBinding()]
     param(
         [string]$Message
     )
@@ -31,6 +32,9 @@ function Add-ErrorMessage {
 }
 
 function Get-Errors {
+    [CmdletBinding()]
+    param()
+
     return $script:Errors
 }
 

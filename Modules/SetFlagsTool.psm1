@@ -8,6 +8,7 @@
 #>
 
 function Set-Flags {
+    [CmdletBinding()]
     param(
         [switch]$T,
         [switch]$D

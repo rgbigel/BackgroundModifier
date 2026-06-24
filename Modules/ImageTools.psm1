@@ -16,6 +16,7 @@
 # =================================================================================================
 
 function Test-Image {
+    [CmdletBinding()]
     param([string]$Path)
 
     if (-not (Test-Path $Path)) {
@@ -36,6 +37,7 @@ function Test-Image {
 }
 
 function Get-ImageSize {
+    [CmdletBinding()]
     param([string]$Path)
 
     if (-not (Test-Path $Path)) {
@@ -56,6 +58,9 @@ function Get-ImageSize {
 }
 
 function Get-CurrentDesktopWallpaperPath {
+    [CmdletBinding()]
+    param()
+
     <#
     .SYNOPSIS
         Retrieves the path to the current desktop wallpaper.
@@ -65,6 +70,7 @@ function Get-CurrentDesktopWallpaperPath {
     .OUTPUTS
         [string] Path to current wallpaper or $null if unavailable.
     #>
+
     $wallpaperPath = ""
 
     try {

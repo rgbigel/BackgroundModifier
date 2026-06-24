@@ -11,12 +11,14 @@
 ============================================================================================ #>
 
 function Write-SummaryHeader {
+    [CmdletBinding()]
     param([string]$Title)
 
     Write-Host "=== $Title ==="
 }
 
 function Write-SummaryItem {
+    [CmdletBinding()]
     param([string]$Message)
 
     Write-Host " - $Message"

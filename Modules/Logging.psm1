@@ -21,6 +21,7 @@ $ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants
 Import-Module $ConstantsPath -Force
 
 function Write-Log {
+    [CmdletBinding()]
     param(
         [string]$Message,
         [string]$LogFile
@@ -34,6 +35,7 @@ function Write-Log {
 }
 
 function Write-ContentMutationLog {
+    [CmdletBinding()]
     param(
         [string]$Operation,
         [string]$Path,

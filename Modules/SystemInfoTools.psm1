@@ -23,6 +23,9 @@
 $Version = "1.0.0"
 
 function Test-IsWindows11 {
+    [CmdletBinding()]
+    param()
+
     <#
     .SYNOPSIS
         Detects if system is running Windows 11 or later.
@@ -31,6 +34,7 @@ function Test-IsWindows11 {
     .OUTPUTS
         [bool] True if Windows 11+, false otherwise.
     #>
+
     try {
         $build = [int](Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber")
         return ($build -ge 22000)
@@ -41,6 +45,9 @@ function Test-IsWindows11 {
 }
 
 function Get-DefaultBcdIdentifier {
+    [CmdletBinding()]
+    param()
+
     <#
     .SYNOPSIS
         Extracts the default boot entry description from BCD.
@@ -50,6 +57,7 @@ function Get-DefaultBcdIdentifier {
     .OUTPUTS
         [string] Description of default boot entry, GUID as fallback, or error status.
     #>
+
     try {
         $bcdEdit = Join-Path $env:WINDIR "System32\bcdedit.exe"
         if (-not (Test-Path $bcdEdit)) {
@@ -106,6 +114,9 @@ function Get-DefaultBcdIdentifier {
 }
 
 function Get-EfiVolumeLabel {
+    [CmdletBinding()]
+    param()
+
     <#
     .SYNOPSIS
         Retrieves the EFI System Partition (ESP) label.
@@ -115,6 +126,7 @@ function Get-EfiVolumeLabel {
     .OUTPUTS
         [string] EFI volume label, partition reference, error status.
     #>
+
     try {
         $efiGuid = '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}'
         $efiPartition = Get-Partition -ErrorAction SilentlyContinue |
@@ -147,6 +159,9 @@ function Get-EfiVolumeLabel {
 }
 
 function Get-VolumeInventorySummary {
+    [CmdletBinding()]
+    param()
+
     <#
     .SYNOPSIS
         Counts volumes and BCD-referenced volumes.
@@ -155,6 +170,7 @@ function Get-VolumeInventorySummary {
     .OUTPUTS
         [string] Formatted summary "Volumes=N; BCDRefs=M" or error status.
     #>
+
     try {
         $volumes = @(Get-Volume -ErrorAction SilentlyContinue)
         $volumeCount = $volumes.Count
@@ -183,6 +199,12 @@ function Get-VolumeInventorySummary {
 }
 
 function Compute-SystemInfoHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]$SystemInfo
+    )
+
     <#
     .SYNOPSIS
         Computes SHA256 hash of system information.
@@ -195,10 +217,6 @@ function Compute-SystemInfoHash {
     .OUTPUTS
         [string] SHA256 hash in hexadecimal format (lowercase).
     #>
-    param(
-        [Parameter(Mandatory=$true)]
-        [PSCustomObject]$SystemInfo
-    )
 
     try {
         # Concatenate fields in deterministic order

@@ -20,6 +20,16 @@
 ============================================================================================ #>
 
 function Get-ImageState {
+    [CmdletBinding()]
+    param(
+        [string]$DesktopImage,
+        [string]$DesktopBase,
+        [string]$DesktopRendered,
+        [string]$LogonImage,
+        [string]$LogonBase,
+        [string]$LogonRendered
+    )
+
     <#
     .SYNOPSIS
         Analyzes current state of desktop and logon images.
@@ -42,14 +52,6 @@ function Get-ImageState {
         [PSCustomObject] with properties: DesktopImageExists, DesktopBaseExists, etc., 
         and computed flags: UserChangedDesktop, UserChangedLogon
     #>
-    param(
-        [string]$DesktopImage,
-        [string]$DesktopBase,
-        [string]$DesktopRendered,
-        [string]$LogonImage,
-        [string]$LogonBase,
-        [string]$LogonRendered
-    )
 
     $desktopMatchesRendered = Test-FileContentEqual -PathA $DesktopImage -PathB $DesktopRendered
     $desktopMatchesBase = Test-FileContentEqual -PathA $DesktopImage -PathB $DesktopBase
@@ -73,6 +75,13 @@ function Get-ImageState {
 }
 
 function Restore-BaseFromCurrentImage {
+    [CmdletBinding()]
+    param(
+        [string]$BasePath,
+        [string]$CurrentImagePath,
+        [string]$Label
+    )
+
     <#
     .SYNOPSIS
         Restores a base image from current image if base is missing.
@@ -88,11 +97,6 @@ function Restore-BaseFromCurrentImage {
     .OUTPUTS
         [bool] True if restored or already exists, false if current image missing.
     #>
-    param(
-        [string]$BasePath,
-        [string]$CurrentImagePath,
-        [string]$Label
-    )
 
     if (Test-Path $BasePath) {
         return $true
