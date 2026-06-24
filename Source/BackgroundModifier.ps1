@@ -1,6 +1,6 @@
 <#
     Script: BackgroundModifier.ps1
-    Version: 8.0.0
+    Version: 9.0.0
     Author: Rolf Bercht
     Purpose: Orchestrate phase-aware execution of renderer (phase 1) and setter (phase 2).
 #>
@@ -17,17 +17,33 @@ param(
     [string]$StateFilePath,
     [string]$LogRoot,
     [switch]$Phase1Only,
-    [switch]$Phase2Only
+    [switch]$Phase2Only,
+    [Alias("i")]
+    [switch]$Interactive,
+    [Alias("n")]
+    [switch]$NonInteractive
 )
 
 if ($HelpMode) {
-    Write-Host "BackgroundModifier orchestrator"
+    Write-Host "BackgroundModifier orchestrator (v9.0.0)"
+    Write-Host ""
+    Write-Host "Modes:"
+    Write-Host "  -i, -Interactive     Interactive mode (default from launcher)"
+    Write-Host "  -n, -NonInteractive  Non-interactive/automation mode (skip prompts)"
+    Write-Host ""
+    Write-Host "Actions:"
     Write-Host "  -Action       Run (default) or Setup"
-    Write-Host "  -Phase1Only   Run renderer phase only"
-    Write-Host "  -Phase2Only   Run setter phase only"
+    Write-Host ""
+    Write-Host "Phases:"
+    Write-Host "  -Phase1Only   Run renderer phase only (collection)"
+    Write-Host "  -Phase2Only   Run setter phase only (render if needed, apply)"
+    Write-Host ""
+    Write-Host "Logging:"
     Write-Host "  -TraceMode    Enable transcript logging in child scripts"
     exit 0
 }
+
+$ScriptVersion = "9.0.0"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
@@ -459,7 +475,7 @@ else {
     $runPhase2 = $true
 }
 
-Write-Host "=== BackgroundModifier Orchestrator (v8.0.0) ==="
+Write-Host \"=== BackgroundModifier Orchestrator (v9.0.0) ===\"
 Write-Host "Phase1 status: $($phase1Info.Status)"
 Write-Host "Plan: RunPhase1=$runPhase1 RunPhase2=$runPhase2"
 
@@ -481,6 +497,11 @@ if ($runPhase2) {
     $setterArgs = @(
         if ($TraceMode) { "-TraceMode" }
     )
+
+    # [PHASE2A-CODE: Detect autorun context]
+    # Phase 2a: Scheduled task, non-interactive, always elevated → setter auto-detects as IsNonInteractiveAutorun
+    # Phase 2b: User-initiated, interactive → setter auto-detects as NOT IsNonInteractiveAutorun
+    # Setter uses $IsNonInteractiveAutorun to determine logonTime gating (set only in Phase 2a, never in 2b)
 
     Write-Host "[INFO] Running phase 2 setter..."
     $setterExit = Invoke-ToolScript -ScriptPath $setterScript -ForwardArgs $setterArgs
