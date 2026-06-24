@@ -184,7 +184,7 @@ function Test-AutomationEnabledMode {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
     if (-not ($state.PSObject.Properties.Name -contains "automation") -or $null -eq $state.automation) {
         return $true
     }
@@ -359,7 +359,7 @@ Write-Host "System Info Hash: $systemInfoHash"
 
 # --- Update state with systemInfo for Phase 2 ---
 try {
-    $state = Get-RuntimeState -StateFilePath $StateFile
+    $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
     if (-not $state.PSObject.Properties.Name -contains "systemInfo") {
         $state | Add-Member -NotePropertyName "systemInfo" -NotePropertyValue $null
     }

@@ -370,7 +370,7 @@ function Test-AutomationEnabledMode {
         [string]$StateFilePath
     )
 
-    $state = Get-RuntimeState -StateFilePath $StateFilePath
+    $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
     if (-not ($state.PSObject.Properties.Name -contains "automation") -or $null -eq $state.automation) {
         return $true
     }
@@ -536,7 +536,7 @@ if ($phase1Readiness.Known -and -not $phase1Readiness.IsReady) {
 # --- Check if rendering is needed based on systemInfo hash ---
 Write-Host "--- Checking system info for changes ---"
 try {
-    $state = Get-RuntimeState -StateFilePath $StateFile
+    $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
     $currentSystemInfo = $state.systemInfo
 
     if (-not $currentSystemInfo) {
@@ -593,7 +593,7 @@ if ($IsNonInteractiveAutorun) {
     
     # Phase 2a ONLY: Set logon.logonTime once on first execution
     try {
-        $state = Get-RuntimeState -StateFilePath $StateFile
+        $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
         if (-not ($state.PSObject.Properties.Name -contains "logon")) {
             $state | Add-Member -NotePropertyName "logon" -NotePropertyValue @{}
         }

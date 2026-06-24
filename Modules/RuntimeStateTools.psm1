@@ -55,6 +55,8 @@ function Set-ObjectProperty {
 function Get-RuntimeState {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
+        [object]$Context,
         [string]$StateFilePath
     )
 
@@ -63,19 +65,22 @@ function Get-RuntimeState {
         Reads runtime state from state file using RuntimeContext.
     .DESCRIPTION
         Wrapper for Read-RuntimeState module function with RuntimeContext binding.
-        Requires $RuntimeContext variable to be in calling scope.
+    .PARAMETER Context
+        Runtime context object (from New-RepoRuntimeContext).
     .PARAMETER StateFilePath
         Path to state file.
     .OUTPUTS
         [PSCustomObject] containing persisted runtime state.
     #>
 
-    return Read-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath
+    return Read-RuntimeState -Context $Context -StateFilePath $StateFilePath
 }
 
 function Save-RuntimeState {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
+        [object]$Context,
         [string]$StateFilePath,
         [object]$StateObject,
         [bool]$TraceMode = $false
@@ -89,7 +94,8 @@ function Save-RuntimeState {
         Only persists if state has changed (prevents unnecessary I/O and elevation).
         Logs mutation via Write-MutationLog callback only when write occurs.
         In trace mode, also logs when state is unchanged (no-op skipped).
-        Requires $RuntimeContext variable to be in calling scope.
+    .PARAMETER Context
+        Runtime context object (from New-RepoRuntimeContext).
     .PARAMETER StateFilePath
         Path to state file.
     .PARAMETER StateObject
@@ -120,7 +126,7 @@ function Save-RuntimeState {
 
     # Only persist if state actually changed
     if ($stateChanged) {
-        $result = Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFilePath -StateObject $StateObject -OnPersist {
+        $result = Write-RuntimeState -Context $Context -StateFilePath $StateFilePath -StateObject $StateObject -OnPersist {
             param($persistedPath)
             Write-MutationLog -Operation "SetContent" -Path $persistedPath -Target ""
         }
