@@ -565,7 +565,7 @@ try {
             }
             $state.render.lastSystemInfoHash = $currentHash
             $state.render.lastRenderedAtUtc = (Get-Date).ToString("yyyyMMdd_HHmmss")
-            Set-RuntimeState -StateFilePath $StateFile -State $state
+            Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile -StateObject $state
             Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
             Write-Host "[OK] Render state updated with new hash."
         } else {
@@ -605,7 +605,7 @@ if ($IsNonInteractiveAutorun) {
             $state.logon.logonTimeSetByPhase2a = $true
             $state.logon.username = $env:USERNAME
             $state.logon.sessionId = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
-            Set-RuntimeState -StateFilePath $StateFile -State $state
+            Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile -StateObject $state
             Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
             Write-Host "[OK] Phase 2a: logonTime set to $currentLogonTime (first execution only)"
         } else {
