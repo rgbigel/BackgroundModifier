@@ -12,13 +12,17 @@
       - Modules that receive context MUST use provided StateFilePath, not hardcoded paths
 #>
 
+# Import Constants to bind default RuntimeRoot
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 function New-RepoRuntimeContext {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoName,
 
-        [string]$RuntimeRoot = "C:\BackgroundMotives",
+        [string]$RuntimeRoot = $Global:RuntimeRoot,
         [string]$AssetsRoot,
         [string]$LogRoot,
         [string]$StateFilePath,
