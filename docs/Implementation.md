@@ -489,7 +489,42 @@ Post-logon scheduled autorun behavior:
 
 ---
 
-## 11. Paths
+## 11. PowerShell 7 Compatibility Notes
+
+**Unapproved Verb Warnings:**
+
+PowerShell 7 enforces stricter verb naming validation than PowerShell 5.1. When importing modules with non-standard cmdlet names, PowerShell 7 generates non-blocking warnings:
+
+```
+WARNING: The names of some imported commands from the module 'ModuleName' include unapproved verbs that might make them less discoverable.
+```
+
+**Impact:** These warnings are cosmetic and do not affect functionality. However, they clutter test output and logs with non-actionable information.
+
+**Error Evasion Strategy:** Add `-WarningAction SilentlyContinue` to all `Import-Module` statements across source scripts and install scripts to suppress these non-blocking warnings.
+
+**Applied Locations:**
+- BackgroundRenderer.ps1: 16 Import-Module calls
+- BackgroundSetter.ps1: 16 Import-Module calls
+- BackgroundModifier.ps1: 2 Import-Module calls
+- Setup.ps1: 3 Import-Module calls
+- Installer.ps1: 2 Import-Module calls
+- Test-SharedModuleCompatibility.ps1: 2 Import-Module calls
+
+**Example:**
+```powershell
+# Before
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
+
+# After
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force -WarningAction SilentlyContinue
+```
+
+**Rationale:** Silencing unapproved verb warnings improves output readability without masking actual errors. Function contracts and functionality remain unchanged.
+
+---
+
+## 12. Paths
 
 1. Deployment root: D:\OneDrive\BTools
 2. Per-repository runtime root: D:\OneDrive\BTools\<RepositoryName>
