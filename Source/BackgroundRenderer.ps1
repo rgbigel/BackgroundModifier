@@ -359,19 +359,9 @@ Write-Host "System Info Hash: $systemInfoHash"
 
 # --- Update state with systemInfo for Phase 2 ---
 try {
-    $existingState = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
+    $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
     
-    # Rebuild state as fully writable object to avoid PowerShell 7 JSON read-only issues
-    $state = New-Object PSObject
-    
-    # Copy all existing properties from parsed state
-    if ($null -ne $existingState) {
-        foreach ($prop in $existingState.PSObject.Properties) {
-            $state | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value
-        }
-    }
-    
-    # Now add/update systemInfo property
+    # Add or update systemInfo property (state is now mutable via psobject.Copy())
     $state | Add-Member -MemberType NoteProperty -Name "systemInfo" -Value @{
         hostname = $hostname
         username = $username

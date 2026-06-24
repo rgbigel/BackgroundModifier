@@ -83,17 +83,11 @@ function Read-RuntimeState {
             return [pscustomobject]@{}
         }
 
-        # Ensure the returned object is fully mutable
-        # ConvertFrom-Json in PowerShell 7 returns read-only PSCustomObjects
-        # Create new mutable object and copy all properties from parsed object
-        $mutable = New-Object PSObject
-        if ($null -ne $parsed) {
-            foreach ($prop in $parsed.PSObject.Properties) {
-                $mutable | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force
-            }
-        }
-        
-        return $mutable
+        # Remove read-only wrapper using psobject.Copy()
+        # PowerShell 7's ConvertFrom-Json returns ReadOnlyPSObject backed by System.Text.Json (immutable)
+        # psobject.Copy() creates shallow copy that removes the read-only wrapper
+        # This is the fastest known workaround (per PowerShell team research)
+        return $parsed.psobject.Copy()
     }
     catch {
         if (-not $Quiet) {
