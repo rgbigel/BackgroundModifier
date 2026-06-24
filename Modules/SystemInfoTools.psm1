@@ -1,13 +1,16 @@
 <# ============================================================================================
     Path:       D:\Git_Repositories\BackgroundModifier\Modules
     Module:     SystemInfoTools.psm1
-    Version:    8.0.1
+    Version:    1.0.0
     Author:     Rolf Bercht
 
     Purpose:
         Provides system information query functions for Windows 11, BCD, EFI, and volume inventory.
         Atomic functions used for display rendering and system metadata collection.
+        Shared utility module with independent versioning from main solution (v9.0.0).
 ============================================================================================ #>
+
+$Version = "1.0.0"
 
 function Test-IsWindows11 {
     <#
@@ -169,9 +172,53 @@ function Get-VolumeInventorySummary {
     }
 }
 
+function Compute-SystemInfoHash {
+    <#
+    .SYNOPSIS
+        Computes SHA256 hash of system information.
+    .DESCRIPTION
+        Creates deterministic hash from system info fields to detect changes.
+        Hash covers: hostname, username, osVersion, buildNumber, ipAddresses, efiLabel, bcdDefault, volumeInventory.
+        Excludes timestamps to enable change detection independent of render time.
+    .PARAMETER SystemInfo
+        [PSCustomObject] with properties: hostname, username, osVersion, buildNumber, ipAddresses, efiLabel, bcdDefault, volumeInventory.
+    .OUTPUTS
+        [string] SHA256 hash in hexadecimal format (lowercase).
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]$SystemInfo
+    )
+
+    try {
+        # Concatenate fields in deterministic order
+        $concatenated = @(
+            $SystemInfo.hostname,
+            $SystemInfo.username,
+            $SystemInfo.osVersion,
+            $SystemInfo.buildNumber,
+            $SystemInfo.ipAddresses,
+            $SystemInfo.efiLabel,
+            $SystemInfo.bcdDefault,
+            $SystemInfo.volumeInventory
+        ) -join "|" 
+
+        # Compute SHA256
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($concatenated)
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        $hash = $sha256.ComputeHash($bytes)
+        $hexHash = [BitConverter]::ToString($hash) -replace '-', ''
+        return $hexHash.ToLower()
+    }
+    catch {
+        return "(error:$($_.Exception.Message))"
+    }
+}
+
 Export-ModuleMember -Function @(
     'Test-IsWindows11',
     'Get-DefaultBcdIdentifier',
     'Get-EfiVolumeLabel',
-    'Get-VolumeInventorySummary'
+    'Get-VolumeInventorySummary',
+    'Compute-SystemInfoHash'
 )
