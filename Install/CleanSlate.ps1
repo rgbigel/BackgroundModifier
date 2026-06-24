@@ -153,6 +153,14 @@ if (-not (Test-IsElevated)) {
     else {
         Write-Host "[X] Clean-slate execution requires elevation. Re-launching as Administrator..."
 
+        # Close open resources before elevating (prevents file lock issues during cleanup)
+        try {
+            if ((Get-PSCallStack | Where-Object { $_.Command -eq '<ScriptBlock>' }).Count -gt 0) {
+                Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+            }
+        }
+        catch {}
+
         $forwardArgs = @()
         if ($TraceMode) { $forwardArgs += "-TraceMode" }
         if ($All) { $forwardArgs += "-All" }
@@ -272,6 +280,8 @@ if ($errors.Count -gt 0) {
         $null = Read-Host
     }
 
+    [System.GC]::Collect()
+    [System.GC]::WaitForPendingFinalizers()
     exit 1
 }
 
@@ -285,4 +295,6 @@ if ($TraceMode) {
     $null = Read-Host
 }
 
+[System.GC]::Collect()
+[System.GC]::WaitForPendingFinalizers()
 exit 0
