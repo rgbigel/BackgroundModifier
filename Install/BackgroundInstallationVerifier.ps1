@@ -44,10 +44,14 @@ if ($HelpMode) {
     exit 0
 }
 
+# Import Constants to bind paths
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 $ScriptVersion = "8.0.0"
 
 # --- Absolute log root ---
-$LogRoot = "C:\BackgroundMotives\logs"
+$LogRoot = $Global:LogRoot
 
 # --- Transcript handling ---
 if ($TraceMode) {
@@ -65,9 +69,9 @@ $SeedAssetsRoot = Join-Path $DeployedRoot "assets"
 $SeedStateFile = Join-Path $SeedAssetsRoot "state.json"
 $SeedDesktopBase = Join-Path $SeedAssetsRoot "DesktopBase.jpg"
 $SeedLogonBase = Join-Path $SeedAssetsRoot "LogonBase.jpg"
-$RuntimeStateFile = "C:\BackgroundMotives\assets\state.json"
-$RuntimeDesktopBase = "C:\BackgroundMotives\assets\DesktopBase.jpg"
-$RuntimeLogonBase = "C:\BackgroundMotives\assets\LogonBase.jpg"
+$RuntimeStateFile = Join-Path $Global:AssetsRoot "state.json"
+$RuntimeDesktopBase = Join-Path $Global:AssetsRoot "DesktopBase.jpg"
+$RuntimeLogonBase = Join-Path $Global:AssetsRoot "LogonBase.jpg"
 $OrchestratorScript = Join-Path $DeployedRoot "Source\BackgroundModifier.ps1"
 $RendererScript = Join-Path $DeployedRoot "Source\BackgroundRenderer.ps1"
 $SetterScript = Join-Path $DeployedRoot "Source\BackgroundSetter.ps1"
@@ -75,9 +79,9 @@ $RenderToolsModule = Join-Path $DeployedRoot "Modules\RenderTools.psm1"
 
 # --- Directory invariants ---
 $RequiredDirectories = @(
-    "C:\BackgroundMotives",
-    "C:\BackgroundMotives\assets",
-    "C:\BackgroundMotives\logs",
+    $Global:RuntimeRoot,
+    $Global:AssetsRoot,
+    $Global:LogRoot,
     (Join-Path $DeployedRoot "Modules"),
     $SeedAssetsRoot
 )

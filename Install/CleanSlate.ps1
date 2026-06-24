@@ -75,6 +75,10 @@ if ($All) {
     $RemoveInventory = $true
 }
 
+# Import Constants to bind RuntimeRoot
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 $ScriptVersion = "8.0.0"
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 $ProjectName = Split-Path $RepoRoot -Leaf
@@ -89,7 +93,7 @@ $CmdRoot = "D:\OneDrive\cmd"
 $RuntimeBase = Join-Path $CmdRoot "runtimes"
 $RuntimeDir = Join-Path $RuntimeBase $ProjectName
 
-$RuntimeRoot = "C:\BackgroundMotives"
+$RuntimeRoot = $Global:RuntimeRoot
 $BToolsRoot = "D:\OneDrive\BTools"
 $InventoryRoot = Join-Path $BToolsRoot "Inventory"
 $InventoryFile = Join-Path $InventoryRoot "$ProjectName.json"

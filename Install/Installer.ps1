@@ -72,9 +72,13 @@ $ModulesDst = Join-Path $RuntimeDir "Modules"
 $InstallDst = Join-Path $RuntimeDir "Install"
 $AssetsDst  = Join-Path $RuntimeDir "assets"
 
+# Import Constants to bind paths
+$ConstantsPath = Join-Path $RepoRoot "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 $SetupDeployed = Join-Path $InstallDst "Setup.ps1"
-$LogRoot       = "C:\BackgroundMotives\logs"
-$BToolsRoot    = "D:\OneDrive\BTools"
+$LogRoot       = $Global:LogRoot
+$BToolsRoot    = $Global:DeploymentRoot
 $InventoryRoot = Join-Path $BToolsRoot "Inventory"
 $InventoryFile = Join-Path $InventoryRoot "$ProjectName.json"
 $MinimumRuntimeContextContractVersion = "1.0.0"
