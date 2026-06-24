@@ -45,11 +45,15 @@ if ($HelpMode) {
     exit 0
 }
 
+# Import Constants to bind paths
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 # --- Constants ---
 $ScriptVersion   = "8.0.0"
-$RuntimeRoot     = "C:\BackgroundMotives"
-$AssetsRoot      = "C:\BackgroundMotives\assets"
-$LogRoot         = "C:\BackgroundMotives\logs"
+$RuntimeRoot     = $Global:RuntimeRoot
+$AssetsRoot      = $Global:AssetsRoot
+$LogRoot         = $Global:LogRoot
 
 # Paths are derived from this script's location so Setup.ps1 works from both
 # the repository (Install\) and the deployed runtime (runtimes\BackgroundModifier\Install\).
@@ -67,7 +71,7 @@ $TaskNameStartup  = "BackgroundModifier-Startup"
 $TaskNameRenderer = "BackgroundModifier-Renderer"
 $TaskNameSetter   = "BackgroundModifier-Setter"
 $ProjectName      = Split-Path $DeployedRoot -Leaf
-$BToolsRoot       = "D:\OneDrive\BTools"
+$BToolsRoot       = $Global:DeploymentRoot
 $InventoryRoot    = Join-Path $BToolsRoot "Inventory"
 $InventoryFile    = Join-Path $InventoryRoot "$ProjectName.json"
 $MinimumRuntimeContextContractVersion = "1.0.0"
