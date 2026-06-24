@@ -83,7 +83,16 @@ function Read-RuntimeState {
             return [pscustomobject]@{}
         }
 
-        return $parsed
+        # Convert to writable PSCustomObject by creating new object and copying properties
+        # ConvertFrom-Json in PowerShell 7 may return read-only objects
+        $writable = [pscustomobject]@{}
+        if ($null -ne $parsed) {
+            foreach ($prop in $parsed.PSObject.Properties) {
+                $writable | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value
+            }
+        }
+        
+        return $writable
     }
     catch {
         if (-not $Quiet) {
