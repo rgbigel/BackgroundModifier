@@ -2,6 +2,15 @@
     Module: StateTools.psm1
     Version: 1.0.1
     Purpose: Shared state.json helpers with explicit context and contract surface.
+
+    Caller Contract (Module-Caller State Update Responsibility):
+      This module is the ONLY module that directly modifies state.json. Functions here are used by callers to:
+      - Get-RuntimeState: Read current state.json; safe, read-only
+      - Set-RuntimeState: Write state.json atomically; MUST be called after module operations that change state
+      - Set-StateObjectProperty: Update individual state properties; used by callers to accumulate changes
+      - Important: Callers must accumulate all changes, then call Set-RuntimeState once to avoid partial writes
+      - Atomic writes ensure Phase 2a/2b concurrent runs don't corrupt state
+      - Caller must include audit trail: component version, timestamp, source
 #>
 
 function Set-StateObjectProperty {

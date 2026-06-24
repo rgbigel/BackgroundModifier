@@ -4,6 +4,13 @@
 #  Author:      Rolf Bercht
 #  Version:     8.0.1
 #  Purpose:     Additional image-related helpers used by renderer and installer.
+#
+#  Caller Contract (Module-Caller State Update Responsibility):
+#    This module validates and processes images but does NOT modify state.json. Caller is responsible for:
+#    - Test-Image: Safe to call; read-only validation, no state changes needed
+#    - Any output path returned: Caller must verify and update state.json if image paths affect rendering state
+#    - This module does NOT touch state.json; caller owns artifact tracking and state consistency
+#
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (image rendering)
 # =================================================================================================

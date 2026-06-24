@@ -8,6 +8,16 @@
         Provides system information query functions for Windows 11, BCD, EFI, and volume inventory.
         Atomic functions used for display rendering and system metadata collection.
         Shared utility module with independent versioning from main solution (v9.0.0).
+
+    Caller Contract (Module-Caller State Update Responsibility):
+        This module processes system data and returns results. Caller is responsible for:
+        - get-*: Safe to call; read-only, no state modification needed
+        - Compute-SystemInfoHash: Called during Phase 1 collection; caller must:
+            * Capture returned $hash value
+            * Write $hash to state.json (.systemInfo.hash) with collectionSourceVersion (caller $Version)
+            * Write collectionSource and collectedAtUtc timestamp to state.json
+            * Failure to update state.json makes Phase 2 change detection unreliable
+        - This module does NOT directly modify state.json; caller owns state consistency
 ============================================================================================ #>
 
 $Version = "1.0.0"

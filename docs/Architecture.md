@@ -192,11 +192,59 @@ Each executable component maintains its own version identifier:
 
 ---
 
-## 5. Orchestrator Behavior
+## 6. Module-Caller State Update Contract
+
+The architecture strictly separates concerns between modules (processing logic) and callers (orchestration and state management):
+
+**Module Responsibilities (What They Do):**
+- Process input data (collect, compute, render, apply)
+- Return results to caller
+- Do NOT modify state.json directly
+- Do NOT make state-level decisions
+- Include component $Version in logging
+
+**Caller Responsibilities (What Scripts Must Do After Calling Modules):**
+1. Read state.json before calling module (if state is needed)
+2. Extract required fields and pass to module as parameters
+3. Receive module output
+4. Update state.json with results including:
+   - New computed values (hashes, timestamps, metadata)
+   - Audit trail fields (collectionSource, collectedAtUtc, collectionSourceVersion)
+   - Phase tracking (startedAtUtc, completedAtUtc, attemptCount, status)
+5. Write state atomically to prevent corruption between Phase 2a/2b concurrent runs
+6. Log the state write with caller component version
+
+**Error Contract:**
+- If module fails: Caller catches error, logs it, updates phase status to "blocked", writes error to state.json with userVisibleErrorMessage, exits with error code
+- If caller fails to update state after state-affecting module call: State becomes inconsistent; this is a caller bug, not a module bug
+
+**Example (Phase 1 Collection):**
+```powershell
+# Caller pre-phase: Read state
+$state = Get-RuntimeState -StateFilePath $stateFile
+
+# Call module (Collect + Compute)
+$systemInfo = Collect-SystemInfo
+$hash = Compute-SystemInfoHash -systemInfo $systemInfo
+
+# Caller post-phase: Update state with results + audit trail
+$state.systemInfo = $systemInfo
+$state.systemInfo.hash = $hash
+$state.systemInfo.collectedAtUtc = (Get-Date).ToString("yyyymmdd_HHmmss")
+$state.systemInfo.collectionSource = "Phase1Renderer"
+$state.systemInfo.collectionSourceVersion = $ScriptVersion
+Set-RuntimeState -StateFilePath $stateFile -State $state
+```
+
+**Rationale:** This contract ensures:
+- Modules remain testable and reusable (no hidden state dependencies)
+- Callers retain explicit control over state consistency
+- Audit trail is complete and traceable
+- Concurrent Phase 2a/2b runs don't corrupt state
 
 ---
 
-## 6. Orchestrator Behavior
+## 7. Orchestrator Behavior
 
 The operational orchestrator (BackgroundModifier) controls execution by:
 

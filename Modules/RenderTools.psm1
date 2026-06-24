@@ -4,6 +4,15 @@
 #  Author:      Rolf Bercht
 #  Version:     8.0.0
 #  Purpose:     Shared helpers for image rendering, composition, and deterministic output handling.
+#
+#  Caller Contract (Module-Caller State Update Responsibility):
+#    This module renders images but does NOT modify state.json. Caller is responsible for:
+#    - Capture returned image paths and metadata
+#    - Update state.json with: render.lastRenderedAtUtc, render.lastSystemInfoHash (if changed)
+#    - Update render tracking: renderedByPhase, renderedBySource, renderedBySourceVersion
+#    - Write state atomically; failure breaks Phase 2 conditional logic
+#    - This module does NOT touch state.json; caller owns state consistency
+#
 #  Changelog:
 #      5.000  --------  Initial module creation for Consolidated Architecture (text rendering)
 # =================================================================================================

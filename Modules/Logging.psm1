@@ -6,6 +6,14 @@
 
   Purpose:
       Provides simple, reusable logging utilities for scripts and modules.
+
+  Caller Contract (Module-Caller State Update Responsibility):
+      This module writes logs but does NOT modify state.json. All callers MUST:
+      - Include component $Version in every log entry (Requirement #15)
+      - Format: "[COMPONENT:VERSION] message" for audit trail
+      - Log exceptions with full context: operation, parameters, error, recovery action
+      - Logging is MANDATORY for all operator-facing execution paths
+      - Caller is responsible for ensuring logs are written to correct LogRoot path
 ============================================================================================ #>
 
 function Write-Log {

@@ -28,6 +28,11 @@ Runtime configuration and state are managed exclusively through state.json; inte
 11. Reserve command-line parameters exclusively for user-exposed flags (identifiable by short aliases in help text). All other options must be state.json-driven.
 12. Define and maintain systemInfo hash computation: SHA256(hostname+username+osVersion+buildNumber+lastBootTime+ipAddresses+efiLabel+bcdDefault+volumeInventory). The `lastBootTime` field (from Win32_OperatingSystem.LastBootUpTime) detects kernel restarts: cold boot, warm restart, installation reboot, crash recovery. It does NOT change on sleep resume or hibernate resume (kernel remains resident). Equivalent `lastBootTime` across collections indicates same session; changed `lastBootTime` indicates kernel restart.
 
+### Module-Caller State Update Contract
+12.5. **Module Responsibility Boundary**: Modules are responsible only for processing logic (collect data, compute hashes, render images, apply settings); they do NOT directly modify state.json.
+12.6. **Caller Responsibility Boundary**: Callers (scripts that invoke modules) are responsible for: (a) reading state.json before calling module, (b) extracting and passing required data as parameters, (c) receiving module output, (d) updating state.json with results including timestamps, hashes, versions, audit trail fields (collectionSource, collectedAtUtc, etc.), (e) writing state atomically to prevent corruption. Failure to update state.json after a state-affecting module call is a caller bug, not a module bug.
+12.7. Each module header must document which state.json fields are affected (if any) and the caller's post-execution responsibilities.
+
 ### Versioning and Logging
 13. Each source file (.ps1) and module (.psm1) must define an individual `$Version` variable (as text string) aligned with the file's version header.
 14. Main orchestrator version must be stored immutably in state.json at installation time and updated only during explicit install/update operations.
