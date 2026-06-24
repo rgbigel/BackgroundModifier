@@ -359,11 +359,20 @@ Write-Host "System Info Hash: $systemInfoHash"
 
 # --- Update state with systemInfo for Phase 2 ---
 try {
-    $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
-    if (-not $state.PSObject.Properties.Name -contains "systemInfo") {
-        $state | Add-Member -MemberType NoteProperty -Name "systemInfo" -Value $null -Force
+    $existingState = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
+    
+    # Rebuild state as fully writable object to avoid PowerShell 7 JSON read-only issues
+    $state = New-Object PSObject
+    
+    # Copy all existing properties from parsed state
+    if ($null -ne $existingState) {
+        foreach ($prop in $existingState.PSObject.Properties) {
+            $state | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value
+        }
     }
-    $state.systemInfo = @{
+    
+    # Now add/update systemInfo property
+    $state | Add-Member -MemberType NoteProperty -Name "systemInfo" -Value @{
         hostname = $hostname
         username = $username
         osVersion = $osVersion
@@ -377,7 +386,8 @@ try {
         collectedAtUtc = (Get-Date).ToString("yyyyMMdd_HHmmss")
         collectionSource = "Phase1Renderer"
         collectionSourceVersion = $ScriptVersion
-    }
+    } -Force
+    
     Set-RuntimeState -StateFilePath $StateFile -State $state
     Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
     Write-Host "[OK] System info stored in state.json"
