@@ -5,6 +5,10 @@
     Purpose: Phase 2 - Detect system info changes, render if needed, apply backgrounds to desktop and logon screens.
 #>
 
+# Import Constants at top so defaults can bind to $Global:* variables
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 <#
 .SYNOPSIS
     Applies rendered desktop and lock/sign-in background images.
@@ -28,7 +32,7 @@ param(
     [switch]$TraceMode,
     [Alias("h","?")]
     [switch]$HelpMode,
-    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$RuntimeRoot = $Global:RuntimeRoot,
     [string]$StateFilePath,
     [string]$LogRoot
 )

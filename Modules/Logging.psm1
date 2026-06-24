@@ -16,6 +16,10 @@
       - Caller is responsible for ensuring logs are written to correct LogRoot path
 ============================================================================================ #>
 
+# Import Constants to bind log paths
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 function Write-Log {
     param(
         [string]$Message,
@@ -38,8 +42,8 @@ function Write-ContentMutationLog {
         [string]$Outcome = "OK"
     )
 
-    $root = "C:\BackgroundMotives"
-    $logRoot = "C:\BackgroundMotives\logs"
+    $root = $Global:RuntimeRoot
+    $logRoot = $Global:LogRoot
     $auditLog = Join-Path $logRoot "ContentMutation.log"
 
     function Resolve-FullPathOrEmpty {

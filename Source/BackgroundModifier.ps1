@@ -5,6 +5,10 @@
     Purpose: Orchestrate phase-aware execution of renderer (phase 1) and setter (phase 2).
 #>
 
+# Import Constants at top so defaults can bind to $Global:* variables
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 [CmdletBinding()]
 param(
     [Alias("t")]
@@ -13,7 +17,7 @@ param(
     [switch]$HelpMode,
     [ValidateSet("Run", "Setup")]
     [string]$Action = "Run",
-    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$RuntimeRoot = $Global:RuntimeRoot,
     [string]$StateFilePath,
     [string]$LogRoot,
     [switch]$Phase1Only,

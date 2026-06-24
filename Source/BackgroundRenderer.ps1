@@ -5,6 +5,10 @@
     Purpose: Phase 1 - Collect system metadata and store to state.json for change detection.
 #>
 
+# Import Constants at top so defaults can bind to $Global:* variables
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
+
 <#
 .SYNOPSIS
     Generates deterministic desktop and logon rendered background images.
@@ -28,7 +32,7 @@ param(
     [switch]$TraceMode,
     [Alias("h","?")]
     [switch]$HelpMode,
-    [string]$RuntimeRoot = "C:\BackgroundMotives",
+    [string]$RuntimeRoot = $Global:RuntimeRoot,
     [string]$StateFilePath,
     [string]$LogRoot
 )
