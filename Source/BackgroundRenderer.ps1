@@ -361,7 +361,7 @@ Write-Host "System Info Hash: $systemInfoHash"
 try {
     $state = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
     if (-not $state.PSObject.Properties.Name -contains "systemInfo") {
-        $state | Add-Member -NotePropertyName "systemInfo" -NotePropertyValue $null
+        $state | Add-Member -MemberType NoteProperty -Name "systemInfo" -Value $null -Force
     }
     $state.systemInfo = @{
         hostname = $hostname
