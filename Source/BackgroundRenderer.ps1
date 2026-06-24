@@ -46,22 +46,22 @@ $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
 $WarningPreference = "SilentlyContinue"
 
-Import-Module (Join-Path $ModuleRoot "Constants.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "Logging.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "TranscriptTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "PathTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "ImageTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "SystemInfoTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "FileTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "ImageStateTools.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "RuntimeStateTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "Constants.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "Logging.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "TranscriptTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "PathTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "ErrorTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "Validation.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "ModeTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "SummaryTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "ImageTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "SystemInfoTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "FileTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "ImageStateTools.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "RuntimeStateTools.psm1") -Force -WarningAction SilentlyContinue
 
 $WarningPreference = $prev
 

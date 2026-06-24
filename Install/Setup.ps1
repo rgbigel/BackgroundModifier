@@ -91,7 +91,7 @@ function Get-ContractSnapshot {
         $stateToolsModule = Join-Path $ModulePath "StateTools.psm1"
 
         if (Test-Path $runtimeContextModule) {
-            Import-Module $runtimeContextModule -Force -DisableNameChecking
+            Import-Module $runtimeContextModule -Force -DisableNameChecking -WarningAction SilentlyContinue
             $ctxContract = Get-RepoRuntimeContextContract
             if ($ctxContract) {
                 $snapshot.runtimeContext = [pscustomobject]@{
@@ -102,7 +102,7 @@ function Get-ContractSnapshot {
         }
 
         if (Test-Path $stateToolsModule) {
-            Import-Module $stateToolsModule -Force -DisableNameChecking
+            Import-Module $stateToolsModule -Force -DisableNameChecking -WarningAction SilentlyContinue
             $stateContract = Get-StateToolsContract
             if ($stateContract) {
                 $snapshot.stateTools = [pscustomobject]@{
@@ -258,7 +258,7 @@ catch {
 }
 
 # Import logging after module location has been validated.
-Import-Module (Join-Path $ModulesRoot "Logging.psm1") -Force
+Import-Module (Join-Path $ModulesRoot "Logging.psm1") -Force -WarningAction SilentlyContinue
 
 $MutationScriptName = "Setup.ps1"
 

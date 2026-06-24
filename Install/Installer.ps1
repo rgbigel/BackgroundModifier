@@ -120,7 +120,7 @@ function Get-ContractSnapshot {
         $stateToolsModule = Join-Path $ModulePath "StateTools.psm1"
 
         if (Test-Path $runtimeContextModule) {
-            Import-Module $runtimeContextModule -Force -DisableNameChecking
+            Import-Module $runtimeContextModule -Force -DisableNameChecking -WarningAction SilentlyContinue
             $ctxContract = Get-RepoRuntimeContextContract
             if ($ctxContract) {
                 $snapshot.runtimeContext = [pscustomobject]@{
@@ -131,7 +131,7 @@ function Get-ContractSnapshot {
         }
 
         if (Test-Path $stateToolsModule) {
-            Import-Module $stateToolsModule -Force -DisableNameChecking
+            Import-Module $stateToolsModule -Force -DisableNameChecking -WarningAction SilentlyContinue
             $stateContract = Get-StateToolsContract
             if ($stateContract) {
                 $snapshot.stateTools = [pscustomobject]@{

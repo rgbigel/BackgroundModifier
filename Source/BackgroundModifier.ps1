@@ -50,8 +50,8 @@ if ($HelpMode) {
 $ScriptVersion = "9.0.0"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
-Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force
-Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force -WarningAction SilentlyContinue
 
 $RuntimeContext = New-RepoRuntimeContext -RepoName "BackgroundModifier" -RuntimeRoot $RuntimeRoot -LogRoot $LogRoot -StateFilePath $StateFilePath
 

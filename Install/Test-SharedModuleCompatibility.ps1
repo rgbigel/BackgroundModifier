@@ -23,8 +23,8 @@ foreach ($modulePath in @($runtimeContextModule, $stateToolsModule)) {
     }
 }
 
-Import-Module $runtimeContextModule -Force
-Import-Module $stateToolsModule -Force
+Import-Module $runtimeContextModule -Force -WarningAction SilentlyContinue
+Import-Module $stateToolsModule -Force -WarningAction SilentlyContinue
 
 function Test-MinVersion {
     param(
