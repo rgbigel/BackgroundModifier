@@ -1,8 +1,8 @@
 ﻿<#
     Script: BackgroundSetter.ps1
-    Version: 8.0.1
+    Version: 9.0.0
     Author: Rolf Bercht
-    Purpose: Deterministic application of generated background output images to logon and desktop.
+    Purpose: Phase 2 - Detect system info changes, render if needed, apply backgrounds to desktop and logon screens.
 #>
 
 <#
@@ -30,17 +30,15 @@ param(
     [switch]$HelpMode,
     [string]$RuntimeRoot = "C:\BackgroundMotives",
     [string]$StateFilePath,
-    [string]$LogRoot,
-    [switch]$ApplyDesktop,
-    [switch]$ApplyLockScreen,
-    [switch]$CaptureDesktopAsBase,
-    [switch]$PromoteDesktopBaseToLogonBase
+    [string]$LogRoot
 )
 
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
     exit 0
 }
+
+$ScriptVersion = "9.0.0"
 
 # --- Import modules ---
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
@@ -59,6 +57,7 @@ Import-Module (Join-Path $ModuleRoot "SystemInfoTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "FileTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "ImageStateTools.psm1") -Force
 Import-Module (Join-Path $ModuleRoot "RuntimeStateTools.psm1") -Force
+Import-Module (Join-Path $ModuleRoot "RenderTools.psm1") -Force
 
 $RuntimeContext = New-RepoRuntimeContext -RepoName "BackgroundModifier" -RuntimeRoot $RuntimeRoot -LogRoot $LogRoot -StateFilePath $StateFilePath
 $LogRoot = $RuntimeContext.LogRoot
@@ -72,7 +71,7 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setter (v8.0.1) ==="
+Write-Host "=== BackgroundModifier Setter (v9.0.0) ==="
 
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
@@ -87,6 +86,71 @@ function Write-MutationLog {
     )
 
     Write-ContentMutationLog -Operation $Operation -Path $Path -Target $Target -ScriptName $MutationScriptName -Outcome $Outcome
+}
+
+function Render-BackgroundImagesIfNeeded {
+    param(
+        [string]$DesktopBase,
+        [string]$LogonBase,
+        [string]$DesktopRendered,
+        [string]$LogonRendered,
+        [PSCustomObject]$SystemInfo,
+        [int]$MaxValueChars = 50
+    )
+
+    <#
+    .SYNOPSIS
+        Renders desktop and logon images from systemInfo if needed.
+    .DESCRIPTION
+        Checks if rendered images exist and are valid. If not, generates them
+        with system info text overlay. Bright orange text (255,140,0) for readability.
+    #>
+
+    try {
+        $tableRows = @(
+            [pscustomobject]@{ Key = "Host";      Value = $SystemInfo.hostname }
+            [pscustomobject]@{ Key = "User";      Value = $SystemInfo.username }
+            [pscustomobject]@{ Key = "OS";        Value = "Windows 11 $($SystemInfo.osVersion) (Build $($SystemInfo.buildNumber))" }
+            [pscustomobject]@{ Key = "IP";        Value = if ($SystemInfo.ipAddresses) { $SystemInfo.ipAddresses } else { "(none)" } }
+            [pscustomobject]@{ Key = "EFI";       Value = $SystemInfo.efiLabel }
+            [pscustomobject]@{ Key = "BCD";       Value = $SystemInfo.bcdDefault }
+            [pscustomobject]@{ Key = "VolumeInv"; Value = $SystemInfo.volumeInventory }
+            [pscustomobject]@{ Key = "Rendered";  Value = (Get-Date).ToString("yyyy-MM-dd HH:mm") }
+        )
+
+        $overlayTitle = "BackgroundModifier - Ver 9.0.0"
+        $tableFormat = @{ MaxValueChars = $MaxValueChars }
+        $overlayTextColor = @{ R = 255; G = 140; B = 0 }  # Bright orange
+
+        Write-Host "--- Rendering backgrounds ---"
+
+        # Render logon image
+        if (-not (Test-Path $LogonRendered)) {
+            Write-Host "[INFO] Rendering logon image..."
+            Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title $overlayTitle -TableRows $tableRows -TableFormat $tableFormat -TextColor $overlayTextColor | Out-Null
+            Write-MutationLog -Operation "RenderWrite" -Path $LogonRendered -Target ""
+            Write-Host "[OK] Generated logon image -> $LogonRendered"
+        } else {
+            Write-Host "[INFO] Logon rendered image already exists"
+        }
+
+        # Render desktop image
+        if (-not (Test-Path $DesktopRendered)) {
+            Write-Host "[INFO] Rendering desktop image..."
+            Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title $overlayTitle -TableRows $tableRows -TableFormat $tableFormat -TextColor $overlayTextColor | Out-Null
+            Write-MutationLog -Operation "RenderWrite" -Path $DesktopRendered -Target ""
+            Write-Host "[OK] Generated desktop image -> $DesktopRendered"
+        } else {
+            Write-Host "[INFO] Desktop rendered image already exists"
+        }
+
+        Write-Host "[OK] Rendering completed."
+        return $true
+    }
+    catch {
+        Write-Host "[X] Rendering failed: $($_.Exception.Message)"
+        return $false
+    }
 }
 
 function Set-DesktopWallpaper {
@@ -359,25 +423,17 @@ Write-Host "--- Image state ---"
 Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
 Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$($ImageState.LogonMatchesRendered) MatchesBase=$($ImageState.LogonMatchesBase)"
 
-$DoApplyDesktop = $ApplyDesktop.IsPresent
-$DoApplyLockScreen = $ApplyLockScreen.IsPresent
-$DoCapture = $CaptureDesktopAsBase.IsPresent
-$DoPromote = $PromoteDesktopBaseToLogonBase.IsPresent
+# Phase 2 determines render/apply targets based on conditional logic and system state, not CLI parameters.
+# Image capture and promotion are Phase 1 responsibilities (deferred).
+# Phase 2a (automatic) and Phase 2b (interactive) are determined by execution context.
 
 $SessionIsInteractive = Test-IsInteractiveSession
-$HasExplicitActionRequest = (
-    $ApplyDesktop.IsPresent -or
-    $ApplyLockScreen.IsPresent -or
-    $CaptureDesktopAsBase.IsPresent -or
-    $PromoteDesktopBaseToLogonBase.IsPresent
-)
+$HasExplicitActionRequest = $false  # All action context comes from state.json in Phase 2
 $IsNonInteractiveAutorun = (-not $SessionIsInteractive) -and (-not $HasExplicitActionRequest)
 
-if (-not $ApplyDesktop.IsPresent -and -not $ApplyLockScreen.IsPresent) {
-    # Keep backward-compatible behavior for existing automation.
-    $DoApplyDesktop = $true
-    $DoApplyLockScreen = $true
-}
+# Default: render and apply both desktop and logon (conditional render/apply based on state hash below)
+$DoApplyDesktop = $true
+$DoApplyLockScreen = $true
 
 # --- Detect pending logon change from a prior non-elevated run ---
 $PendingLogonSource = $null
@@ -475,8 +531,97 @@ if ($phase1Readiness.Known -and -not $phase1Readiness.IsReady) {
     exit 1
 }
 
+# --- Check if rendering is needed based on systemInfo hash ---
+Write-Host "--- Checking system info for changes ---"
+try {
+    $state = Get-RuntimeState -StateFilePath $StateFile
+    $currentSystemInfo = $state.systemInfo
+
+    if (-not $currentSystemInfo) {
+        Write-Host "[X] System info not found in state (Phase 1 may not have completed)."
+        Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "SystemInfoMissing"
+        if ($TraceMode) { Stop-Transcript | Out-Null }
+        exit 1
+    }
+
+    $currentHash = $currentSystemInfo.hash
+    $lastRenderedHash = if ($state.PSObject.Properties.Name -contains "render" -and $state.render.PSObject.Properties.Name -contains "lastSystemInfoHash") { $state.render.lastSystemInfoHash } else { $null }
+
+    Write-Host "[INFO] Current system info hash: $currentHash"
+    Write-Host "[INFO] Last rendered hash: $(if ($lastRenderedHash) { $lastRenderedHash } else { "(none)" })"
+
+    $renderingNeeded = ($null -eq $lastRenderedHash) -or ($lastRenderedHash -ne $currentHash)
+
+    if ($renderingNeeded) {
+        Write-Host "[INFO] System info has changed or rendered images missing - rendering required."
+        $renderSuccess = Render-BackgroundImagesIfNeeded -DesktopBase $DesktopBase -LogonBase $LogonBase -DesktopRendered $DesktopRendered -LogonRendered $LogonRendered -SystemInfo $currentSystemInfo
+
+        if ($renderSuccess) {
+            # Update render state with new hash and timestamp
+            if (-not ($state.PSObject.Properties.Name -contains "render")) {
+                $state | Add-Member -NotePropertyName "render" -NotePropertyValue @{}
+            }
+            $state.render.lastSystemInfoHash = $currentHash
+            $state.render.lastRenderedAtUtc = (Get-Date).ToString("yyyyMMdd_HHmmss")
+            Set-RuntimeState -StateFilePath $StateFile -State $state
+            Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
+            Write-Host "[OK] Render state updated with new hash."
+        } else {
+            Write-Host "[X] Rendering failed."
+            Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "RenderingFailed"
+            if ($TraceMode) { Stop-Transcript | Out-Null }
+            exit 1
+        }
+    } else {
+        Write-Host "[INFO] System info unchanged - using cached rendered images."
+    }
+}
+catch {
+    Write-Host "[X] Failed to process system info and rendering: $($_.Exception.Message)"
+    Update-Phase2State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "SystemInfoProcessingFailed"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
+# --- Phase 2a/2b Context Detection & Logon Time Gating ---
+Write-Host "--- Determining Phase 2 context ---"
+
 if ($IsNonInteractiveAutorun) {
-    Write-Host "[INFO] Non-interactive autorun mode detected."
+    Write-Host "[INFO] Phase 2a: Automatic post-logon (scheduled, non-interactive, always elevated, hidden)"
+    
+    # Phase 2a ONLY: Set logon.logonTime once on first execution
+    try {
+        $state = Get-RuntimeState -StateFilePath $StateFile
+        if (-not ($state.PSObject.Properties.Name -contains "logon")) {
+            $state | Add-Member -NotePropertyName "logon" -NotePropertyValue @{}
+        }
+        
+        # Check if logonTime already set in this session
+        if (-not ($state.logon.PSObject.Properties.Name -contains "logonTime") -or $null -eq $state.logon.logonTime) {
+            $currentLogonTime = (Get-Date).ToString("yyyyMMdd_HHmmss")
+            $state.logon.logonTime = $currentLogonTime
+            $state.logon.logonTimeSetByPhase2a = $true
+            $state.logon.username = $env:USERNAME
+            $state.logon.sessionId = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
+            Set-RuntimeState -StateFilePath $StateFile -State $state
+            Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
+            Write-Host "[OK] Phase 2a: logonTime set to $currentLogonTime (first execution only)"
+        } else {
+            Write-Host "[OK] Phase 2a: logonTime already set in session ($($state.logon.logonTime)) - not resetting"
+        }
+    }
+    catch {
+        Write-Host "[WARN] Failed to set logonTime in state: $($_.Exception.Message)"
+        # Non-fatal; continue with apply operations
+    }
+}
+else {
+    Write-Host "[INFO] Phase 2b: Interactive user-initiated (menu-driven, user context, elevation on-demand)"
+    Write-Host "[INFO] Phase 2b: logonTime management skipped (exclusive to Phase 2a)"
+    # Phase 2b NEVER modifies logonTime - that's Phase 2a's exclusive responsibility
+}
+
+if ($IsNonInteractiveAutorun) {
     Write-Host "[INFO] Running simple phase 2 path with error handling only."
 }
 
