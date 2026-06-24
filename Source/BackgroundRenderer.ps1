@@ -378,7 +378,7 @@ try {
         collectionSourceVersion = $ScriptVersion
     } -Force
     
-    Set-RuntimeState -StateFilePath $StateFile -State $state
+    Write-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile -StateObject $state
     Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
     Write-Host "[OK] System info stored in state.json"
 }
