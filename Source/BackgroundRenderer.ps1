@@ -1,8 +1,8 @@
 ﻿<#
     Script: BackgroundRenderer.ps1
-    Version: 8.0.1
+    Version: 9.0.0
     Author: Rolf Bercht
-    Purpose: Deterministic generation of logon and desktop background output images.
+    Purpose: Phase 1 - Collect system metadata and store to state.json for change detection.
 #>
 
 <#
@@ -30,12 +30,7 @@ param(
     [switch]$HelpMode,
     [string]$RuntimeRoot = "C:\BackgroundMotives",
     [string]$StateFilePath,
-    [string]$LogRoot,
-    [switch]$CaptureDesktopAsBase,
-    [switch]$PromoteDesktopBaseToLogonBase,
-    [switch]$RenderDesktop,
-    [switch]$RenderLogon,
-    [switch]$SkipRender
+    [string]$LogRoot
 )
 
 if ($HelpMode) {
@@ -43,7 +38,7 @@ if ($HelpMode) {
     exit 0
 }
 
-$ScriptVersion = "8.0.1"
+$ScriptVersion = "9.0.0"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
@@ -225,149 +220,27 @@ $LogonRendered = Join-Path $AssetsRoot "logon_rendered.jpg"
 
 Update-Phase1State -StateFilePath $StateFile -Status "running" -CurrentPhase "Phase1" -BlockedReason $null
 
-$ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
+# Phase 1 is collection-only. Image asset management and rendering are Phase 2 responsibilities.
+# No image manipulation in Phase 1.
 
-Write-Host "--- Image state ---"
-Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
-Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$($ImageState.LogonMatchesRendered) MatchesBase=$($ImageState.LogonMatchesBase)"
-
-$DoRenderDesktop = $RenderDesktop.IsPresent
-$DoRenderLogon = $RenderLogon.IsPresent
-
-if ($SkipRender) {
-    $DoRenderDesktop = $false
-    $DoRenderLogon = $false
-}
-elseif (-not $RenderDesktop.IsPresent -and -not $RenderLogon.IsPresent) {
-    # Keep backward-compatible behavior for existing automation.
-    $DoRenderDesktop = $true
-    $DoRenderLogon = $true
-}
-
-if ($CaptureDesktopAsBase) {
-    Write-Host "--- Capture desktop as DesktopBase ---"
-    $wallpaper = Get-CurrentDesktopWallpaperPath
-    if (-not $wallpaper) {
-        Write-Host "[X] Could not locate current desktop wallpaper to capture."
-        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "CaptureWallpaperNotFound"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
-    }
-
-    try {
-        Copy-Item -Path $wallpaper -Destination $DesktopBase -Force
-        Write-MutationLog -Operation "CopyItem" -Path $wallpaper -Target $DesktopBase
-        Copy-Item -Path $wallpaper -Destination $DesktopImage -Force
-        Write-MutationLog -Operation "CopyItem" -Path $wallpaper -Target $DesktopImage
-        Write-Host "[OK] Captured DesktopBase -> $DesktopBase"
-        Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
-    }
-    catch {
-        Write-Host "[X] Failed capturing desktop wallpaper: $($_.Exception.Message)"
-        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "CaptureDesktopFailed"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
-    }
-}
-
-if ($PromoteDesktopBaseToLogonBase) {
-    Write-Host "--- Promote DesktopBase to LogonBase ---"
-    if (-not (Test-Path $DesktopBase)) {
-        Write-Host "[X] Missing DesktopBase for promotion -> $DesktopBase"
-        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "PromoteDesktopBaseMissing"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
-    }
-
-    try {
-        Copy-Item -Path $DesktopBase -Destination $LogonBase -Force
-        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonBase
-        Copy-Item -Path $DesktopBase -Destination $LogonImage -Force
-        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonImage
-        Write-Host "[OK] Promoted LogonBase -> $LogonBase"
-        Write-Host "[OK] Updated Logon image snapshot -> $LogonImage"
-    }
-    catch {
-        Write-Host "[X] Failed promoting DesktopBase to LogonBase: $($_.Exception.Message)"
-        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "PromoteDesktopBaseFailed"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
-    }
-}
-
-if (-not $DoRenderDesktop -and -not $DoRenderLogon) {
-    Write-Host "--- Summary ---"
-    Write-Host "[OK] No render targets selected."
-    Update-Phase1State -StateFilePath $StateFile -Status "completed" -CurrentPhase "Phase1" -BlockedReason $null
-    if ($TraceMode) {
-        Stop-Transcript | Out-Null
-        Write-Host "Log written to: $TranscriptPath"
-    }
-    exit 0
-}
-
-Write-Host "--- Asset check ---"
-
-if ($DoRenderDesktop) {
-    $desktopBaseReady = Restore-BaseFromCurrentImage -BasePath $DesktopBase -CurrentImagePath $DesktopImage -Label "desktop"
-    # Auto-capture: if DesktopBase missing and no snapshot exists, capture from wallpaper now
-    if (-not $desktopBaseReady) {
-        Write-Host "[INFO] Attempting wallpaper capture for missing DesktopBase..."
-        $desktopBaseReady = Get-WallpaperOrSolidColor -DestinationPath $DesktopBase -Label "desktop"
-        if ($desktopBaseReady) {
-            Copy-Item -Path $DesktopBase -Destination $DesktopImage -Force
-            Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $DesktopImage
-            Write-Host "[OK] Updated Desktop image snapshot -> $DesktopImage"
-        }
-    }
-    if (-not $desktopBaseReady) {
-        Write-Host "[X] Missing DesktopBase and no usable Desktop image snapshot -> $DesktopBase"
-        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "DesktopBaseMissing"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
-    }
-}
-
-if ($DoRenderLogon) {
-    $logonBaseReady = Restore-BaseFromCurrentImage -BasePath $LogonBase -CurrentImagePath $LogonImage -Label "logon"
-    # LogonBase fallback: use DesktopBase when LogonBase and snapshot are both missing
-    if (-not $logonBaseReady -and (Test-Path $DesktopBase)) {
-        Copy-Item -Path $DesktopBase -Destination $LogonBase -Force
-        Write-MutationLog -Operation "CopyItem" -Path $DesktopBase -Target $LogonBase
-        Write-Host "[INFO] LogonBase missing; using DesktopBase as fallback -> $LogonBase"
-        $logonBaseReady = $true
-    }
-    if (-not $logonBaseReady) {
-        Write-Host "[X] Missing LogonBase and no usable Logon image snapshot -> $LogonBase"
-        Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "LogonBaseMissing"
-        if ($TraceMode) { Stop-Transcript | Out-Null }
-        exit 1
-    }
-}
-
-if ($DoRenderDesktop -and -not (Test-Path $DesktopBase)) {
-    Write-Host "[X] Missing DesktopBase -> $DesktopBase"
-    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "DesktopBaseNotFound"
-    if ($TraceMode) { Stop-Transcript | Out-Null }
-    exit 1
-}
-
-if ($DoRenderLogon -and -not (Test-Path $LogonBase)) {
-    Write-Host "[X] Missing LogonBase -> $LogonBase"
-    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "LogonBaseNotFound"
-    if ($TraceMode) { Stop-Transcript | Out-Null }
-    exit 1
-}
-
-Write-Host "[OK] Base assets present"
-
-Write-Host "--- Rendering images ---"
+Write-Host "--- Collecting system information ---"
 
 # --- Collect system info for text overlay ---
 $hostname    = $env:COMPUTERNAME
 $username    = $env:USERNAME
 $osVersion   = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "DisplayVersion" -ErrorAction SilentlyContinue)
 $buildNumber = (Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name "CurrentBuildNumber" -ErrorAction SilentlyContinue)
+
+# Collect last boot time (for reboot detection across sessions)
+try {
+    $lastBootTimeObj = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop | Select-Object -ExpandProperty LastBootUpTime
+    $lastBootTime = $lastBootTimeObj.ToString("yyyyMMdd_HHmmss")
+} catch {
+    Write-Host "[X] Failed to collect last boot time: $($_.Exception.Message)"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "LastBootTimeUnavailable"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
 
 # Collect IP addresses with LAN/WLAN detection (1 LAN, 1 WLAN only)
 $lanAddresses = @()
@@ -447,34 +320,75 @@ $overlayTitle = "BackgroundModifier - Ver $ScriptVersion"
 $tableFormat = @{ MaxValueChars = 50 }
 
 # Bright orange text for overlay readability and visual consistency with the desktop base circle.
-$overlayTextColor = @{ R = 255; G = 140; B = 0 }
+# --- Compute systemInfo hash for change detection (no rendering in Phase 1) ---
+$systemInfo = @{
+    hostname = $hostname
+    username = $username
+    osVersion = $osVersion
+    buildNumber = $buildNumber
+    lastBootTime = $lastBootTime
+    ipAddresses = $ipAddresses
+    efiLabel = $efiLabel
+    bcdDefault = $bcdDefault
+    volumeInventory = $volInv
+} | ConvertTo-Json -AsHashtable
 
 try {
-    if ($DoRenderLogon) {
-        Render-TextOverlay -BaseImage $LogonBase -OutputPath $LogonRendered -Title $overlayTitle -TableRows $tableRows -TableFormat $tableFormat -TextColor $overlayTextColor | Out-Null
-        Write-MutationLog -Operation "RenderWrite" -Path $LogonRendered -Target ""
-        Write-Host "[OK] Generated logon image -> $LogonRendered"
-    }
-
-    if ($DoRenderDesktop) {
-        Render-TextOverlay -BaseImage $DesktopBase -OutputPath $DesktopRendered -Title $overlayTitle -TableRows $tableRows -TableFormat $tableFormat -TextColor $overlayTextColor | Out-Null
-        Write-MutationLog -Operation "RenderWrite" -Path $DesktopRendered -Target ""
-        Write-Host "[OK] Generated desktop image -> $DesktopRendered"
-    }
+    $systemInfoHash = Compute-SystemInfoHash -SystemInfo $systemInfo
+    Write-Host "[OK] System info hash computed: $systemInfoHash"
 }
 catch {
-    Write-Host "[X] Rendering failed: $($_.Exception.Message)"
-    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "RenderFailed"
+    Write-Host "[X] Failed to compute system info hash: $($_.Exception.Message)"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "ComputeHashFailed"
     if ($TraceMode) { Stop-Transcript | Out-Null }
     exit 1
 }
 
 Write-Host "--- Summary ---"
-$ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBase -DesktopRendered $DesktopRendered -LogonImage $LogonImage -LogonBase $LogonBase -LogonRendered $LogonRendered
-Write-Host "Desktop: UserChanged=$($ImageState.UserChangedDesktop) MatchesRendered=$($ImageState.DesktopMatchesRendered) MatchesBase=$($ImageState.DesktopMatchesBase)"
-Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$($ImageState.LogonMatchesRendered) MatchesBase=$($ImageState.LogonMatchesBase)"
+Write-Host "Hostname: $hostname"
+Write-Host "Username: $username"
+Write-Host "OS Version: $osVersion (Build $buildNumber)"
+Write-Host "Last Boot Time: $lastBootTime"
+Write-Host "IP Addresses: $ipAddresses"
+Write-Host "EFI Label: $efiLabel"
+Write-Host "BCD Default: $bcdDefault"
+Write-Host "Volume Inventory: $volInv"
+Write-Host "System Info Hash: $systemInfoHash"
+
+# --- Update state with systemInfo for Phase 2 ---
+try {
+    $state = Get-RuntimeState -StateFilePath $StateFile
+    if (-not $state.PSObject.Properties.Name -contains "systemInfo") {
+        $state | Add-Member -NotePropertyName "systemInfo" -NotePropertyValue $null
+    }
+    $state.systemInfo = @{
+        hostname = $hostname
+        username = $username
+        osVersion = $osVersion
+        buildNumber = $buildNumber
+        lastBootTime = $lastBootTime
+        ipAddresses = $ipAddresses
+        efiLabel = $efiLabel
+        bcdDefault = $bcdDefault
+        volumeInventory = $volInv
+        hash = $systemInfoHash
+        collectedAtUtc = (Get-Date).ToString("yyyyMMdd_HHmmss")
+        collectionSource = "Phase1Renderer"
+        collectionSourceVersion = $ScriptVersion
+    }
+    Set-RuntimeState -StateFilePath $StateFile -State $state
+    Write-MutationLog -Operation "SetContent" -Path $StateFile -Target ""
+    Write-Host "[OK] System info stored in state.json"
+}
+catch {
+    Write-Host "[X] Failed to write system info to state: $($_.Exception.Message)"
+    Update-Phase1State -StateFilePath $StateFile -Status "failed" -CurrentPhase "Blocked" -BlockedReason "StateWriteFailed"
+    if ($TraceMode) { Stop-Transcript | Out-Null }
+    exit 1
+}
+
 Update-Phase1State -StateFilePath $StateFile -Status "ready" -CurrentPhase "Phase1" -BlockedReason $null
-Write-Host "[OK] Rendering completed successfully."
+Write-Host "[OK] Phase 1 collection completed successfully. Rendering deferred to Phase 2."
 
 if ($TraceMode) {
     Stop-Transcript | Out-Null
