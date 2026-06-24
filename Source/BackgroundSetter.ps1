@@ -176,6 +176,8 @@ using System.Runtime.InteropServices;
 public static class NativeWallpaper {
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
 }
 "@
 
@@ -186,10 +188,23 @@ public static class NativeWallpaper {
     $SPI_SETDESKWALLPAPER = 20
     $SPIF_UPDATEINIFILE = 0x01
     $SPIF_SENDCHANGE = 0x02
+    $WM_SETTINGCHANGE = 0x001A
+    $HWND_BROADCAST = [IntPtr](-1)
+    $SMT_ABORTIFHUNG = 0x0002
 
+    # Set wallpaper via SystemParametersInfo
     $result = [NativeWallpaper]::SystemParametersInfo($SPI_SETDESKWALLPAPER, 0, $ImagePath, ($SPIF_UPDATEINIFILE -bor $SPIF_SENDCHANGE))
     if (-not $result) {
         throw "SystemParametersInfo failed to refresh desktop wallpaper."
+    }
+
+    # Broadcast WM_SETTINGCHANGE to ensure all windows refresh wallpaper display
+    try {
+        $lpdwResult = [IntPtr]::Zero
+        [NativeWallpaper]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [IntPtr]::Zero, [IntPtr]::Zero, $SMT_ABORTIFHUNG, 3000, [ref]$lpdwResult) | Out-Null
+    }
+    catch {
+        # Non-fatal; wallpaper is already set in registry and primary API call succeeded
     }
 }
 
