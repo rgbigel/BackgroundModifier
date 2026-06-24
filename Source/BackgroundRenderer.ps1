@@ -333,7 +333,7 @@ $systemInfo = @{
     efiLabel = $efiLabel
     bcdDefault = $bcdDefault
     volumeInventory = $volInv
-} | ConvertTo-Json -AsHashtable
+}
 
 try {
     $systemInfoHash = Compute-SystemInfoHash -SystemInfo $systemInfo
