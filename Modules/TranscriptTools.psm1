@@ -6,6 +6,8 @@
 
   Purpose:
       Provides helper functions for starting and stopping transcripts.
+
+  Caller Contract: Read-only transcript management utility. Caller must include component $Version when logging (Requirement #15).
 ============================================================================================ #>
 
 function Start-TraceTranscript {

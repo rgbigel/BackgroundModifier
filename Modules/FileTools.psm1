@@ -7,6 +7,13 @@
     Purpose:
         Provides file system utility functions for hashing and content comparison.
         Atomic functions used for image state tracking and change detection.
+
+  Caller Contract (Module-Caller State Update Responsibility):
+    This module computes hashes but does NOT modify state.json. Caller is responsible for:
+    - Get-FileHashOrNull: Safe to call; returns hash or null; read-only
+    - If hash is used for state tracking: Caller must store hash in state.json with timestamp and source
+    - Common use: Image state tracking; caller must update state with hash and appliedAtUtc
+    - This module does NOT update state; caller owns artifact tracking
 ============================================================================================ #>
 
 function Get-FileHashOrNull {

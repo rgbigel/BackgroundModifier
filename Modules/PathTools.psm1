@@ -6,6 +6,8 @@
 
   Purpose:
       Provides helper functions for working with paths and directories.
+
+  Caller Contract: Read-only utility module. No state implications.
 ============================================================================================ #>
 
 function Ensure-Directory {

@@ -7,6 +7,15 @@
     Purpose:
         Provides utility functions for runtime state management and object manipulation.
         Shared functions used by both BackgroundRenderer and BackgroundSetter.
+
+  Caller Contract (Module-Caller State Update Responsibility):
+    This module manipulates in-memory state objects but does NOT write to state.json. Caller must:
+    - Set-ObjectProperty: Modifies object properties in-memory; used to accumulate state changes
+    - Get-ObjectProperty: Safe to call; read-only access
+    - Caller accumulates changes using Set-ObjectProperty on state object
+    - After all changes accumulated: Caller must call StateTools.Set-RuntimeState to write atomically
+    - This module is for object manipulation; StateTools is for JSON persistence
+    - Do NOT expect Set-ObjectProperty to persist to disk; that's caller+StateTools responsibility
 ============================================================================================ #>
 
 function Set-ObjectProperty {

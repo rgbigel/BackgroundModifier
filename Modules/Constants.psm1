@@ -6,6 +6,8 @@
 
   Purpose:
       Provides shared constants for scripts and modules.
+
+  Caller Contract: Read-only module. No state implications.
 ============================================================================================ #>
 
 $Global:RuntimeRoot = "C:\BackgroundMotives"

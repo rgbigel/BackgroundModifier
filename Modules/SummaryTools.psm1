@@ -6,6 +6,8 @@
 
   Purpose:
       Provides helper functions for printing summary sections in scripts.
+
+  Caller Contract: Read-only display utility module. No state implications.
 ============================================================================================ #>
 
 function Write-SummaryHeader {

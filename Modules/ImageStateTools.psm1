@@ -8,6 +8,15 @@
         Provides image state and base image restoration functions used by both 
         BackgroundRenderer and BackgroundSetter for desktop/logon image management.
         Atomic functions for image comparison and restoration.
+
+  Caller Contract (Module-Caller State Update Responsibility):
+    This module manages image artifacts and state but does NOT modify state.json. Caller must:
+    - Get-ImageState: Safe to call; read-only queries image file state
+    - Restore-ImageBase: Modifies image files; caller must THEN:
+      * Update state.json render section with new image paths
+      * Update state.json with restoration timestamp and source (appliedAtUtc, appliedByPhase)
+    - On successful restoration: Caller must track desktopImageHash and logonImageHash in state
+    - This module manages artifacts (files); StateTools manages metadata (state.json)
 ============================================================================================ #>
 
 function Get-ImageState {

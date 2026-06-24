@@ -6,6 +6,8 @@
 
   Purpose:
       Provides reusable validation helpers for scripts and modules.
+
+  Caller Contract: Read-only validation utility module. Validation failures should be logged by caller with component $Version (Requirement #15).
 ============================================================================================ #>
 
 function Test-FileExists {

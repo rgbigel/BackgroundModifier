@@ -6,6 +6,8 @@
 
   Purpose:
       Provides helpers for handling Debug and Trace modes.
+
+  Caller Contract: Read-only utility module. No state implications.
 ============================================================================================ #>
 
 function Apply-DebugMode {

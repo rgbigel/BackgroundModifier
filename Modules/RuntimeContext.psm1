@@ -2,6 +2,14 @@
     Module: RuntimeContext.psm1
     Version: 1.0.0
     Purpose: Build and validate repository runtime context objects used by shared modules.
+
+    Caller Contract (Module-Caller State Update Responsibility):
+      This module builds context objects that carry runtime paths. Caller is responsible for:
+      - New-RepoRuntimeContext: Returns context object with StateFilePath and LogRoot
+      - Context is passed to modules; modules use StateFilePath to find state.json
+      - Caller must ensure StateFilePath points to correct state.json location for repo
+      - Context object carries no mutable state; it is a pure configuration carrier
+      - Modules that receive context MUST use provided StateFilePath, not hardcoded paths
 #>
 
 function New-RepoRuntimeContext {
