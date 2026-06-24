@@ -1,14 +1,3 @@
-<#
-    Script: BackgroundModifier.ps1
-    Version: 9.0.0
-    Author: Rolf Bercht
-    Purpose: Orchestrate phase-aware execution of renderer (phase 1) and setter (phase 2).
-#>
-
-# Import Constants at top so defaults can bind to $Global:* variables
-$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
-Import-Module $ConstantsPath -Force
-
 [CmdletBinding()]
 param(
     [Alias("t")]
@@ -27,6 +16,17 @@ param(
     [Alias("n")]
     [switch]$NonInteractive
 )
+
+<#
+    Script: BackgroundModifier.ps1
+    Version: 9.0.0
+    Author: Rolf Bercht
+    Purpose: Orchestrate phase-aware execution of renderer (phase 1) and setter (phase 2).
+#>
+
+# Import Constants so defaults can bind to $Global:* variables
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
 
 if ($HelpMode) {
     Write-Host "BackgroundModifier orchestrator (v9.0.0)"

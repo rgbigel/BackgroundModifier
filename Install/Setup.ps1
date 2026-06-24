@@ -1,12 +1,18 @@
+[CmdletBinding()]
+param(
+    [Alias("t")]
+    [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode
+)
+
 <#
     Script: Setup.ps1
     Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Install and configure BackgroundModifier runtime structure and scheduled tasks.
     Requires: Windows 11, elevation (Administrator).
-#>
 
-<#
 .SYNOPSIS
     Installs and configures BackgroundModifier runtime directories and scheduled tasks.
 
@@ -31,14 +37,6 @@
 .EXAMPLE
     .\Setup.ps1 -h
 #>
-
-[CmdletBinding()]
-param(
-    [Alias("t")]
-    [switch]$TraceMode,
-    [Alias("h","?")]
-    [switch]$HelpMode
-)
 
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full

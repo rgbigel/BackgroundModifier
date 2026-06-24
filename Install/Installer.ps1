@@ -1,3 +1,11 @@
+[CmdletBinding()]
+param(
+    [Alias("t")]
+    [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode
+)
+
 <#
     Script: Installer.ps1
     Version: 8.0.0
@@ -9,9 +17,7 @@
     The project name is derived from the repository root directory name.
     This script must be run from within the repository's Install directory or
     via the BackgroundModifier_Install.cmd launcher.
-#>
 
-<#
 .SYNOPSIS
     Deploys BackgroundModifier runtime files and hands off to Setup.
 
@@ -36,14 +42,6 @@
 .EXAMPLE
     .\Installer.ps1 -h
 #>
-
-[CmdletBinding()]
-param(
-    [Alias("t")]
-    [switch]$TraceMode,
-    [Alias("h","?")]
-    [switch]$HelpMode
-)
 
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full

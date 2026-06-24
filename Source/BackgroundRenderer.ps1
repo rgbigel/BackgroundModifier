@@ -1,15 +1,20 @@
-﻿<#
+﻿[CmdletBinding()]
+param(
+    [Alias("t")]
+    [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode,
+    [string]$RuntimeRoot = $Global:RuntimeRoot,
+    [string]$StateFilePath,
+    [string]$LogRoot
+)
+
+<#
     Script: BackgroundRenderer.ps1
     Version: 9.0.0
     Author: Rolf Bercht
     Purpose: Phase 1 - Collect system metadata and store to state.json for change detection.
-#>
 
-# Import Constants at top so defaults can bind to $Global:* variables
-$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
-Import-Module $ConstantsPath -Force
-
-<#
 .SYNOPSIS
     Generates deterministic desktop and logon rendered background images.
 
@@ -26,16 +31,9 @@ Import-Module $ConstantsPath -Force
     Aliases: h, ?
 #>
 
-[CmdletBinding()]
-param(
-    [Alias("t")]
-    [switch]$TraceMode,
-    [Alias("h","?")]
-    [switch]$HelpMode,
-    [string]$RuntimeRoot = $Global:RuntimeRoot,
-    [string]$StateFilePath,
-    [string]$LogRoot
-)
+# Import Constants so defaults can bind to $Global:* variables
+$ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
+Import-Module $ConstantsPath -Force
 
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full

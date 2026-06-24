@@ -1,12 +1,22 @@
+[CmdletBinding(SupportsShouldProcess = $true)]
+param(
+    [Alias("t")]
+    [switch]$TraceMode,
+    [Alias("h","?")]
+    [switch]$HelpMode,
+    [switch]$All,
+    [switch]$RemoveInventory,
+    [switch]$KeepRuntimeState,
+    [switch]$KeepDeployedRuntime
+)
+
 <#
     Script: CleanSlate.ps1
     Version: 8.0.0
     Author: Rolf Bercht
     Purpose: Remove BackgroundModifier deployed runtime, runtime state, and scheduled tasks
              so setup/install testing can start from a deterministic clean slate.
-#>
 
-<#
 .SYNOPSIS
     Performs full uninstall-style cleanup for BackgroundModifier.
 
@@ -48,18 +58,6 @@
 .EXAMPLE
     .\CleanSlate.ps1 -All
 #>
-
-[CmdletBinding(SupportsShouldProcess = $true)]
-param(
-    [Alias("t")]
-    [switch]$TraceMode,
-    [Alias("h","?")]
-    [switch]$HelpMode,
-    [switch]$All,
-    [switch]$RemoveInventory,
-    [switch]$KeepRuntimeState,
-    [switch]$KeepDeployedRuntime
-)
 
 if ($HelpMode) {
     Get-Help $PSCommandPath -Full
