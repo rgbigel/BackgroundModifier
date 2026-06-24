@@ -1,22 +1,26 @@
 # Architecture.md
-**Version:** 8.0.2
+**Version:** 9.0.0 (Requirements-aligned)
 **Profile:** default
 **Author:** Rolf Bercht
+**Updated:** 2026-06-24
 
 ## Purpose Of Document
 - Provide an end-user architecture view of the solution.
 - Explain the solution as an ordered runtime flow.
 - Clarify phase responsibilities and sequencing rules.
 - Document Consistency Rules
+- **Alignment:** This document realizes Requirements.md (v9.0.0) functional requirements 1-24.
 
-1. Requirements.md: functional outcomes and contracts.
-2. Architecture.md: user-visible runtime behavior and phase model.
-3. Implementation.md: state contract, orchestration, and technical wiring.
+1. Requirements.md: functional outcomes and contracts (v9.0.0).
+2. Architecture.md: user-visible runtime behavior and phase model (this document, v9.0.0).
+3. Implementation.md: state contract, orchestration, and technical wiring (v8.0.2, update pending).
 4. ModuleDocumentation.md: module-level boundaries.
 
 ## Scope Note
 
 - Installer/setup execution requires PowerShell 7 (pwsh).
+- All runtime configuration is managed exclusively via state.json; script parameters are reserved for user-exposed flags only.
+- Internal implementation details are never exposed as parameters; all inter-component communication uses state.json.
 
 ## 1. End-User Time Flow
 
@@ -24,52 +28,108 @@ The solution is experienced in ordered phases:
 
 1. Preparation before installation
 2. Installation, configuration, and installation checks
-3. Runtime Phase 1: pre-logon (startup/system context)
-4a. Runtime Phase 2 autorun: post-logon scheduled non-interactive execution
-4b. Runtime Phase 2 manual run: post-logon interactive execution via BackgroundModifier
+3. Runtime Phase 1: pre-logon (startup/system context) — collects system state
+4. Runtime Phase 2: post-logon background processing
+   - **Phase 2a:** Automatic scheduled execution (non-interactive, always elevated, system context, hidden from user)
+   - **Phase 2b:** Interactive user-initiated execution (visible menu, user context, elevation on-demand)
 5. Runtime tests and controlled re-runs
 6. Disable and uninstall
 
-Solution behavior (8.0.0):
+Solution behavior (9.0.0):
 
-1. A unified background model is produced for desktop and logon usage.
-2. Runtime decisions are made from one shared state file.
+1. A unified background model is produced for desktop and logon usage, with change detection via system state hash.
+2. Runtime decisions are made from one shared state file with conditional rendering based on actual changes.
 3. Sequencing is enforced by an orchestrator that blocks invalid transitions.
+4. Two independent Phase 2 paths serve different purposes: automatic background prep (2a) and interactive user updates (2b).
 
 ---
 
 ## 2. Runtime Model
 
-The runtime model is deliberately split:
+The runtime model is deliberately split into three distinct phases, each with specific responsibilities and user visibility:
 
-1. Phase 1 (pre-logon, elevated/system)
-- Collect machine and boot identity context (hostname, OS, IP, BCD, EFI, volumes).
-- Write structured systemInfo to state.json.
-- Compute and store systemInfo hash for change detection.
-- Mark phase1Status = ready.
-- **No rendering is performed in Phase 1.**
+### Phase 1: Pre-Logon Collection (System Context, Always Elevated)
+- **Trigger:** System startup/scheduled pre-logon task
+- **User Visibility:** None
+- **Scope:** Machine-level system state
+- **Responsibilities:**
+  - Collect machine and boot identity context: hostname, OS version, build number, IP addresses, EFI label, BCD default, volume inventory
+  - Capture system boot time (`lastBootTime`) — critical for detecting reboots across sessions
+  - Compute systemInfo hash using SHA256(hostname+username+osVersion+buildNumber+lastBootTime+ipAddresses+efiLabel+bcdDefault+volumeInventory)
+  - Write structured systemInfo to state.json with collection timestamp
+  - Mark phase1Status = ready
+  - Log execution with component version identifier
+- **Critical:** No rendering is performed in Phase 1. Collection only.
+- **Versioning:** BackgroundRenderer.ps1 must include `$Version` variable for logging
 
-2. Phase 2 (post-logon, user context)
-- Validate phase 1 systemInfo availability in state.
-- Compare systemInfo.hash with render.lastSystemInfoHash.
-- If changed or no prior render: render desktop and logon overlay images.
-- Apply rendered images to desktop and logon/lock screen targets.
-- Update render tracking in state.
-- In scheduled post-logon autoruns, execution is non-interactive and not user-visible.
+### Phase 2a: Automatic Post-Logon Processing (Scheduled, Always Elevated, Hidden)
+- **Trigger:** Scheduled task running immediately post-user-logon (system context, elevated)
+- **User Visibility:** None (errors only; success is silent)
+- **Scope:** System-level background preparation and application
+- **Responsibilities:**
+  1. Load Phase 1 systemInfo from state.json
+  2. Detect current logon: obtain username, logon timestamp from system
+  3. Update state.json with logon metadata: `logon.logonTime` (only set here, only once per session)
+  4. [PHASE2A-CODE: Detect autorun context; mark state with execution source]
+  5. Inspect state.json to determine what changed:
+     - Desktop section: if systemInfo hash differs OR desktop base was modified OR force-render requested
+     - Logon section: if systemInfo hash differs OR logon base was modified OR force-render requested
+  6. Render only the images where state changed (desktop only, logon only, or both)
+  7. Call setter only if rendering occurred OR force-apply was requested
+  8. Skip rendering and setter if nothing changed and no force flags set
+  9. Update render tracking in state.json with new hashes and timestamps
+  10. Log execution with component version identifier
+- **User Experience:** User logs in and sees updated desktop background immediately (if rendering occurred)
+- **Idempotency:** Multiple Phase 2a runs in same session are safe; logonTime is only set on first execution
+- **Versioning:** BackgroundSetter.ps1 must include `$Version` variable for logging
+
+### Phase 2b: Interactive User-Initiated Action (Manual, User Context)
+- **Trigger:** User runs `BackgroundModifier.ps1` interactively from command line or cmd launcher
+- **User Visibility:** Interactive menu presented; user selects actions. User sees the flags and can optionally change them.
+- **Scope:** User-level immediate desktop background updates
+- **Responsibilities:**
+  1. [PHASE2B-CODE: Detect user-initiated context (NOT autorun)]
+  2. Present interactive menu of available actions: "Update desktop background?", "Update logon screen?", "Get new background image?", "Maintenance?", "Cleanup?", etc.
+  3. User confirms selection
+  4. Execute selected actions: render and/or apply as requested
+  5. Provide immediate visual feedback (new desktop wallpaper appears)
+  6. Log execution with component version identifier
+- **User Experience:** User sees new desktop immediately after running command and confirming choices
+- **Critical:** Phase 2b NEVER sets `logon.logonTime` — that is exclusive to Phase 2a
+- **Critical:** Phase 2b is NOT an automatic flow; user must explicitly invoke and confirm actions
+- **Versioning:** BackgroundModifier.ps1 must include `$Version` variable for logging
+
+### Phase 2 Summary: State-Driven Change Detection
+Both Phase 2a and 2b follow the same conditional rendering model:
+- Inspect state.json sections that affect each output
+- Render only if: state changed (hash differs, base changed) OR user explicitly forces re-render
+- Apply only if: rendering occurred OR user explicitly forces apply
+- This ensures efficiency: no unnecessary operations if system or user state hasn't changed
 
 ---
 
 ## 3. Shared Runtime State
 
-The solution uses a single source of truth:
+The solution uses a single source of truth for all runtime decisions:
 
 - C:\BackgroundMotives\assets\state.json
 
 This state contains:
 
 1. Phase status and transition metadata.
-2. Runtime intents and transient pending information.
-3. Artifact/output paths and apply timestamps.
+2. System and logon identity information collected by Phase 1.
+3. Systeminfo hash and change detection data.
+4. Runtime intents and transient pending information.
+5. Artifact/output paths and apply timestamps.
+6. Execution source markers and version identifiers.
+
+**State-Driven Configuration Rule:**
+All internal runtime configuration is persisted to state.json. Script parameters are reserved exclusively for user-exposed flags (identifiable by short aliases in help text). No component accepts internal configuration via parameters.
+
+**Parameter Minimization Rule:**
+- Orchestrator (BackgroundModifier.ps1) accepts only user-exposed flags: `-i` (interactive), `-n` (non-interactive), `-v` (verbose), etc.
+- All other configuration (paths, timeouts, rendering options, internal flags) is state.json-driven.
+- Modules receive only context and state.json path references; they extract all configuration from state.json.
 
 No separate pending marker file is required in the target architecture.
 
@@ -111,7 +171,32 @@ The duplicate folder model `SharedModules\SharedModules` is not required by this
 
 ---
 
+## 5. Versioning and Audit Trail
+
+Each executable component maintains its own version identifier:
+
+- **BackgroundModifier.ps1** ($Version = "9.0.0"): Orchestrator/entry point
+- **BackgroundRenderer.ps1** ($Version = "9.0.0"): Phase 1 collector
+- **BackgroundSetter.ps1** ($Version = "9.0.0"): Phase 2 renderer/applier
+- **SystemInfoTools.psm1** ($Version = "1.0.0"): Shared system collection module
+- **Other modules** ($Version = "X.X.X"): Individual version per module
+
+**Version Storage Rules:**
+
+1. Each .ps1 and .psm1 file includes a file-level `$Version` variable aligned with its version header.
+2. Main orchestrator version (BackgroundModifier.ps1) is stored immutably in state.json at installation time.
+3. All log entries must include the executing component's $Version identifier.
+4. Version alignment is enforced at release time: file headers, $Version variables, and state.json version must match.
+
+**Rationale:** Versioning enables audit trails, error diagnostics, and backward-compatibility decision-making during troubleshooting.
+
+---
+
 ## 5. Orchestrator Behavior
+
+---
+
+## 6. Orchestrator Behavior
 
 The operational orchestrator (BackgroundModifier) controls execution by:
 
@@ -131,7 +216,7 @@ Shared-module interface governance:
 
 ---
 
-## 6. Re-Run and Recovery Model
+## 7. Re-Run and Recovery Model
 
 Re-runs are supported with these rules:
 
@@ -142,7 +227,7 @@ Re-runs are supported with these rules:
 
 ---
 
-## 7. Disable and Uninstall
+## 8. Disable and Uninstall
 
 Disable:
 

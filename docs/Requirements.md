@@ -1,20 +1,52 @@
 # BackgroundModifier Requirements
 
-Version: 8.0.0
+Version: 9.0.0
 
 ## Scope
 BackgroundModifier must deterministically generate and apply background images that include machine-relevant metadata for operational visibility.
 This solution targets Windows 11 only.
 The installer and runtime entry points require PowerShell 7 (`pwsh`).
+Runtime configuration and state are managed exclusively through state.json; internal implementation details are never exposed as script parameters.
 
 ## Functional Requirements
-1. Provide a repeatable phase 1 identity capture stage for boot and system context.
-2. Provide a deterministic phase 2 render stage that converts collected metadata into background output.
-3. Provide an apply stage that sets generated backgrounds to active Windows targets from post-logon context.
-4. Provide installation verification to validate required folders, scripts, and modules.
-5. Provide diagnostic logging for every operator-facing execution path.
-6. Maintain one shared runtime state contract in `C:\BackgroundMotives\assets\state.json`.
-7. Enforce sequencing rules through orchestrator logic.
+
+### Core Responsibilities
+1. Provide a repeatable phase 1 identity capture stage (pre-logon, system context) that collects machine boot and system identity context and computes a state change hash.
+2. Collect and preserve system boot time (`lastBootTime`) to detect reboots across sessions.
+3. Provide deterministic phase 2 rendering (post-logon) that converts collected metadata into background images only when system state has changed or user explicitly requests re-render.
+4. Provide conditional apply stage (post-logon) that sets generated backgrounds to active Windows targets only when rendering occurred or user explicitly requests apply.
+5. Provide installation verification to validate required folders, scripts, and modules.
+6. Provide diagnostic logging for every operator-facing execution path.
+
+### Phase 2 Split: Automatic vs. Interactive
+7. Provide Phase 2a (automatic post-logon, scheduled, non-interactive, always elevated, hidden from user): automatically detect system state change via hash comparison; render and apply conditionally; set `logon.logonTime` once on first execution only; never set logonTime again in same session.
+8. Provide Phase 2b (interactive user-initiated, manual, user-selectable actions, elevation on-demand): present menu with user actions ("Update desktop background?", "Update logon screen?", "Get new background image?", "Maintenance?", "Cleanup?", etc.); allow user to select and confirm actions; never set or modify `logon.logonTime`; provide immediate visual feedback after action execution.
+
+### State Management and Interprocess Contract
+9. Maintain one shared immutable runtime state contract in `C:\BackgroundMotives\assets\state.json` as the single source of truth for all runtime decisions.
+10. Persist all internal runtime configuration, metadata, and operational state exclusively to state.json; all modules must consume internal configuration from state.json only (not from script parameters).
+11. Reserve command-line parameters exclusively for user-exposed flags (identifiable by short aliases in help text). All other options must be state.json-driven.
+12. Define and maintain systemInfo hash computation: SHA256(hostname+username+osVersion+buildNumber+lastBootTime+ipAddresses+efiLabel+bcdDefault+volumeInventory). The `lastBootTime` field (from Win32_OperatingSystem.LastBootUpTime) detects kernel restarts: cold boot, warm restart, installation reboot, crash recovery. It does NOT change on sleep resume or hibernate resume (kernel remains resident). Equivalent `lastBootTime` across collections indicates same session; changed `lastBootTime` indicates kernel restart.
+
+### Versioning and Logging
+13. Each source file (.ps1) and module (.psm1) must define an individual `$Version` variable (as text string) aligned with the file's version header.
+14. Main orchestrator version must be stored immutably in state.json at installation time and updated only during explicit install/update operations.
+15. All log entries must include the executing component's version for audit trail and diagnostics.
+16. Maintain consistent timestamp format across state.json: `yyyymmdd_hhmmss` (local time, no dashes, no timezone offset). Example: `20260624_093015` for June 24, 2026 at 9:30:15 AM.
+17. Store last critical error in state.json with phase, component, timestamp, full error details, and a human-readable user-visible error message for display to end user.
+
+### Deployment Topology
+18. Maintain source code in repository roots under `Git_Repositories`.
+19. Deploy runtime content to non-repository deployment plane: `D:\OneDrive\BTools\<RepositoryName>`.
+20. Deploy shared modules to `D:\OneDrive\BTools\SharedModules`.
+21. Maintain Inventory metadata under `D:\OneDrive\BTools\Inventory`.
+22. Store live runtime state exclusively under `C:\BackgroundMotives` (state.json, logs, assets).
+23. Expose user-facing commands in `D:\OneDrive\cmd` as launchers/links managed by Installer (Inventory-driven).
+
+### Execution and Sequencing
+24. Enforce sequencing rules through orchestrator logic to block invalid phase transitions.
+25. Invalid transitions must be logged with explicit state and reason.
+26. Re-runs must be deterministic for equivalent state and inputs.
 
 ## Non-Functional Requirements
 1. Deterministic behavior for equivalent inputs.
@@ -22,6 +54,7 @@ The installer and runtime entry points require PowerShell 7 (`pwsh`).
 3. No hidden runtime dependencies outside documented paths.
 4. Documentation and code remain version-consistent at release points.
 5. Invalid phase transitions are blocked with explicit state and log reasoning.
+6. Conditional rendering and apply logic must avoid redundant disk I/O and registry operations.
 
 ## Runtime Paths
 1. C:\BackgroundMotives\assets
