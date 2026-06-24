@@ -266,12 +266,23 @@ if ($errors.Count -gt 0) {
     if ($transcriptStarted) {
         try { Stop-Transcript | Out-Null } catch {}
     }
+
+    if ($TraceMode) {
+        Write-Host "`nPress any key to continue..."
+        $null = Read-Host
+    }
+
     exit 1
 }
 
 Write-Host "[OK] Clean-slate operation completed successfully."
 if ($transcriptStarted) {
     try { Stop-Transcript | Out-Null } catch {}
+}
+
+if ($TraceMode) {
+    Write-Host "`nPress any key to continue..."
+    $null = Read-Host
 }
 
 exit 0
