@@ -1,9 +1,11 @@
 # SmokeTestChecklist.md
 
-Version: 8.0.0
+Version: 10.0.0
 
 ## Purpose
 Quick end-to-end verification of phase state transitions and apply behavior.
+
+Planning note: This checklist targets planned v10 behavior and is intended for use after v10 implementation begins.
 
 ## Preconditions
 1. Windows 11 machine.
@@ -38,6 +40,12 @@ Quick end-to-end verification of phase state transitions and apply behavior.
 - `phase.phase2Status` is `completed`.
 - `phase.blockedReason` is null.
 
+## C2. Desktop Visible Refresh Reliability Path
+1. Run setter twice with different rendered desktop content while keeping the same managed final output path.
+2. Confirm desktop visibly updates immediately after each run (no Explorer restart required).
+3. Verify logs indicate two-step desktop refresh behavior (temporary refresh path then stable final path).
+4. Verify temporary refresh file is removed after apply (best-effort cleanup).
+
 ## D. Non-Interactive Elevation Block Path
 1. Trigger lock/sign-in apply from a non-interactive non-elevated context.
 2. Confirm no UAC relaunch attempt is made.
@@ -69,6 +77,13 @@ Note: If elevation is accepted and the elevated apply completes quickly, state m
 1. Ensure pending source exists during elevation-required handoff.
 2. Complete elevated lock apply.
 3. Verify `transient.pendingLogon` is null after success.
+
+## F2. Logon Primary/Fallback Branch Verification
+1. Run lock/sign-in apply in a context where API-based lock apply is supported.
+2. Verify logs indicate primary API branch was selected.
+3. Run lock/sign-in apply in a context where API-based lock apply is unavailable (or simulate unsupported branch).
+4. Verify logs indicate policy fallback branch and fallback reason.
+5. Confirm lock/sign-in policy value exists at `HKLM\SOFTWARE\Policies\Microsoft\Windows\Personalization\LockScreenImage` after fallback path.
 
 ## G. No-Op Phase 2 Path
 1. Run setter with no apply targets selected (interactive no-op).

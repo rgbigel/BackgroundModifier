@@ -1,11 +1,14 @@
 # BackgroundModifier
 
-Version: 8.0.0
+Version: 10.0.0
 
 BackgroundModifier is a deterministic PowerShell solution for rendering and applying information-rich backgrounds in Windows logon and desktop contexts.
 
 Platform scope: Windows 11 only.
 Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
+
+Planning note: This documentation tracks the future 10.0.0 design baseline.
+Current runtime code remains on 9.x until implementation and validation are completed.
 
 ## Key Capabilities
 1. Two-phase runtime model:
@@ -18,6 +21,13 @@ Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 6. Installer-managed user exposure layer in `D:\OneDrive\cmd`.
 7. Context-driven runtime path ownership for per-repository private state/log roots.
 8. Versioned module contracts with compatibility pre-check script.
+9. Desktop apply uses a cache-busting refresh sequence to force visible wallpaper updates when Windows reuses a cached path.
+10. Logon/lock apply uses a two-tier method: primary API path, then policy-registry fallback.
+
+## External Design Attribution
+1. Desktop refresh and logon fallback patterns were adopted from the PowerBGInfo repository.
+2. Source reference: EvotecIT/PowerBGInfo (desktop refresh first via temporary unique file, then final file path; logon API path with policy fallback).
+3. BackgroundModifier adapts these ideas to its own phase/state/elevation architecture.
 
 ## Repository Layout
 1. `Install`: installation and verification entry scripts.

@@ -1,12 +1,13 @@
 # BackgroundModifier Requirements
 
-Version: 9.0.0
+Version: 10.0.0
 
 ## Scope
 BackgroundModifier must deterministically generate and apply background images that include machine-relevant metadata for operational visibility.
 This solution targets Windows 11 only.
 The installer and runtime entry points require PowerShell 7 (`pwsh`).
 Runtime configuration and state are managed exclusively through state.json; internal implementation details are never exposed as script parameters.
+This requirement set defines the planned v10 behavior; runtime code remains on 9.x until implementation starts.
 
 ## Functional Requirements
 
@@ -52,6 +53,14 @@ Runtime configuration and state are managed exclusively through state.json; inte
 24. Enforce sequencing rules through orchestrator logic to block invalid phase transitions.
 25. Invalid transitions must be logged with explicit state and reason.
 26. Re-runs must be deterministic for equivalent state and inputs.
+
+### Wallpaper Apply Reliability
+27. Desktop apply must use a cache-busting refresh sequence (temporary unique path followed by final stable path) to avoid Windows wallpaper path caching and ensure visible desktop refresh.
+28. Logon/lock apply must support a two-tier compatibility strategy: primary API-based apply, with policy-registry fallback when the API path is unavailable.
+29. Fallback branch selection and reason must be logged for diagnostics.
+
+### External Pattern Attribution
+30. The desktop cache-busting refresh approach and logon API-plus-fallback strategy are adopted from the PowerBGInfo repository (EvotecIT/PowerBGInfo) and adapted to BackgroundModifier contracts.
 
 ## Non-Functional Requirements
 1. Deterministic behavior for equivalent inputs.

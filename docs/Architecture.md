@@ -1,5 +1,5 @@
 # Architecture.md
-**Version:** 9.0.0 (Requirements-aligned)
+**Version:** 10.0.0 (Requirements-aligned)
 **Profile:** default
 **Author:** Rolf Bercht
 **Updated:** 2026-06-24
@@ -9,11 +9,11 @@
 - Explain the solution as an ordered runtime flow.
 - Clarify phase responsibilities and sequencing rules.
 - Document Consistency Rules
-- **Alignment:** This document realizes Requirements.md (v9.0.0) functional requirements 1-24.
+- **Alignment:** This document realizes Requirements.md (v10.0.0) functional requirements 1-30.
 
-1. Requirements.md: functional outcomes and contracts (v9.0.0).
-2. Architecture.md: user-visible runtime behavior and phase model (this document, v9.0.0).
-3. Implementation.md: state contract, orchestration, and technical wiring (v8.0.2, update pending).
+1. Requirements.md: functional outcomes and contracts (v10.0.0).
+2. Architecture.md: user-visible runtime behavior and phase model (this document, v10.0.0).
+3. Implementation.md: state contract, orchestration, and technical wiring (v10.0.0).
 4. ModuleDocumentation.md: module-level boundaries.
 
 ## Scope Note
@@ -21,6 +21,7 @@
 - Installer/setup execution requires PowerShell 7 (pwsh).
 - All runtime configuration is managed exclusively via state.json; script parameters are reserved for user-exposed flags only.
 - Internal implementation details are never exposed as parameters; all inter-component communication uses state.json.
+- Current runtime code baseline remains 9.x; this architecture describes planned v10 behavior.
 
 ## 1. End-User Time Flow
 
@@ -35,7 +36,12 @@ The solution is experienced in ordered phases:
 5. Runtime tests and controlled re-runs
 6. Disable and uninstall
 
-Solution behavior (9.0.0):
+Implementation note:
+1. Desktop visual refresh reliability uses a two-step wallpaper apply sequence (temporary unique file path, then stable final file path).
+2. Logon/lock apply uses a primary API path with policy-registry fallback when the API path is unavailable.
+3. These reliability patterns were adapted from the PowerBGInfo repository (EvotecIT/PowerBGInfo) and integrated into the BackgroundModifier phase/elevation model.
+
+Solution behavior (10.0.0):
 
 1. A unified background model is produced for desktop and logon usage, with change detection via system state hash.
 2. Runtime decisions are made from one shared state file with conditional rendering based on actual changes.
@@ -79,6 +85,8 @@ The runtime model is deliberately split into three distinct phases, each with sp
   8. Skip rendering and setter if nothing changed and no force flags set
   9. Update render tracking in state.json with new hashes and timestamps
   10. Log execution with component version identifier
+  11. Apply desktop wallpaper using cache-busting two-step refresh to avoid stale path caching
+  12. Apply logon/lock image using primary API path with policy fallback for compatibility
 - **User Experience:** User logs in and sees updated desktop background immediately (if rendering occurred)
 - **Idempotency:** Multiple Phase 2a runs in same session are safe; logonTime is only set on first execution
 - **Versioning:** BackgroundSetter.ps1 must include `$Version` variable for logging
@@ -105,6 +113,24 @@ Both Phase 2a and 2b follow the same conditional rendering model:
 - Render only if: state changed (hash differs, base changed) OR user explicitly forces re-render
 - Apply only if: rendering occurred OR user explicitly forces apply
 - This ensures efficiency: no unnecessary operations if system or user state hasn't changed
+
+---
+
+## 2b. External Pattern Attribution
+
+BackgroundModifier uses internally adapted versions of two reliability patterns from PowerBGInfo (EvotecIT/PowerBGInfo):
+
+1. Desktop refresh pattern:
+- Set wallpaper to a temporary unique output path first.
+- Then set wallpaper to the stable final output path.
+- Purpose: avoid Windows wallpaper path caching and ensure immediate visible desktop updates.
+
+2. Logon/lock apply pattern:
+- Attempt high-level API-based lock screen apply first.
+- If API path is unavailable or unsupported, fall back to policy registry `HKLM\SOFTWARE\Policies\Microsoft\Windows\Personalization\LockScreenImage`.
+- Purpose: maximize compatibility across host/runtime differences while preserving deterministic behavior.
+
+These patterns are implementation inspirations only; BackgroundModifier keeps its own contracts, state model, and sequencing rules.
 
 ---
 
@@ -175,9 +201,9 @@ The duplicate folder model `SharedModules\SharedModules` is not required by this
 
 Each executable component maintains its own version identifier:
 
-- **BackgroundModifier.ps1** ($Version = "9.0.0"): Orchestrator/entry point
-- **BackgroundRenderer.ps1** ($Version = "9.0.0"): Phase 1 collector
-- **BackgroundSetter.ps1** ($Version = "9.0.0"): Phase 2 renderer/applier
+- **BackgroundModifier.ps1** ($Version = "10.0.0", planned): Orchestrator/entry point
+- **BackgroundRenderer.ps1** ($Version = "10.0.0", planned): Phase 1 collector
+- **BackgroundSetter.ps1** ($Version = "10.0.0", planned): Phase 2 renderer/applier
 - **SystemInfoTools.psm1** ($Version = "1.0.0"): Shared system collection module
 - **Other modules** ($Version = "X.X.X"): Individual version per module
 

@@ -1,5 +1,5 @@
 # Implementation.md
-**Version:** 9.0.0
+**Version:** 10.0.0
 **Profile:** default
 **Author:** Rolf Bercht
 
@@ -7,7 +7,7 @@
 - Define the technical realization of the runtime flow.
 - Define the state contract used across runtime phases.
 - Define sequencing and guard rules for renderer and setter execution.
-- **Alignment:** This document realizes Architecture.md (v9.0.0) and Requirements.md (v9.0.0) technical contracts.
+- **Alignment:** This document realizes Architecture.md (v10.0.0) and Requirements.md (v10.0.0) technical contracts.
 
 ## Scope
 - Platform: Windows 11 only.
@@ -15,6 +15,7 @@
 - Runtime model: Phase 1 collects system info and computes hash; Phase 2a automatically detects changes and conditionally renders/applies; Phase 2b provides interactive user actions.
 - Deployment model: non-repository runtime in BTools plus cmd exposure layer.
 - State contract: Comprehensive audit trail with versioning, source tracking, and transition management.
+- Current runtime code baseline remains 9.x; this implementation document defines planned v10 behavior.
 
 ---
 
@@ -35,7 +36,8 @@ The runtime is split into three technical phases:
 - Compare state.systemInfo.hash with state.render.lastSystemInfoHash.
 - If hash differs or no prior render: conditionally render desktop and logon overlay images from systemInfo.
 - Detect logon context; set logon.logonTime once on first execution only.
-- Apply rendered images to desktop (via SystemParametersInfo) and logon/lock screen (via registry policy) only if rendering occurred.
+- Apply rendered desktop image via cache-busting two-step refresh (temporary unique path, then stable final path).
+- Apply rendered logon/lock image via primary API path with policy fallback when API path is unavailable.
 - Update state.render section with hashes, timestamps, version identifiers, and audit trail.
 - On failures, log error and exit; do not retry.
 
@@ -524,7 +526,33 @@ Import-Module (Join-Path $ModuleRoot "StateTools.psm1") -Force -WarningAction Si
 
 ---
 
-## 12. Paths
+## 12. Wallpaper Apply Reliability Notes
+
+BackgroundModifier implements two reliability patterns adapted from PowerBGInfo (EvotecIT/PowerBGInfo):
+
+**Desktop visual refresh (cache-busting):**
+1. Render output is copied to a temporary unique wallpaper path.
+2. Desktop wallpaper is set to this temporary path.
+3. Desktop wallpaper is then set to the stable managed final path.
+4. Temporary file is cleaned up best-effort.
+
+This two-step path transition avoids Windows wallpaper cache reuse where path-stable updates can fail to become visibly active immediately.
+
+**Logon/lock apply compatibility:**
+1. Attempt API-based lock-screen apply first.
+2. If unsupported/unavailable, use policy fallback:
+  - `HKLM\SOFTWARE\Policies\Microsoft\Windows\Personalization\LockScreenImage`
+3. Continue to enforce existing elevation guardrails and pending-logon handoff logic.
+
+**Diagnostics contract:**
+1. Log branch selection (`DesktopRefreshTwoStep`, `LogonApiPrimary`, `LogonPolicyFallback`).
+2. Log fallback reason when fallback is used.
+
+These patterns are adapted ideas, not direct code imports.
+
+---
+
+## 13. Paths
 
 1. Deployment root: D:\OneDrive\BTools
 2. Per-repository runtime root: D:\OneDrive\BTools\<RepositoryName>
