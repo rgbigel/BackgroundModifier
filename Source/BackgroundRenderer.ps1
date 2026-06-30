@@ -2,6 +2,11 @@
 param(
     [Alias("t")]
     [switch]$TraceMode,
+    [Alias("d")]
+    [ValidateSet("m","n","d","f","M","N","D","F")]
+    [string]$DetailLevel,
+    [Alias("b")]
+    [switch]$BcdLogEnabled,
     [Alias("h","?")]
     [switch]$HelpMode,
     [string]$RuntimeRoot = $Global:RuntimeRoot,
@@ -11,7 +16,7 @@ param(
 
 <#
     Script: BackgroundRenderer.ps1
-    Version: 9.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Phase 1 - Collect system metadata and store to state.json for change detection.
 
@@ -23,8 +28,14 @@ param(
     and renders overlay text onto desktop/logon outputs.
 
 .PARAMETER TraceMode
-    Enables transcript logging for renderer execution.
+    Legacy trace switch. Equivalent to detail level d when -DetailLevel is not provided.
     Alias: t
+
+.PARAMETER DetailLevel
+    Global logging detail level: m=minimal, n=normal, d=diagnostic, f=full.
+
+.PARAMETER BcdLogEnabled
+    Enables raw BCDEDIT output logging to file.
 
 .PARAMETER HelpMode
     Shows full help and exits.
@@ -40,7 +51,7 @@ if ($HelpMode) {
     exit 0
 }
 
-$ScriptVersion = "9.0.0"
+$ScriptVersion = "10.0.0"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 $prev = $WarningPreference
@@ -70,6 +81,48 @@ $LogRoot = $RuntimeContext.LogRoot
 $StateFile = $RuntimeContext.StateFilePath
 $AssetsRoot = $RuntimeContext.AssetsRoot
 
+$EffectiveDetailLevel = if ($PSBoundParameters.ContainsKey("DetailLevel")) {
+    $DetailLevel.ToLowerInvariant()
+}
+elseif ($TraceMode) {
+    "d"
+}
+else {
+    "n"
+}
+
+$EffectiveBcdLogEnabled = if ($PSBoundParameters.ContainsKey("BcdLogEnabled")) {
+    [bool]$BcdLogEnabled
+}
+else {
+    $EffectiveDetailLevel -in @("d", "f")
+}
+
+if (-not $PSBoundParameters.ContainsKey("DetailLevel") -or -not $PSBoundParameters.ContainsKey("BcdLogEnabled")) {
+    try {
+        $stateForLogging = Get-RuntimeState -Context $RuntimeContext -StateFilePath $StateFile
+        if ($stateForLogging -and ($stateForLogging.PSObject.Properties.Name -contains "logging") -and $stateForLogging.logging) {
+            if (-not $PSBoundParameters.ContainsKey("DetailLevel") -and ($stateForLogging.logging.PSObject.Properties.Name -contains "detailLevel") -and $stateForLogging.logging.detailLevel) {
+                $EffectiveDetailLevel = [string]$stateForLogging.logging.detailLevel
+                $EffectiveDetailLevel = $EffectiveDetailLevel.ToLowerInvariant()
+            }
+            if (-not $PSBoundParameters.ContainsKey("BcdLogEnabled") -and ($stateForLogging.logging.PSObject.Properties.Name -contains "bcdLogEnabled")) {
+                $EffectiveBcdLogEnabled = [bool]$stateForLogging.logging.bcdLogEnabled
+            }
+        }
+    }
+    catch {}
+}
+
+$TraceMode = $TraceMode -or ($EffectiveDetailLevel -in @("d", "f"))
+$BcdRawLogPath = if ($EffectiveBcdLogEnabled -and ($EffectiveDetailLevel -in @("d", "f"))) {
+    $timestampForBcd = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
+    Join-Path $LogRoot "BCDEDIT_Renderer_$timestampForBcd.log"
+}
+else {
+    $null
+}
+
 if ($TraceMode) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
     $TranscriptPath = Join-Path $LogRoot "Renderer_$timestamp.log"
@@ -78,7 +131,15 @@ if ($TraceMode) {
 
 Write-Host "=== BackgroundModifier Renderer (v$ScriptVersion) ==="
 
+try {
+    if ($Host -and $Host.UI -and $Host.UI.RawUI) {
+        $Host.UI.RawUI.WindowTitle = "BackgroundModifier Renderer v$ScriptVersion"
+    }
+}
+catch {}
+
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
+if ($BcdRawLogPath) { Write-Host "[INFO] BCDEDIT output logging enabled -> $BcdRawLogPath" }
 
 $MutationScriptName = "BackgroundRenderer.ps1"
 
@@ -296,7 +357,7 @@ if ($wlanAddresses.Count -gt 0) { $ipInfo += "$($wlanAddresses[0]) (WLAN)" }
 $ipAddresses = if ($ipInfo.Count -gt 0) { $ipInfo -join "`n" } else { "(none)" }
 $renderTime  = (Get-Date).ToString("yyyy-MM-dd HH:mm")
 $efiLabel    = Get-EfiVolumeLabel
-$bcdDefault  = Get-DefaultBcdIdentifier
+$bcdDefault  = Get-DefaultBcdIdentifier -LogRawOutput:([bool]$BcdRawLogPath) -RawOutputLogPath $BcdRawLogPath
 
 if ($bcdDefault -in @("(unavailable)", "(error)")) {
     Write-Host "[X] Failed to retrieve BCD information: $bcdDefault"
@@ -305,7 +366,7 @@ if ($bcdDefault -in @("(unavailable)", "(error)")) {
     exit 1
 }
 
-$volInv      = Get-VolumeInventorySummary
+$volInv      = Get-VolumeInventorySummary -LogRawOutput:([bool]$BcdRawLogPath) -RawOutputLogPath $BcdRawLogPath
 
 $tableRows = @(
     [pscustomobject]@{ Key = "Host";      Value = $hostname }

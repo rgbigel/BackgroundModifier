@@ -1,5 +1,14 @@
 # Change History
 
+## 2026-06-27 - 10.0.0 Phase2 Harness Consolidation (Code + Docs)
+
+Summary:
+1. Added `Source/BackgroundPhase2bHarness.ps1` as dedicated interactive phase 2b action harness.
+2. Updated orchestrator to route interactive phase 2 execution through the phase 2b harness.
+3. Kept non-interactive phase 2 path on direct setter invocation for automation compatibility.
+4. Updated verifier required file set to include phase 2b harness deployment.
+5. Updated architecture, requirements, implementation, and smoke checklist to document both harness roles (phase2a and phase2b).
+
 ## 2026-06-25 - 10.0.0 Documentation Baseline for Wallpaper Reliability and Logon Compatibility
 
 Summary:
@@ -8,7 +17,7 @@ Summary:
 3. Added diagnostics expectations for branch and fallback reason logging.
 4. Updated architecture, requirements, implementation, and smoke-test checklist to reflect these behaviors as implemented.
 5. Added explicit attribution that these reliability patterns were adapted from the PowerBGInfo repository (EvotecIT/PowerBGInfo).
-6. Marked this update as documentation-only for future v10 planning; runtime code remains on 9.x pending implementation and testing.
+6. At the time of this update, the change was documentation-only for future v10 planning; runtime code was still on 9.x pending implementation and testing.
 
 ## 2026-06-18 - 8.0.0 Phase State Normalization and Smoke Test Checklist
 

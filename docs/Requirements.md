@@ -7,7 +7,7 @@ BackgroundModifier must deterministically generate and apply background images t
 This solution targets Windows 11 only.
 The installer and runtime entry points require PowerShell 7 (`pwsh`).
 Runtime configuration and state are managed exclusively through state.json; internal implementation details are never exposed as script parameters.
-This requirement set defines the planned v10 behavior; runtime code remains on 9.x until implementation starts.
+This requirement set defines the v10 preparation baseline; formal validation is pending.
 
 ## Functional Requirements
 
@@ -22,6 +22,9 @@ This requirement set defines the planned v10 behavior; runtime code remains on 9
 ### Phase 2 Split: Automatic vs. Interactive
 7. Provide Phase 2a (automatic post-logon, scheduled, non-interactive, always elevated, hidden from user): automatically detect system state change via hash comparison; render and apply conditionally; set `logon.logonTime` once on first execution only; never set logonTime again in same session.
 8. Provide Phase 2b (interactive user-initiated, manual, user-selectable actions, elevation on-demand): present menu with user actions ("Update desktop background?", "Update logon screen?", "Get new background image?", "Maintenance?", "Cleanup?", etc.); allow user to select and confirm actions; never set or modify `logon.logonTime`; provide immediate visual feedback after action execution.
+8.5. Provide dedicated harness wrappers for phase execution separation:
+- `BackgroundPhase2aHarness.ps1`: sequential renderer+setter execution for one scheduled non-interactive phase 2a run.
+- `BackgroundPhase2bHarness.ps1`: interactive action menu and routing for user-initiated phase 2b operations.
 
 ### State Management and Interprocess Contract
 9. Maintain one shared immutable runtime state contract in `C:\BackgroundMotives\assets\state.json` as the single source of truth for all runtime decisions.

@@ -15,7 +15,7 @@
 - Runtime model: Phase 1 collects system info and computes hash; Phase 2a automatically detects changes and conditionally renders/applies; Phase 2b provides interactive user actions.
 - Deployment model: non-repository runtime in BTools plus cmd exposure layer.
 - State contract: Comprehensive audit trail with versioning, source tracking, and transition management.
-- Current runtime code baseline remains 9.x; this implementation document defines planned v10 behavior.
+- Runtime code follows the v10 preparation model; formal validation is pending.
 
 ---
 
@@ -31,6 +31,7 @@ The runtime is split into three technical phases:
 - **No rendering is performed in Phase 1.**
 
 2. Phase 2a (automatic post-logon, scheduled/system context, elevated):
+- Executed through `BackgroundPhase2aHarness.ps1` to enforce one sequential renderer->setter flow per logon task run.
 - Detect autorun context (scheduled task vs. manual invocation).
 - Load Phase 1 systemInfo from state.json.
 - Compare state.systemInfo.hash with state.render.lastSystemInfoHash.
@@ -42,6 +43,7 @@ The runtime is split into three technical phases:
 - On failures, log error and exit; do not retry.
 
 3. Phase 2b (interactive user-initiated, manual/user context):
+- Executed through `BackgroundPhase2bHarness.ps1` to centralize menu interaction and action routing.
 - Detect user-initiated context (manual invocation, not scheduled).
 - Present interactive menu with user-selectable actions.
 - User confirms selections.

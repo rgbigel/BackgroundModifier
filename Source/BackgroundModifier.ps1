@@ -2,6 +2,11 @@
 param(
     [Alias("t")]
     [switch]$TraceMode,
+    [Alias("d")]
+    [ValidateSet("m","n","d","f","M","N","D","F")]
+    [string]$DetailLevel,
+    [Alias("b")]
+    [switch]$BcdLogEnabled,
     [Alias("h","?")]
     [switch]$HelpMode,
     [ValidateSet("Run", "Setup")]
@@ -12,14 +17,12 @@ param(
     [switch]$Phase1Only,
     [switch]$Phase2Only,
     [Alias("i")]
-    [switch]$Interactive,
-    [Alias("n")]
-    [switch]$NonInteractive
+    [switch]$Interactive
 )
 
 <#
     Script: BackgroundModifier.ps1
-    Version: 9.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Orchestrate phase-aware execution of renderer (phase 1) and setter (phase 2).
 #>
@@ -29,11 +32,10 @@ $ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants
 Import-Module $ConstantsPath -Force
 
 if ($HelpMode) {
-    Write-Host "BackgroundModifier orchestrator (v9.0.0)"
+    Write-Host "BackgroundModifier orchestrator (v10.0.0)"
     Write-Host ""
     Write-Host "Modes:"
     Write-Host "  -i, -Interactive     Interactive mode (default from launcher)"
-    Write-Host "  -n, -NonInteractive  Non-interactive/automation mode (skip prompts)"
     Write-Host ""
     Write-Host "Actions:"
     Write-Host "  -Action       Run (default) or Setup"
@@ -43,11 +45,13 @@ if ($HelpMode) {
     Write-Host "  -Phase2Only   Run setter phase only (render if needed, apply)"
     Write-Host ""
     Write-Host "Logging:"
+    Write-Host "  -d, -DetailLevel  m|minimal n|normal d|diagnostic f|full"
+    Write-Host "  -b, -BcdLogEnabled  Enable raw BCDEDIT logging to file"
     Write-Host "  -TraceMode    Enable transcript logging in child scripts"
     exit 0
 }
 
-$ScriptVersion = "9.0.0"
+$ScriptVersion = "10.0.0"
 
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 Import-Module (Join-Path $ModuleRoot "RuntimeContext.psm1") -Force -WarningAction SilentlyContinue
@@ -130,6 +134,8 @@ function Write-AutomationModeStatusBox {
 function Get-OrchestratorForwardArgsForRelaunch {
     $forwardArgs = @(
         if ($TraceMode) { "-TraceMode" }
+        if ($DetailLevel) { "-DetailLevel"; $DetailLevel }
+        if ($BcdLogEnabled) { "-BcdLogEnabled" }
         if ($RuntimeRoot) { "-RuntimeRoot"; $RuntimeRoot }
         if ($StateFilePath) { "-StateFilePath"; $StateFilePath }
         if ($LogRoot) { "-LogRoot"; $LogRoot }
@@ -217,8 +223,7 @@ function Set-OrchestratorLifecycleState {
 function Get-AutomationTaskNames {
     return @(
         "BackgroundModifier-Startup",
-        "BackgroundModifier-Renderer",
-        "BackgroundModifier-Setter"
+        "BackgroundModifier-Phase2a"
     )
 }
 
@@ -294,6 +299,12 @@ function Invoke-SetupAction {
     if ($TraceMode) {
         $argumentList += "-TraceMode"
     }
+    if ($DetailLevel) {
+        $argumentList += @("-DetailLevel", $DetailLevel)
+    }
+    if ($BcdLogEnabled) {
+        $argumentList += "-BcdLogEnabled"
+    }
 
     try {
         [int]$setupExit = 0
@@ -312,6 +323,8 @@ function Invoke-SetupAction {
         else {
             $setupParams = @{}
             if ($TraceMode) { $setupParams.TraceMode = $true }
+            if ($DetailLevel) { $setupParams.DetailLevel = $DetailLevel }
+            if ($BcdLogEnabled) { $setupParams.BcdLogEnabled = $true }
 
             & $setupScript @setupParams
             if ($LASTEXITCODE -is [int]) {
@@ -436,10 +449,37 @@ function Invoke-ToolScript {
     return [int]$p.ExitCode
 }
 
+function Invoke-ToolScriptDirect {
+    param(
+        [string]$ScriptPath,
+        [hashtable]$ForwardParams
+    )
+
+    if (-not (Test-Path $ScriptPath)) {
+        Write-Host "[X] Missing script: $ScriptPath"
+        return 2
+    }
+
+    & $ScriptPath @ForwardParams
+    if ($LASTEXITCODE -is [int]) {
+        return [int]$LASTEXITCODE
+    }
+
+    return 0
+}
+
 $stateFile = $RuntimeContext.StateFilePath
 $rendererScript = Join-Path $PSScriptRoot "BackgroundRenderer.ps1"
 $setterScript = Join-Path $PSScriptRoot "BackgroundSetter.ps1"
+$phase2bHarnessScript = Join-Path $PSScriptRoot "BackgroundPhase2bHarness.ps1"
 $automationEnabledMode = Test-AutomationEnabledMode -StateFilePath $stateFile
+
+try {
+    if ($Host -and $Host.UI -and $Host.UI.RawUI) {
+        $Host.UI.RawUI.WindowTitle = "BackgroundModifier Orchestrator v$ScriptVersion"
+    }
+}
+catch {}
 
 Write-AutomationModeStatusBox -EnabledMode $automationEnabledMode
 
@@ -479,13 +519,15 @@ else {
     $runPhase2 = $true
 }
 
-Write-Host \"=== BackgroundModifier Orchestrator (v9.0.0) ===\"
+Write-Host \"=== BackgroundModifier Orchestrator (v$ScriptVersion) ===\"
 Write-Host "Phase1 status: $($phase1Info.Status)"
 Write-Host "Plan: RunPhase1=$runPhase1 RunPhase2=$runPhase2"
 
 if ($runPhase1) {
     $rendererArgs = @(
         if ($TraceMode) { "-TraceMode" }
+        if ($DetailLevel) { "-DetailLevel"; $DetailLevel }
+        if ($BcdLogEnabled) { "-BcdLogEnabled" }
     )
 
     Write-Host "[INFO] Running phase 1 renderer..."
@@ -498,9 +540,36 @@ if ($runPhase1) {
 }
 
 if ($runPhase2) {
-    $setterArgs = @(
+    $phase2Args = @(
         if ($TraceMode) { "-TraceMode" }
+        if ($DetailLevel) { "-DetailLevel"; $DetailLevel }
+        if ($BcdLogEnabled) { "-BcdLogEnabled" }
+        "-Phase2aAutorun"
     )
+
+    $runInteractivePhase2b = $Interactive.IsPresent
+
+    if ($runInteractivePhase2b) {
+        $phase2bParams = @{}
+        if ($TraceMode) { $phase2bParams.TraceMode = $true }
+        if ($DetailLevel) { $phase2bParams.DetailLevel = $DetailLevel }
+        if ($BcdLogEnabled) { $phase2bParams.BcdLogEnabled = $true }
+        if ($RuntimeRoot) { $phase2bParams.RuntimeRoot = $RuntimeRoot }
+        if ($stateFile) { $phase2bParams.StateFilePath = $stateFile }
+        if ($LogRoot) { $phase2bParams.LogRoot = $LogRoot }
+
+        Write-Host "[INFO] Running phase 2b interactive harness..."
+        $phase2bExit = Invoke-ToolScriptDirect -ScriptPath $phase2bHarnessScript -ForwardParams $phase2bParams
+        if ($phase2bExit -ne 0) {
+            Write-Host "[X] Phase2b harness failed with exit code $phase2bExit"
+            Set-OrchestratorBlockedReason -StateFilePath $stateFile -Reason "Phase2bHarnessFailed"
+            exit $phase2bExit
+        }
+
+        Write-Host "[OK] Phase2b harness completed successfully."
+        Write-Host "[OK] Orchestrator flow completed successfully."
+        exit 0
+    }
 
     # [PHASE2A-CODE: Detect autorun context]
     # Phase 2a: Scheduled task, non-interactive, always elevated → setter auto-detects as IsNonInteractiveAutorun
@@ -508,7 +577,7 @@ if ($runPhase2) {
     # Setter uses $IsNonInteractiveAutorun to determine logonTime gating (set only in Phase 2a, never in 2b)
 
     Write-Host "[INFO] Running phase 2 setter..."
-    $setterExit = Invoke-ToolScript -ScriptPath $setterScript -ForwardArgs $setterArgs
+    $setterExit = Invoke-ToolScript -ScriptPath $setterScript -ForwardArgs $phase2Args
     if ($setterExit -ne 0) {
         Write-Host "[X] Setter failed with exit code $setterExit"
         Set-OrchestratorBlockedReason -StateFilePath $stateFile -Reason "SetterFailed"

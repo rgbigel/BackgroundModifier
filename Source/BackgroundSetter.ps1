@@ -2,8 +2,18 @@
 param(
     [Alias("t")]
     [switch]$TraceMode,
+    [Alias("d")]
+    [ValidateSet("m","n","d","f","M","N","D","F")]
+    [string]$DetailLevel,
+    [Alias("b")]
+    [switch]$BcdLogEnabled,
     [Alias("h","?")]
     [switch]$HelpMode,
+    [switch]$ApplyDesktop,
+    [switch]$ApplyLockScreen,
+    [switch]$CaptureDesktopAsBase,
+    [switch]$PromoteDesktopBaseToLogonBase,
+    [switch]$Phase2aAutorun,
     [string]$RuntimeRoot = $Global:RuntimeRoot,
     [string]$StateFilePath,
     [string]$LogRoot
@@ -11,7 +21,7 @@ param(
 
 <#
     Script: BackgroundSetter.ps1
-    Version: 9.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Phase 2 - Detect system info changes, render if needed, apply backgrounds to desktop and logon screens.
 
@@ -29,6 +39,27 @@ param(
 .PARAMETER HelpMode
     Shows full help and exits.
     Aliases: h, ?
+
+.PARAMETER DetailLevel
+    Global logging detail level propagated by setup/orchestrator.
+
+.PARAMETER BcdLogEnabled
+    Enables raw BCDEDIT output logging in components that query BCDEDIT.
+
+.PARAMETER ApplyDesktop
+    Applies desktop background target.
+
+.PARAMETER ApplyLockScreen
+    Applies lock/sign-in background target.
+
+.PARAMETER CaptureDesktopAsBase
+    Captures current desktop to DesktopBase before render/apply.
+
+.PARAMETER PromoteDesktopBaseToLogonBase
+    Promotes DesktopBase to LogonBase before render/apply.
+
+.PARAMETER Phase2aAutorun
+    Internal marker for phase 2a autorun context.
 #>
 
 # Import Constants so defaults can bind to $Global:* variables
@@ -40,7 +71,7 @@ if ($HelpMode) {
     exit 0
 }
 
-$ScriptVersion = "9.0.0"
+$ScriptVersion = "10.0.0"
 
 # --- Import modules ---
 $ModuleRoot = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
@@ -73,7 +104,14 @@ if ($TraceMode) {
     Start-Transcript -Path $TranscriptPath -Force | Out-Null
 }
 
-Write-Host "=== BackgroundModifier Setter (v9.0.0) ==="
+Write-Host "=== BackgroundModifier Setter (v$ScriptVersion) ==="
+
+try {
+    if ($Host -and $Host.UI -and $Host.UI.RawUI) {
+        $Host.UI.RawUI.WindowTitle = "BackgroundModifier Setter v$ScriptVersion"
+    }
+}
+catch {}
 
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript recording started" }
 
@@ -155,7 +193,7 @@ function Render-BackgroundImagesIfNeeded {
     }
 }
 
-function Set-DesktopWallpaper {
+function Invoke-DesktopWallpaperApply {
     param(
         [string]$ImagePath
     )
@@ -192,19 +230,57 @@ public static class NativeWallpaper {
     $HWND_BROADCAST = [IntPtr](-1)
     $SMT_ABORTIFHUNG = 0x0002
 
-    # Set wallpaper via SystemParametersInfo
     $result = [NativeWallpaper]::SystemParametersInfo($SPI_SETDESKWALLPAPER, 0, $ImagePath, ($SPIF_UPDATEINIFILE -bor $SPIF_SENDCHANGE))
     if (-not $result) {
-        throw "SystemParametersInfo failed to refresh desktop wallpaper."
+        throw "SystemParametersInfo failed for path: $ImagePath"
     }
 
-    # Broadcast WM_SETTINGCHANGE to ensure all windows refresh wallpaper display
     try {
         $lpdwResult = [IntPtr]::Zero
         [NativeWallpaper]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [IntPtr]::Zero, [IntPtr]::Zero, $SMT_ABORTIFHUNG, 3000, [ref]$lpdwResult) | Out-Null
     }
     catch {
-        # Non-fatal; wallpaper is already set in registry and primary API call succeeded
+        # Non-fatal; SystemParametersInfo succeeded and registry is already updated
+    }
+}
+
+function Set-DesktopWallpaper {
+    param(
+        [string]$ImagePath
+    )
+
+    if (-not (Test-Path $ImagePath)) {
+        throw "Desktop image missing: $ImagePath"
+    }
+
+    $desktopReg = "HKCU:\Control Panel\Desktop"
+    Set-ItemProperty -Path $desktopReg -Name Wallpaper -Value $ImagePath -Force
+    Set-ItemProperty -Path $desktopReg -Name WallpaperStyle -Value "10" -Force
+    Set-ItemProperty -Path $desktopReg -Name TileWallpaper -Value "0" -Force
+
+    $parent = Split-Path $ImagePath -Parent
+    $ext = [System.IO.Path]::GetExtension($ImagePath)
+    $refreshPath = Join-Path $parent ("bg_refresh_{0}{1}" -f ([guid]::NewGuid().ToString("N")), $ext)
+
+    try {
+        Copy-Item -Path $ImagePath -Destination $refreshPath -Force
+        Write-Host "[INFO] Desktop refresh staging path -> $refreshPath"
+        Invoke-DesktopWallpaperApply -ImagePath $refreshPath
+        Invoke-DesktopWallpaperApply -ImagePath $ImagePath
+    }
+    catch {
+        Write-Host "[WARN] Desktop staged refresh failed, falling back to direct apply: $($_.Exception.Message)"
+        Invoke-DesktopWallpaperApply -ImagePath $ImagePath
+    }
+    finally {
+        try {
+            if (Test-Path $refreshPath) {
+                Remove-Item -Path $refreshPath -Force
+            }
+        }
+        catch {
+            Write-Host "[WARN] Failed to remove desktop refresh staging file: $refreshPath"
+        }
     }
 }
 
@@ -285,13 +361,13 @@ function Restart-ScriptElevated {
 }
 
 function Test-ScheduledTasksPresent {
-    $renderer = Get-ScheduledTask -TaskName "BackgroundModifier-Renderer" -ErrorAction SilentlyContinue
-    $setter   = Get-ScheduledTask -TaskName "BackgroundModifier-Setter"   -ErrorAction SilentlyContinue
+    $startup = Get-ScheduledTask -TaskName "BackgroundModifier-Startup" -ErrorAction SilentlyContinue
+    $phase2a = Get-ScheduledTask -TaskName "BackgroundModifier-Phase2a" -ErrorAction SilentlyContinue
 
     return [pscustomobject]@{
-        RendererPresent = ($null -ne $renderer)
-        SetterPresent   = ($null -ne $setter)
-        BothPresent     = ($null -ne $renderer -and $null -ne $setter)
+        StartupPresent = ($null -ne $startup)
+        Phase2aPresent = ($null -ne $phase2a)
+        BothPresent    = ($null -ne $startup -and $null -ne $phase2a)
     }
 }
 
@@ -427,13 +503,13 @@ $ImageState = Get-ImageState -DesktopImage $DesktopImage -DesktopBase $DesktopBa
 $TaskState = Test-ScheduledTasksPresent
 if (-not $TaskState.BothPresent) {
     Write-Host "[WARN] One or more scheduled tasks are not registered:"
-    if (-not $TaskState.RendererPresent) { Write-Host "[WARN]   Missing: BackgroundModifier-Renderer" }
-    if (-not $TaskState.SetterPresent)   { Write-Host "[WARN]   Missing: BackgroundModifier-Setter" }
+    if (-not $TaskState.StartupPresent) { Write-Host "[WARN]   Missing: BackgroundModifier-Startup" }
+    if (-not $TaskState.Phase2aPresent) { Write-Host "[WARN]   Missing: BackgroundModifier-Phase2a" }
     Write-Host "[INFO] Automatic post-logon render and apply are not active."
     Write-Host "[INFO] Run Installer.ps1 to restore automation, or run renderer and setter manually."
     Write-Host "[INFO] For lock/sign-in apply, elevation will still be required."
 } elseif ($TraceMode) {
-    Write-Host "[OK] Scheduled tasks present (BackgroundModifier-Renderer, BackgroundModifier-Setter)"
+    Write-Host "[OK] Scheduled tasks present (BackgroundModifier-Startup, BackgroundModifier-Phase2a)"
 }
 
 Write-Host "--- Image state ---"
@@ -446,11 +522,22 @@ Write-Host "Logon: UserChanged=$($ImageState.UserChangedLogon) MatchesRendered=$
 
 $SessionIsInteractive = Test-IsInteractiveSession
 $HasExplicitActionRequest = $false  # All action context comes from state.json in Phase 2
-$IsNonInteractiveAutorun = (-not $SessionIsInteractive) -and (-not $HasExplicitActionRequest)
+$IsNonInteractiveAutorun = $Phase2aAutorun.IsPresent -or ((-not $SessionIsInteractive) -and (-not $HasExplicitActionRequest))
 
-# Default: render and apply both desktop and logon (conditional render/apply based on state hash below)
-$DoApplyDesktop = $true
-$DoApplyLockScreen = $true
+$DoCapture = $CaptureDesktopAsBase.IsPresent
+$DoPromote = $PromoteDesktopBaseToLogonBase.IsPresent
+
+$hasExplicitApplySelection = $PSBoundParameters.ContainsKey("ApplyDesktop") -or $PSBoundParameters.ContainsKey("ApplyLockScreen")
+
+# Default: render and apply both desktop and logon when no explicit apply target was selected.
+if ($hasExplicitApplySelection) {
+    $DoApplyDesktop = $ApplyDesktop.IsPresent
+    $DoApplyLockScreen = $ApplyLockScreen.IsPresent
+}
+else {
+    $DoApplyDesktop = $true
+    $DoApplyLockScreen = $true
+}
 
 # --- Detect pending logon change from a prior non-elevated run ---
 $PendingLogonSource = $null

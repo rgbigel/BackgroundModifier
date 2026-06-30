@@ -5,7 +5,7 @@ Version: 10.0.0
 ## Purpose
 Quick end-to-end verification of phase state transitions and apply behavior.
 
-Planning note: This checklist targets planned v10 behavior and is intended for use after v10 implementation begins.
+Planning note: This checklist targets the implemented v10 preparation baseline and is intended for user-driven verification.
 
 ## Preconditions
 1. Windows 11 machine.
@@ -105,12 +105,18 @@ Note: If elevation is accepted and the elevated apply completes quickly, state m
 1. Set `automation.enabledmode` to `false` in `state.json`.
 2. Run `BackgroundModifier.ps1 -Action Run` from a non-elevated interactive session.
 3. Confirm UAC prompt appears and elevated relaunch is requested to sync scheduled task state.
-4. Verify scheduled tasks `BackgroundModifier-Startup`, `BackgroundModifier-Renderer`, and `BackgroundModifier-Setter` are disabled.
+4. Verify scheduled tasks `BackgroundModifier-Startup` and `BackgroundModifier-Phase2a` are disabled.
 5. Set `automation.enabledmode` to `true` in `state.json`.
 6. Run `BackgroundModifier.ps1 -Action Run` again from a non-elevated interactive session.
 7. Confirm UAC prompt appears and elevated relaunch is requested to sync scheduled task state.
-8. Verify all three scheduled tasks are enabled again.
+8. Verify both scheduled tasks are enabled again.
 7. Verify `state.json` lifecycle section updates:
 - `lifecycle.lastAction` equals `SyncAutomationMode`.
 - `lifecycle.lastStatus` equals `completed` after each successful run.
 - `automation.enabledmode` equals `False` after disable and `True` after enable.
+
+## J. Phase 2b Harness Interaction Path
+1. Start `BackgroundModifier.ps1 -Interactive`.
+2. Confirm phase 2 runs through `BackgroundPhase2bHarness.ps1`.
+3. Verify interactive action menu appears in the same console session.
+4. Select `Renderer`, `Setter`, and `Renderer + Setter` in separate runs and confirm exit codes are propagated to orchestrator.

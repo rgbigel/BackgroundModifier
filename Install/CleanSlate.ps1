@@ -77,12 +77,13 @@ if ($All) {
 $ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
 Import-Module $ConstantsPath -Force
 
-$ScriptVersion = "8.0.0"
+$ScriptVersion = "10.0.0"
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 $ProjectName = Split-Path $RepoRoot -Leaf
 
 $TaskNames = @(
     "BackgroundModifier-Startup",
+    "BackgroundModifier-Phase2a",
     "BackgroundModifier-Renderer",
     "BackgroundModifier-Setter"
 )

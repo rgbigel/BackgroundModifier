@@ -2,13 +2,18 @@
 param(
     [Alias("t")]
     [switch]$TraceMode,
+    [Alias("d")]
+    [ValidateSet("m","n","d","f","M","N","D","F")]
+    [string]$DetailLevel,
+    [Alias("b")]
+    [switch]$BcdLogEnabled,
     [Alias("h","?")]
     [switch]$HelpMode
 )
 
 <#
     Script: Setup.ps1
-    Version: 8.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Install and configure BackgroundModifier runtime structure and scheduled tasks.
     Requires: Windows 11, elevation (Administrator).
@@ -18,11 +23,19 @@ param(
 
 .DESCRIPTION
     Validates source layout, ensures required runtime folders exist, (re)registers
-    logon tasks for renderer and setter, then runs installation verification.
+    startup and phase 2a harness tasks, then runs installation verification.
 
 .PARAMETER TraceMode
-    Enables setup transcript logging and registers tasks with trace-mode arguments.
+    Legacy trace switch. Equivalent to detail level d when -DetailLevel is not provided.
     Alias: t
+
+.PARAMETER DetailLevel
+    Global logging detail level: m=minimal, n=normal, d=diagnostic, f=full.
+    Alias: d
+
+.PARAMETER BcdLogEnabled
+    Enables raw BCDEDIT output logging to log files.
+    Alias: b
 
 .PARAMETER HelpMode
     Shows full help and exits.
@@ -33,6 +46,9 @@ param(
 
 .EXAMPLE
     .\Setup.ps1 -t
+
+.EXAMPLE
+    .\Setup.ps1 -d d -b
 
 .EXAMPLE
     .\Setup.ps1 -h
@@ -48,7 +64,7 @@ $ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants
 Import-Module $ConstantsPath -Force
 
 # --- Constants ---
-$ScriptVersion   = "8.0.0"
+$ScriptVersion   = "10.0.0"
 $RuntimeRoot     = $Global:RuntimeRoot
 $AssetsRoot      = $Global:AssetsRoot
 $LogRoot         = $Global:LogRoot
@@ -62,12 +78,12 @@ $SeedAssetsRoot  = Join-Path $DeployedRoot "assets"
 $OrchestratorScript = Join-Path $SourceRoot "BackgroundModifier.ps1"
 $RendererScript  = Join-Path $SourceRoot "BackgroundRenderer.ps1"
 $SetterScript    = Join-Path $SourceRoot "BackgroundSetter.ps1"
+$Phase2aHarnessScript = Join-Path $SourceRoot "BackgroundPhase2aHarness.ps1"
 $VerifierScript  = Join-Path $PSScriptRoot "BackgroundInstallationVerifier.ps1"
 $RuntimeStateFile = Join-Path $AssetsRoot "state.json"
 
 $TaskNameStartup  = "BackgroundModifier-Startup"
-$TaskNameRenderer = "BackgroundModifier-Renderer"
-$TaskNameSetter   = "BackgroundModifier-Setter"
+$TaskNamePhase2a  = "BackgroundModifier-Phase2a"
 $ProjectName      = Split-Path $DeployedRoot -Leaf
 $BToolsRoot       = $Global:DeploymentRoot
 $InventoryRoot    = Join-Path $BToolsRoot "Inventory"
@@ -75,6 +91,47 @@ $InventoryFile    = Join-Path $InventoryRoot "$ProjectName.json"
 $MinimumRuntimeContextContractVersion = "1.0.0"
 $MinimumStateToolsContractVersion = "1.0.0"
 $CompatibilityScript = Join-Path $PSScriptRoot "Test-SharedModuleCompatibility.ps1"
+$SupportedTaskNames = @(
+    $TaskNameStartup,
+    $TaskNamePhase2a
+)
+
+$EffectiveDetailLevel = if ($PSBoundParameters.ContainsKey("DetailLevel")) {
+    $DetailLevel.ToLowerInvariant()
+}
+elseif ($TraceMode) {
+    "d"
+}
+else {
+    "n"
+}
+
+$EffectiveTraceMode = $EffectiveDetailLevel -in @("d","f")
+$EffectiveBcdLogEnabled = if ($PSBoundParameters.ContainsKey("BcdLogEnabled")) {
+    [bool]$BcdLogEnabled
+}
+else {
+    $EffectiveDetailLevel -in @("d","f")
+}
+
+# Normalize legacy switch behavior to the computed effective mode.
+$TraceMode = $EffectiveTraceMode
+
+function Remove-StaleBackgroundModifierTasks {
+    param(
+        [string[]]$KeepTaskNames
+    )
+
+    $existing = Get-ScheduledTask -TaskName "BackgroundModifier-*" -ErrorAction SilentlyContinue
+    foreach ($task in $existing) {
+        if ($KeepTaskNames -contains $task.TaskName) {
+            continue
+        }
+
+        Unregister-ScheduledTask -TaskName $task.TaskName -Confirm:$false | Out-Null
+        Write-Host "[OK] Removed stale task: $($task.TaskName)"
+    }
+}
 
 function Get-ContractSnapshot {
     param(
@@ -180,6 +237,8 @@ if ($TraceMode) {
 }
 
 Write-Host "=== BackgroundModifier Setup (v$ScriptVersion) ==="
+Write-Host "[INFO] Effective detail level: $($EffectiveDetailLevel.ToUpperInvariant())"
+Write-Host "[INFO] BCDEDIT raw logging: $EffectiveBcdLogEnabled"
 if ($TraceMode) { Write-Host "Trace mode enabled - transcript started" }
 
 # --- Windows 11 check ---
@@ -370,6 +429,28 @@ if (-not (Initialize-SeedAssets -SeedRoot $SeedAssetsRoot -RuntimeAssetsRoot $As
     exit 1
 }
 
+# Persist global logging defaults for runtime and verifier reconciliation.
+try {
+    $runtimeState = Read-InventoryRecord -Path $RuntimeStateFile
+    if (-not $runtimeState) {
+        $runtimeState = [pscustomobject]@{}
+    }
+
+    Set-ObjectProperty -Object $runtimeState -Name "logging" -Value ([pscustomobject]@{
+        detailLevel   = $EffectiveDetailLevel
+        bcdLogEnabled = [bool]$EffectiveBcdLogEnabled
+        updatedUtc    = (Get-Date).ToUniversalTime().ToString("o")
+        source        = "Setup"
+    })
+
+    Write-InventoryRecord -Path $RuntimeStateFile -Record $runtimeState
+    Write-MutationLog -Operation "SetContent" -Path $RuntimeStateFile -Target ""
+    Write-Host "[OK] Persisted logging defaults to state: level=$($EffectiveDetailLevel.ToUpperInvariant()) bcdLog=$EffectiveBcdLogEnabled"
+}
+catch {
+    Write-Host "[WARN] Failed persisting logging defaults to state: $($_.Exception.Message)"
+}
+
 # --- Scheduled tasks ---
 Write-Host "--- Scheduled task setup ---"
 
@@ -400,8 +481,14 @@ function Register-BackgroundTask {
     )
 
     if ($TraceMode) {
-        # Keep task consoles open in trace mode to allow post-run review.
         $taskArgs += "-NoExit"
+    }
+
+    if (-not $TraceMode) {
+        $taskArgs += @(
+            "-WindowStyle"
+            "Hidden"
+        )
     }
 
     $taskArgs += @(
@@ -411,6 +498,11 @@ function Register-BackgroundTask {
 
     foreach ($scriptArg in $ScriptArgs) {
         $taskArgs += $scriptArg
+    }
+
+    $taskArgs += @("-DetailLevel", $EffectiveDetailLevel.ToUpperInvariant())
+    if ($EffectiveBcdLogEnabled) {
+        $taskArgs += "-BcdLogEnabled"
     }
 
     if ($TraceMode) {
@@ -438,9 +530,10 @@ function Register-BackgroundTask {
     }
 }
 
+Remove-StaleBackgroundModifierTasks -KeepTaskNames $SupportedTaskNames
+
 Register-BackgroundTask -TaskName $TaskNameStartup  -ScriptPath $OrchestratorScript -Description "BackgroundModifier: orchestrate pre-logon phase at startup" -TriggerType "AtStartup" -ScriptArgs @("-Phase1Only")
-Register-BackgroundTask -TaskName $TaskNameRenderer -ScriptPath $RendererScript -Description "BackgroundModifier: render background at logon"
-Register-BackgroundTask -TaskName $TaskNameSetter   -ScriptPath $SetterScript   -Description "BackgroundModifier: apply background at logon"
+Register-BackgroundTask -TaskName $TaskNamePhase2a  -ScriptPath $Phase2aHarnessScript -Description "BackgroundModifier: phase 2a harness at logon (renderer+setter, sequential)" -TriggerType "AtLogOn"
 
 # --- Initial elevated render/apply sequence ---
 Write-Host "--- Running initial elevated render/apply sequence ---"
@@ -454,6 +547,8 @@ try {
         LogRoot       = $LogRoot
     }
     if ($TraceMode) { $rendererParams.TraceMode = $true }
+    $rendererParams.DetailLevel = $EffectiveDetailLevel.ToUpperInvariant()
+    if ($EffectiveBcdLogEnabled) { $rendererParams.BcdLogEnabled = $true }
 
     & $RendererScript @rendererParams
     if ($LASTEXITCODE -is [int]) {
@@ -480,6 +575,8 @@ if ($initialRendererExit -eq 0) {
             LogRoot       = $LogRoot
         }
         if ($TraceMode) { $setterParams.TraceMode = $true }
+        $setterParams.DetailLevel = $EffectiveDetailLevel.ToUpperInvariant()
+        if ($EffectiveBcdLogEnabled) { $setterParams.BcdLogEnabled = $true }
 
         & $SetterScript @setterParams
         if ($LASTEXITCODE -is [int]) {
@@ -507,6 +604,8 @@ else {
 Write-Host "--- Running installation verifier ---"
 $verifierParams = @{}
 if ($TraceMode) { $verifierParams.TraceMode = $true }
+$verifierParams.DetailLevel = $EffectiveDetailLevel.ToUpperInvariant()
+if ($EffectiveBcdLogEnabled) { $verifierParams.BcdLogEnabled = $true }
 
 $verifierExit = 0
 try {
@@ -538,10 +637,13 @@ try {
     Set-ObjectProperty -Object $record -Name "setupSupport" -Value ([pscustomobject]@{
         setupStatus      = $(if ($verifierExit -eq 0 -and $initialRendererExit -eq 0 -and $initialSetterExit -eq 0) { "completed" } else { "completed-with-warnings" })
         setupUpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
+        loggingDetailLevel = $EffectiveDetailLevel
+        bcdLogEnabled = [bool]$EffectiveBcdLogEnabled
+        traceModeEnabled = [bool]$TraceMode
         initialRendererExitCode = $initialRendererExit
         initialSetterExitCode = $initialSetterExit
         verifierExitCode = $verifierExit
-        taskNames        = @($TaskNameStartup, $TaskNameRenderer, $TaskNameSetter)
+        taskNames        = @($TaskNameStartup, $TaskNamePhase2a)
         runtimeRoot      = $RuntimeRoot
         assetsRoot       = $AssetsRoot
         logRoot          = $LogRoot

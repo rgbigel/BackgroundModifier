@@ -7,8 +7,8 @@ BackgroundModifier is a deterministic PowerShell solution for rendering and appl
 Platform scope: Windows 11 only.
 Installer/runtime prerequisite: PowerShell 7 (`pwsh`) must be available.
 
-Planning note: This documentation tracks the future 10.0.0 design baseline.
-Current runtime code remains on 9.x until implementation and validation are completed.
+Planning note: This documentation and code track the v10.0.0 preparation baseline.
+Formal runtime validation remains pending until user-driven verification completes.
 
 ## Key Capabilities
 1. Two-phase runtime model:
@@ -23,6 +23,8 @@ Current runtime code remains on 9.x until implementation and validation are comp
 8. Versioned module contracts with compatibility pre-check script.
 9. Desktop apply uses a cache-busting refresh sequence to force visible wallpaper updates when Windows reuses a cached path.
 10. Logon/lock apply uses a two-tier method: primary API path, then policy-registry fallback.
+11. Phase 2a is executed by a dedicated harness (`BackgroundPhase2aHarness.ps1`) that runs renderer and setter sequentially in one automation task.
+12. Phase 2b is executed by a dedicated interactive harness (`BackgroundPhase2bHarness.ps1`) that centralizes user action routing.
 
 ## External Design Attribution
 1. Desktop refresh and logon fallback patterns were adopted from the PowerBGInfo repository.
@@ -68,7 +70,7 @@ The duplicate pattern `SharedModules\SharedModules` is intentionally not used in
 4. Exposed command mappings are validated during install/update.
 
 ## Versioning Rule
-All active scripts, modules, and active documentation pages use the same visible solution version. For this baseline, that value is `8.0.0`.
+All active scripts, modules, and active documentation pages use the same visible solution version. For this baseline, that value is `10.0.0`.
 
 ## Runtime Sequencing
 1. Phase 1 does not invoke phase 2 setter behavior.

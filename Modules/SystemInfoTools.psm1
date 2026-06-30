@@ -22,6 +22,34 @@
 
 $Version = "1.0.0"
 
+function Write-BcdRawOutput {
+    [CmdletBinding()]
+    param(
+        [string]$RawOutputLogPath,
+        [string]$Section,
+        [string]$RawOutput
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RawOutputLogPath)) {
+        return
+    }
+
+    try {
+        $parent = Split-Path $RawOutputLogPath -Parent
+        if ($parent -and -not (Test-Path $parent)) {
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }
+
+        $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss.fff")
+        Add-Content -Path $RawOutputLogPath -Value "[$timestamp] === $Section ===" -Encoding UTF8
+        Add-Content -Path $RawOutputLogPath -Value $RawOutput -Encoding UTF8
+        Add-Content -Path $RawOutputLogPath -Value "" -Encoding UTF8
+    }
+    catch {
+        # Never fail main flow due to optional BCDEDIT logging.
+    }
+}
+
 function Test-IsWindows11 {
     [CmdletBinding()]
     param()
@@ -46,7 +74,10 @@ function Test-IsWindows11 {
 
 function Get-DefaultBcdIdentifier {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$LogRawOutput,
+        [string]$RawOutputLogPath
+    )
 
     <#
     .SYNOPSIS
@@ -66,6 +97,9 @@ function Get-DefaultBcdIdentifier {
 
         # Single call to get all BCD entries
         $allOutput = & $bcdEdit /enum all /v 2>$null | Out-String
+        if ($LogRawOutput) {
+            Write-BcdRawOutput -RawOutputLogPath $RawOutputLogPath -Section "Get-DefaultBcdIdentifier" -RawOutput $allOutput
+        }
         
         if (-not $allOutput) {
             return "(unavailable)"
@@ -160,7 +194,10 @@ function Get-EfiVolumeLabel {
 
 function Get-VolumeInventorySummary {
     [CmdletBinding()]
-    param()
+    param(
+        [switch]$LogRawOutput,
+        [string]$RawOutputLogPath
+    )
 
     <#
     .SYNOPSIS
@@ -180,6 +217,9 @@ function Get-VolumeInventorySummary {
             $bcdEdit = Join-Path $env:WINDIR "System32\bcdedit.exe"
             if (Test-Path $bcdEdit) {
                 $bcdText = (& $bcdEdit /enum all /v 2>$null | Out-String)
+                if ($LogRawOutput) {
+                    Write-BcdRawOutput -RawOutputLogPath $RawOutputLogPath -Section "Get-VolumeInventorySummary" -RawOutput $bcdText
+                }
                 if ($bcdText) {
                     $bcdRefCount = ([regex]::Matches($bcdText, '\\\\Device\\\\HarddiskVolume\d+') |
                         ForEach-Object { $_.Value.ToLowerInvariant() } |

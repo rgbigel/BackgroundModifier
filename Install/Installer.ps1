@@ -2,6 +2,11 @@
 param(
     [Alias("t")]
     [switch]$TraceMode,
+    [Alias("d")]
+    [ValidateSet("m","n","d","f","M","N","D","F")]
+    [string]$DetailLevel,
+    [Alias("b")]
+    [switch]$BcdLogEnabled,
     [Alias("h","?")]
     [switch]$HelpMode
 )
@@ -26,8 +31,16 @@ param(
     runtime target folder and then invokes deployed Setup.ps1.
 
 .PARAMETER TraceMode
-    Enables installer transcript logging.
+    Legacy trace switch. Equivalent to detail level d when -DetailLevel is not provided.
     Alias: t
+
+.PARAMETER DetailLevel
+    Global logging detail level: m=minimal, n=normal, d=diagnostic, f=full.
+    Alias: d
+
+.PARAMETER BcdLogEnabled
+    Enables raw BCDEDIT output logging to log files.
+    Alias: b
 
 .PARAMETER HelpMode
     Shows full help and exits.
@@ -38,6 +51,9 @@ param(
 
 .EXAMPLE
     .\Installer.ps1 -t
+
+.EXAMPLE
+    .\Installer.ps1 -d d -b
 
 .EXAMPLE
     .\Installer.ps1 -h
@@ -476,6 +492,8 @@ catch {
 
 $setupParams = @{}
 if ($TraceMode) { $setupParams.TraceMode = $true }
+if ($PSBoundParameters.ContainsKey("DetailLevel")) { $setupParams.DetailLevel = $DetailLevel }
+if ($PSBoundParameters.ContainsKey("BcdLogEnabled")) { $setupParams.BcdLogEnabled = $true }
 
 & $SetupDeployed @setupParams
 exit $LASTEXITCODE

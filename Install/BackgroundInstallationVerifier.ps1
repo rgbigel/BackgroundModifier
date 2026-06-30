@@ -2,13 +2,18 @@
 param(
     [Alias("t")]
     [switch]$TraceMode,
+    [Alias("d")]
+    [ValidateSet("m","n","d","f","M","N","D","F")]
+    [string]$DetailLevel,
+    [Alias("b")]
+    [switch]$BcdLogEnabled,
     [Alias("h","?")]
     [switch]$HelpMode
 )
 
 <#
     Script: BackgroundInstallationVerifier.ps1
-    Version: 8.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Deterministic verification of BackgroundModifier installation.
 
@@ -17,11 +22,19 @@ param(
 
 .DESCRIPTION
     Checks required runtime directories and files, then validates scheduled
-    task action paths against the deployed renderer and setter scripts.
+    task action paths against the deployed startup and phase2a harness scripts.
 
 .PARAMETER TraceMode
     Enables transcript logging for verifier execution.
     Alias: t
+
+.PARAMETER DetailLevel
+    Expected logging detail level override (m/n/d/f).
+    Alias: d
+
+.PARAMETER BcdLogEnabled
+    Expected BCDEDIT raw logging override.
+    Alias: b
 
 .PARAMETER HelpMode
     Shows full help and exits.
@@ -46,7 +59,7 @@ if ($HelpMode) {
 $ConstantsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\Constants.psm1"
 Import-Module $ConstantsPath -Force
 
-$ScriptVersion = "8.0.0"
+$ScriptVersion = "10.0.0"
 
 # --- Absolute log root ---
 $LogRoot = $Global:LogRoot
@@ -73,6 +86,8 @@ $RuntimeLogonBase = Join-Path $Global:AssetsRoot "LogonBase.jpg"
 $OrchestratorScript = Join-Path $DeployedRoot "Source\BackgroundModifier.ps1"
 $RendererScript = Join-Path $DeployedRoot "Source\BackgroundRenderer.ps1"
 $SetterScript = Join-Path $DeployedRoot "Source\BackgroundSetter.ps1"
+$Phase2aHarnessScript = Join-Path $DeployedRoot "Source\BackgroundPhase2aHarness.ps1"
+$Phase2bHarnessScript = Join-Path $DeployedRoot "Source\BackgroundPhase2bHarness.ps1"
 $RenderToolsModule = Join-Path $DeployedRoot "Modules\RenderTools.psm1"
 
 # --- Directory invariants ---
@@ -88,6 +103,8 @@ $RequiredFiles = @(
     $OrchestratorScript,
     $RendererScript,
     $SetterScript,
+    $Phase2aHarnessScript,
+    $Phase2bHarnessScript,
     $RenderToolsModule,
     $SeedStateFile,
     $SeedDesktopBase,
@@ -96,6 +113,55 @@ $RequiredFiles = @(
     $RuntimeDesktopBase,
     $RuntimeLogonBase
 )
+
+$PersistedLoggingDetailLevel = $null
+$PersistedBcdLogEnabled = $null
+
+try {
+    if (Test-Path $RuntimeStateFile) {
+        $runtimeStateRaw = Get-Content -Path $RuntimeStateFile -Raw
+        if (-not [string]::IsNullOrWhiteSpace($runtimeStateRaw)) {
+            $runtimeState = $runtimeStateRaw | ConvertFrom-Json -ErrorAction Stop
+            if ($runtimeState -and ($runtimeState.PSObject.Properties.Name -contains "logging") -and $runtimeState.logging) {
+                if ($runtimeState.logging.PSObject.Properties.Name -contains "detailLevel") {
+                    $PersistedLoggingDetailLevel = [string]$runtimeState.logging.detailLevel
+                }
+                if ($runtimeState.logging.PSObject.Properties.Name -contains "bcdLogEnabled") {
+                    $PersistedBcdLogEnabled = [bool]$runtimeState.logging.bcdLogEnabled
+                }
+            }
+        }
+    }
+}
+catch {
+    Write-Host "[WARN] Could not read logging defaults from runtime state: $($_.Exception.Message)"
+}
+
+$ExpectedDetailLevel = if ($PSBoundParameters.ContainsKey("DetailLevel")) {
+    $DetailLevel.ToLowerInvariant()
+}
+elseif ($PersistedLoggingDetailLevel) {
+    $PersistedLoggingDetailLevel.ToLowerInvariant()
+}
+elseif ($TraceMode) {
+    "d"
+}
+else {
+    "n"
+}
+
+$ExpectedTraceMode = $ExpectedDetailLevel -in @("d", "f")
+$ExpectedBcdLogEnabled = if ($PSBoundParameters.ContainsKey("BcdLogEnabled")) {
+    [bool]$BcdLogEnabled
+}
+elseif ($null -ne $PersistedBcdLogEnabled) {
+    [bool]$PersistedBcdLogEnabled
+}
+else {
+    $ExpectedDetailLevel -in @("d", "f")
+}
+
+Write-Host "[INFO] Expected logging defaults -> detail=$($ExpectedDetailLevel.ToUpperInvariant()) bcdLog=$ExpectedBcdLogEnabled traceMode=$ExpectedTraceMode"
 
 Write-Host "--- Directory check ---"
 
@@ -129,7 +195,10 @@ Write-Host "--- Scheduled task action check ---"
 function Test-TaskActionPath {
     param(
         [string]$TaskName,
-        [string]$ExpectedScriptPath
+        [string]$ExpectedScriptPath,
+        [string]$ExpectedDetailLevel,
+        [bool]$ExpectedTraceMode,
+        [bool]$ExpectedBcdLogEnabled
     )
 
     $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -168,11 +237,76 @@ function Test-TaskActionPath {
     if (-not $isEnabled) {
         Write-Host "[WARN] Task is currently disabled: $TaskName"
     }
+
+    $hasTraceArg = $normalizedArgs -like "*-TraceMode*"
+    $hasHiddenWindow = $normalizedArgs -like "*-WindowStyle Hidden*"
+    $hasBcdLogArg = $normalizedArgs -like "*-BcdLogEnabled*"
+    $hasDetailLevelArg = $normalizedArgs -match "(?i)-DetailLevel\s+([MNDF])"
+
+    if ($hasDetailLevelArg) {
+        $actualDetailLevel = $Matches[1].ToLowerInvariant()
+        if ($actualDetailLevel -eq $ExpectedDetailLevel) {
+            Write-Host "[OK] $TaskName detail level matches expected: $($ExpectedDetailLevel.ToUpperInvariant())"
+        }
+        else {
+            Write-Host "[WARN] $TaskName detail level mismatch: expected $($ExpectedDetailLevel.ToUpperInvariant()) actual $($actualDetailLevel.ToUpperInvariant())"
+        }
+    }
+    else {
+        Write-Host "[WARN] $TaskName missing -DetailLevel argument"
+    }
+
+    if ($ExpectedBcdLogEnabled) {
+        if ($hasBcdLogArg) {
+            Write-Host "[OK] $TaskName includes -BcdLogEnabled argument"
+        }
+        else {
+            Write-Host "[WARN] $TaskName is missing expected -BcdLogEnabled argument"
+        }
+    }
+    else {
+        if ($hasBcdLogArg) {
+            Write-Host "[WARN] $TaskName unexpectedly includes -BcdLogEnabled argument"
+        }
+        else {
+            Write-Host "[OK] $TaskName has no -BcdLogEnabled argument"
+        }
+    }
+
+    if ($ExpectedTraceMode) {
+        if ($hasTraceArg) {
+            Write-Host "[OK] $TaskName includes -TraceMode argument"
+        }
+        else {
+            Write-Host "[WARN] $TaskName is missing expected -TraceMode argument"
+        }
+
+        if ($hasHiddenWindow) {
+            Write-Host "[WARN] $TaskName is hidden although trace mode is expected"
+        }
+        else {
+            Write-Host "[OK] $TaskName is not hidden in trace mode"
+        }
+    }
+    else {
+        if ($hasTraceArg) {
+            Write-Host "[WARN] $TaskName unexpectedly includes -TraceMode argument"
+        }
+        else {
+            Write-Host "[OK] $TaskName has no -TraceMode argument"
+        }
+
+        if ($hasHiddenWindow) {
+            Write-Host "[OK] $TaskName uses hidden window style"
+        }
+        else {
+            Write-Host "[WARN] $TaskName is not hidden in non-trace mode"
+        }
+    }
 }
 
-Test-TaskActionPath -TaskName "BackgroundModifier-Startup"  -ExpectedScriptPath $OrchestratorScript
-Test-TaskActionPath -TaskName "BackgroundModifier-Renderer" -ExpectedScriptPath $RendererScript
-Test-TaskActionPath -TaskName "BackgroundModifier-Setter" -ExpectedScriptPath $SetterScript
+Test-TaskActionPath -TaskName "BackgroundModifier-Startup"  -ExpectedScriptPath $OrchestratorScript -ExpectedDetailLevel $ExpectedDetailLevel -ExpectedTraceMode $ExpectedTraceMode -ExpectedBcdLogEnabled $ExpectedBcdLogEnabled
+Test-TaskActionPath -TaskName "BackgroundModifier-Phase2a" -ExpectedScriptPath $Phase2aHarnessScript -ExpectedDetailLevel $ExpectedDetailLevel -ExpectedTraceMode $ExpectedTraceMode -ExpectedBcdLogEnabled $ExpectedBcdLogEnabled
 
 # --- Summary ---
 Write-Host "=== Summary ==="

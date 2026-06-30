@@ -21,7 +21,7 @@
 - Installer/setup execution requires PowerShell 7 (pwsh).
 - All runtime configuration is managed exclusively via state.json; script parameters are reserved for user-exposed flags only.
 - Internal implementation details are never exposed as parameters; all inter-component communication uses state.json.
-- Current runtime code baseline remains 9.x; this architecture describes planned v10 behavior.
+- Runtime code is aligned to the v10 preparation model; formal validation is pending.
 
 ## 1. End-User Time Flow
 
@@ -72,6 +72,7 @@ The runtime model is deliberately split into three distinct phases, each with sp
 - **Trigger:** Scheduled task running immediately post-user-logon (system context, elevated)
 - **User Visibility:** None (errors only; success is silent)
 - **Scope:** System-level background preparation and application
+- **Execution Wrapper:** `BackgroundPhase2aHarness.ps1` (sequential renderer -> setter in one task execution)
 - **Responsibilities:**
   1. Load Phase 1 systemInfo from state.json
   2. Detect current logon: obtain username, logon timestamp from system
@@ -95,6 +96,7 @@ The runtime model is deliberately split into three distinct phases, each with sp
 - **Trigger:** User runs `BackgroundModifier.ps1` interactively from command line or cmd launcher
 - **User Visibility:** Interactive menu presented; user selects actions. User sees the flags and can optionally change them.
 - **Scope:** User-level immediate desktop background updates
+- **Execution Wrapper:** `BackgroundPhase2bHarness.ps1` (interactive action menu and routing)
 - **Responsibilities:**
   1. [PHASE2B-CODE: Detect user-initiated context (NOT autorun)]
   2. Present interactive menu of available actions: "Update desktop background?", "Update logon screen?", "Get new background image?", "Maintenance?", "Cleanup?", etc.
@@ -201,9 +203,9 @@ The duplicate folder model `SharedModules\SharedModules` is not required by this
 
 Each executable component maintains its own version identifier:
 
-- **BackgroundModifier.ps1** ($Version = "10.0.0", planned): Orchestrator/entry point
-- **BackgroundRenderer.ps1** ($Version = "10.0.0", planned): Phase 1 collector
-- **BackgroundSetter.ps1** ($Version = "10.0.0", planned): Phase 2 renderer/applier
+- **BackgroundModifier.ps1** ($Version = "10.0.0"): Orchestrator/entry point
+- **BackgroundRenderer.ps1** ($Version = "10.0.0"): Phase 1 collector
+- **BackgroundSetter.ps1** ($Version = "10.0.0"): Phase 2 renderer/applier
 - **SystemInfoTools.psm1** ($Version = "1.0.0"): Shared system collection module
 - **Other modules** ($Version = "X.X.X"): Individual version per module
 
