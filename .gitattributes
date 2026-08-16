@@ -1,0 +1,60 @@
+# ============================================
+# Background4Logon+Desktop v4 - .gitattributes
+# Ensures deterministic behavior across systems
+# ============================================
+
+# ----------------------------
+# Line ending normalization
+# ----------------------------
+* text=auto eol=crlf
+
+# Program sources use CRLF
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.cs text eol=crlf
+*.cpp text eol=crlf
+*.c text eol=crlf
+*.h text eol=crlf
+*.hpp text eol=crlf
+
+# Documentation uses CRLF
+*.md text eol=crlf
+*.txt text eol=crlf
+*.rst text eol=crlf
+
+# ----------------------------
+# JSON files (tasks, state, config)
+# ----------------------------
+*.json text eol=lf
+
+# ----------------------------
+# Images and binary assets
+# ----------------------------
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.bmp binary
+
+# ----------------------------
+# Logs and runtime artifacts
+# ----------------------------
+*.log text eol=crlf
+
+# ----------------------------
+# Git diff behavior
+# ----------------------------
+# PowerShell diffing
+*.ps1 diff=powershell
+*.psm1 diff=powershell
+*.psd1 diff=powershell
+
+# JSON diffing
+*.json diff=json
+
+# ----------------------------
+# Prevent accidental CRLF pollution
+# ----------------------------
+*.sh text eol=lf

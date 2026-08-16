@@ -1,0 +1,69 @@
+# ============================================
+# Background4Logon+Desktop v4 - .editorconfig
+# Enforces deterministic formatting across editors
+# ============================================
+
+# Root of the project
+root = true
+
+# --------------------------------------------
+# Global defaults
+# --------------------------------------------
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# --------------------------------------------
+# PowerShell scripts and modules
+# --------------------------------------------
+[*.ps1]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+
+[*.psm1]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+
+[*.psd1]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+
+# --------------------------------------------
+# Batch / CMD scripts
+# --------------------------------------------
+[*.cmd]
+end_of_line = crlf
+indent_style = tab
+
+[*.bat]
+end_of_line = crlf
+indent_style = tab
+
+# --------------------------------------------
+# JSON files (tasks, state, config)
+# --------------------------------------------
+[*.json]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+
+# --------------------------------------------
+# Markdown documentation
+# --------------------------------------------
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false
+
+# --------------------------------------------
+# Logs (runtime artifacts)
+# --------------------------------------------
+[*.log]
+end_of_line = lf
+insert_final_newline = false
