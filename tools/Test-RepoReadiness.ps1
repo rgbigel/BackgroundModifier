@@ -1,13 +1,16 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$ForceInProcess
+)
 
 <#
 Module: Test-RepoReadiness.ps1
 Purpose: Run local self-readiness and LCM compliance quality checks for BackgroundModifier.
 Path: tools/Test-RepoReadiness.ps1
 Authors: Rolf
-Version: 1.0.0
+Version: 1.1.0
 Changelog:
+- 2026-08-16: Added elevated test runner integration, Assert-RepoElevationConsistency gate, and ForceInProcess pass-through.
 - 2026-08-16: Initial readiness runner instantiated.
 #>
 
@@ -20,8 +23,19 @@ if (Test-Path -LiteralPath $qualityGatesModule) {
   Assert-RepoStructure -RepoRoot $repoRoot | Out-Host
   Assert-RepoFormatting -RepoRoot $repoRoot | Out-Host
   Assert-RepoGovernanceLinks -RepoRoot $repoRoot | Out-Host
+  Assert-RepoElevationConsistency -RepoRoot $repoRoot | Out-Host
 } else {
   Write-Warning "QualityGates module not found at: $qualityGatesModule"
 }
 
-Write-Host 'BackgroundModifier readiness check: OK'
+# Run repository tests (with automated elevation handoff if required)
+$testsDir = Join-Path $repoRoot 'tests'
+$elevatedRunner = Join-Path $PSScriptRoot 'Invoke-ElevatedTest.ps1'
+if ((Test-Path -LiteralPath $testsDir) -and (Test-Path -LiteralPath $elevatedRunner)) {
+  Write-Host "`nExecuting test suite via Invoke-ElevatedTest..." -ForegroundColor Cyan
+  $runnerArgs = @{ TestPath = $testsDir }
+  if ($ForceInProcess) { $runnerArgs['ForceInProcess'] = $true }
+  & $elevatedRunner @runnerArgs | Out-Host
+}
+
+Write-Host "`nBackgroundModifier readiness check: OK" -ForegroundColor Green

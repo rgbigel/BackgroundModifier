@@ -3,8 +3,9 @@ Module: RepoQualityGates.psm1
 Purpose: Local quality gate assertions for BackgroundModifier.
 Path: tools/QualityGates/RepoQualityGates.psm1
 Authors: Rolf
-Version: 1.0.0
+Version: 1.1.0
 Changelog:
+- 2026-08-16: Added Assert-RepoElevationConsistency gate enforcing RULE-ELEV-001 through RULE-ELEV-004.
 - 2026-08-16: Initial quality gate module instantiated.
 #>
 
@@ -80,4 +81,70 @@ function Assert-RepoGovernanceLinks {
   }
 }
 
-Export-ModuleMember -Function Assert-RepoStructure, Assert-RepoFormatting, Assert-RepoGovernanceLinks
+function Assert-RepoElevationConsistency {
+  [CmdletBinding()]
+  param([string]$RepoRoot)
+
+  # 1. Validate .lcm/config.json has execution_context
+  $cfgPath = Join-Path $RepoRoot '.lcm\config.json'
+  if (-not (Test-Path -LiteralPath $cfgPath)) {
+    throw "Missing .lcm/config.json for elevation consistency check at: $cfgPath"
+  }
+
+  $cfg = Get-Content -LiteralPath $cfgPath -Raw | ConvertFrom-Json
+  if (-not $cfg.execution_context -or ($null -eq $cfg.execution_context.elevation_required)) {
+    throw "Missing mandatory 'execution_context.elevation_required' block in $cfgPath (RULE-ELEV-001 violation)."
+  }
+
+  $declaredElevation = [bool]$cfg.execution_context.elevation_required
+
+  # 2. Scan source files in src/ or Source/ for privileged/self-elevating code
+  $srcDir = Join-Path $RepoRoot 'src'
+  if (-not (Test-Path $srcDir)) { $srcDir = Join-Path $RepoRoot 'Source' }
+  
+  $detectedPatterns = @()
+  if (Test-Path $srcDir) {
+    $privilegedPatterns = @(
+      'bcdedit',
+      'fltmc',
+      'fsutil\s+fsinfo',
+      'DiskPart',
+      'Start-Process.*-Verb\s+RunAs',
+      'Get-Partition\b',
+      'Add-BitLockerKeyProtector'
+    )
+    $codeFiles = Get-ChildItem -Path $srcDir -Include '*.ps1', '*.psm1', '*.cs', '*.cpp' -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '\\\.git\\' }
+    foreach ($cf in $codeFiles) {
+      $text = Get-Content -Path $cf.FullName -Raw -ErrorAction SilentlyContinue
+      if ($text) {
+        foreach ($pattern in $privilegedPatterns) {
+          if ($text -match "(?im)$pattern") {
+            $detectedPatterns += "$($cf.Name) ($pattern)"
+          }
+        }
+      }
+    }
+  }
+
+  # Bi-directional consistency assertions
+  if ($detectedPatterns.Count -gt 0 -and -not $declaredElevation) {
+    throw "Elevation consistency violation (RULE-ELEV-003): Privileged/self-elevating code detected in source files [$($detectedPatterns -join ', ')], but .lcm/config.json declares 'elevation_required: false'."
+  }
+
+  # If elevation_required is true, verify tools/Invoke-ElevatedTest.ps1 exists
+  if ($declaredElevation) {
+    $elevatedRunner = Join-Path $RepoRoot 'tools\Invoke-ElevatedTest.ps1'
+    if (-not (Test-Path -LiteralPath $elevatedRunner)) {
+      throw "Elevation consistency violation (RULE-ELEV-004): 'elevation_required: true' is configured, but mandatory runner 'tools/Invoke-ElevatedTest.ps1' is missing."
+    }
+  }
+
+  return [pscustomobject]@{
+    Status               = 'OK'
+    ElevationConsistency = 'Valid'
+    DeclaredElevation    = $declaredElevation
+    PrivilegedPatterns   = $detectedPatterns.Count
+  }
+}
+
+Export-ModuleMember -Function Assert-RepoStructure, Assert-RepoFormatting, Assert-RepoGovernanceLinks, Assert-RepoElevationConsistency
