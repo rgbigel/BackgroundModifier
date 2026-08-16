@@ -18,7 +18,7 @@ created: 2026-08-16
 `BackgroundModifier` is an official component under the `Solution.code-workspace` ecosystem.
 
 * **Primary Language**: `PowerShell`
-* **Module Root**: `.`
+* **Module Root**: `tools`
 * **Description**: Solution component: BackgroundModifier
 
 ## 2. Structure & Directory Map

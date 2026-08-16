@@ -15,10 +15,10 @@
   "repository": {
     "name": "BackgroundModifier",
     "primary_language": "PowerShell",
-    "module_root": ".",
+    "module_root": "tools",
     "description": "Solution component: BackgroundModifier",
     "author": "Rolf",
-    "onboarded_at": "2026-08-16T13:22:04+02:00"
+    "onboarded_at": "2026-08-16T17:33:59+02:00"
   },
   "governance": {
     "lcm_version": "4.2.0",
@@ -36,8 +36,8 @@
     }
   },
   "execution_context": {
-    "elevation_required": true,
-    "minimum_privilege": "Administrator",
-    "reason": "Requires low-level access to system registry and desktop background rendering APIs"
+    "elevation_required": false,
+    "minimum_privilege": "User",
+    "reason": "Standard user execution"
   }
 }

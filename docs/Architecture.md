@@ -18,6 +18,6 @@ created: 2026-08-16
 `BackgroundModifier` provides focused capabilities within the solution workspace.
 
 ## 2. Component Design
-- **Core Logic**: Maintained under `.`.
+- **Core Logic**: Maintained under `tools`.
 - **Quality Gates**: Enforced via `tools/QualityGates/RepoQualityGates.psm1`.
 - **Governance**: Guided by core rules in `.agents/rules/core/`.

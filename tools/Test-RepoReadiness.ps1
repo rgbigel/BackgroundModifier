@@ -10,7 +10,7 @@ Path: tools/Test-RepoReadiness.ps1
 Authors: Rolf
 Version: 1.1.0
 Changelog:
-- 2026-08-16: Added elevated test runner integration, Assert-RepoElevationConsistency gate, and ForceInProcess pass-through.
+- 2026-08-16: Added elevated test runner integration and ForceInProcess pass-through.
 - 2026-08-16: Initial readiness runner instantiated.
 #>
 

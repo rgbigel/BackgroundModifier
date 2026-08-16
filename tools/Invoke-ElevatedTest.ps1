@@ -1,6 +1,6 @@
 <#
 Module: tools/Invoke-ElevatedTest.ps1
-Purpose: Runs BackgroundModifier Pester test suites with automatic Administrator elevation handoff and structured JSON evidence generation.
+Purpose: Runs Pester test suites with automatic Administrator elevation handoff and structured JSON evidence generation.
 Path: tools/Invoke-ElevatedTest.ps1
 Authors: Rolf, Workspace_AI Engine
 Version: 1.0.0
@@ -78,27 +78,6 @@ if ($isAdmin -or (-not $needsElevation) -or $ForceInProcess) {
     Write-Host " Test Path      : $TestPath" -ForegroundColor Cyan
     Write-Host "=================================================================" -ForegroundColor Cyan
 
-    if (-not (Test-Path $TestPath)) {
-        Write-Host "No tests directory found at: $TestPath. Skipping Pester run." -ForegroundColor Yellow
-        $passed = $true
-        $evidence = [ordered]@{
-            '$schema'          = 'https://json-schema.org/draft/2020-12/schema'
-            title              = 'Repository Test Execution Evidence'
-            timestamp          = (Get-Date).ToString('o')
-            repository_root    = $repoRoot
-            elevation_context  = if ($isAdmin) { 'Administrator' } else { 'User' }
-            total_count        = 0
-            passed_count       = 0
-            failed_count       = 0
-            skipped_count      = 0
-            duration_ms        = 0
-            passed             = $true
-            failed_containers  = @()
-        }
-        $evidence | ConvertTo-Json -Depth 5 | Set-Content -Path $OutEvidencePath -Encoding UTF8
-        return
-    }
-
     $pesterResults = Invoke-Pester -Path $TestPath -PassThru
 
     $passed = ($pesterResults.FailedCount -eq 0)
@@ -141,6 +120,7 @@ if ($isAdmin -or (-not $needsElevation) -or $ForceInProcess) {
     Write-Host " Evidence Path     : $OutEvidencePath" -ForegroundColor Yellow
     Write-Host "=================================================================" -ForegroundColor Yellow
 
+    # Clear previous evidence file to ensure fresh results
     if (Test-Path $OutEvidencePath) {
         Remove-Item -Path $OutEvidencePath -Force
     }
@@ -159,6 +139,7 @@ if ($isAdmin -or (-not $needsElevation) -or $ForceInProcess) {
 
     Write-Host "Elevated process finished (ExitCode: $($process.ExitCode))." -ForegroundColor Cyan
 
+    # Read back generated JSON evidence
     if (Test-Path $OutEvidencePath) {
         $evidenceData = Get-Content -Path $OutEvidencePath -Raw | ConvertFrom-Json
         Write-Host "`n=== Elevated Test Execution Summary ===" -ForegroundColor Green
