@@ -3,8 +3,9 @@ Module: RepoQualityGates.psm1
 Purpose: Local quality gate assertions for BackgroundModifier.
 Path: tools/QualityGates/RepoQualityGates.psm1
 Authors: Rolf
-Version: 1.1.0
+Version: 1.2.0
 Changelog:
+- 2026-08-16: Added Assert-RepoDocumentationFabric gate validating System Prerequisites and DOX compliance under LCM v4.2.0.
 - 2026-08-16: Added Assert-RepoElevationConsistency gate enforcing RULE-ELEV-001 through RULE-ELEV-004.
 - 2026-08-16: Initial quality gate module instantiated.
 #>
@@ -147,4 +148,39 @@ function Assert-RepoElevationConsistency {
   }
 }
 
-Export-ModuleMember -Function Assert-RepoStructure, Assert-RepoFormatting, Assert-RepoGovernanceLinks, Assert-RepoElevationConsistency
+function Assert-RepoDocumentationFabric {
+  [CmdletBinding()]
+  param([string]$RepoRoot)
+
+  # 1. Assert top-level README.md exists and has ## System Prerequisites
+  $readmePath = Join-Path $RepoRoot 'README.md'
+  if (-not (Test-Path -LiteralPath $readmePath)) {
+    throw "Missing top-level README.md (DOX violation)."
+  }
+
+  $readmeText = Get-Content -LiteralPath $readmePath -Raw
+  if ($readmeText -notmatch '(?im)##\s+.*Prerequisites') {
+    throw "README.md is missing mandatory '## System Prerequisites' section (DOX violation)."
+  }
+
+  # 2. Assert docs/README.md exists
+  $docsReadme = Join-Path $RepoRoot 'docs\README.md'
+  if (-not (Test-Path -LiteralPath $docsReadme)) {
+    throw "Missing docs/README.md documentation index."
+  }
+
+  # 3. Assert .github/agents/RepoAgentIndex.md exists
+  $agentIndex = Join-Path $RepoRoot '.github\agents\RepoAgentIndex.md'
+  if (-not (Test-Path -LiteralPath $agentIndex)) {
+    throw "Missing .github/agents/RepoAgentIndex.md agent mapping."
+  }
+
+  return [pscustomobject]@{
+    Status               = 'OK'
+    DocumentationFabric  = 'Valid'
+    HasPrerequisites     = $true
+    HasAgentIndex        = $true
+  }
+}
+
+Export-ModuleMember -Function Assert-RepoStructure, Assert-RepoFormatting, Assert-RepoGovernanceLinks, Assert-RepoElevationConsistency, Assert-RepoDocumentationFabric
