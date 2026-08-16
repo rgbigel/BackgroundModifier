@@ -21,23 +21,12 @@
     "onboarded_at": "2026-08-16T17:33:59+02:00"
   },
   "governance": {
-    "lcm_version": "4.2.0",
-    "workspace_authority": "D:\\Git_Repositories\\Workspace_AI",
-    "immutable_links": {
-      "junctions": [
-        ".agents/rules/core",
-        ".copilot/Rules/core"
-      ],
-      "hardlinks": [
-        "AGENTS.md",
-        "GEMINI.md",
-        ".copilot/instructions.md"
-      ]
-    }
+    "lcm_version": "4.3.0",
+    "workspace_authority": "D:\\Git_Repositories\\Workspace_AI"
   },
   "execution_context": {
-    "elevation_required": false,
-    "minimum_privilege": "User",
-    "reason": "Standard user execution"
+    "elevation_required": true,
+    "minimum_privilege": "Administrator",
+    "reason": "Requires Administrator privilege for bcdedit and desktop background rendering APIs"
   }
 }
