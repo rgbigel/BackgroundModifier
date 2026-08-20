@@ -22,7 +22,8 @@
   },
   "governance": {
     "lcm_version": "4.3.0",
-    "workspace_authority": "D:\\Git_Repositories\\Workspace_AI"
+    "workspace_authority": "D:\\Git_Repositories\\Workspace_AI",
+    "absorbed_lcm_version": "5.0.0"
   },
   "execution_context": {
     "elevation_required": true,
