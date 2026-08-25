@@ -128,7 +128,7 @@ function Invoke-Step {
     )
 
     if (-not (Test-Path $ScriptPath)) {
-        Write-Host "[X] Missing script for $Label: $ScriptPath"
+        Write-Host "[X] Missing script for $($Label): $ScriptPath"
         return 2
     }
 
