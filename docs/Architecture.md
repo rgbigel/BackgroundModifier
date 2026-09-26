@@ -32,3 +32,17 @@ created: 2026-08-16
   - `BackgroundPhase2bHarness.ps1`: Interactive manual action dashboard.
 - **Governance & Quality Gates**: Governed by canonical rules in `.agents/rules/` and verified via `tools/Test-RepoReadiness.ps1`.
 
+
+
+
+---
+
+## App Subsystems & Sliced Specifications
+The following modular App slices are documented in dedicated subdirectories per RULE-DOC-007:
+
+| App ID | Title | Directory | Sliced Specifications |
+|:---|:---|:---|:---|
+| App: 1 | System Identity & State Capture Engine | [`docs/App#1-SystemIdentityStateCaptureEngine/`](file:///docs/App#1-SystemIdentityStateCaptureEngine) | [Arch](file:///docs/App#1-SystemIdentityStateCaptureEngine/Architecture.md) · [Req](file:///docs/App#1-SystemIdentityStateCaptureEngine/Requirements.md) · [Impl](file:///docs/App#1-SystemIdentityStateCaptureEngine/Implementation.md) |
+| App: 2 | Telemetry Rendering & Skin Engine | [`docs/App#2-TelemetryRenderingSkinEngine/`](file:///docs/App#2-TelemetryRenderingSkinEngine) | [Arch](file:///docs/App#2-TelemetryRenderingSkinEngine/Architecture.md) · [Req](file:///docs/App#2-TelemetryRenderingSkinEngine/Requirements.md) · [Impl](file:///docs/App#2-TelemetryRenderingSkinEngine/Implementation.md) |
+| App: 3 | Desktop & Logon Wallpaper Setter | [`docs/App#3-DesktopLogonWallpaperSetter/`](file:///docs/App#3-DesktopLogonWallpaperSetter) | [Arch](file:///docs/App#3-DesktopLogonWallpaperSetter/Architecture.md) · [Req](file:///docs/App#3-DesktopLogonWallpaperSetter/Requirements.md) · [Impl](file:///docs/App#3-DesktopLogonWallpaperSetter/Implementation.md) |
+| App: 4 | Phase Execution Harness & Interactive Dashboard | [`docs/App#4-PhaseExecutionHarnessInteractiveDashboard/`](file:///docs/App#4-PhaseExecutionHarnessInteractiveDashboard) | [Arch](file:///docs/App#4-PhaseExecutionHarnessInteractiveDashboard/Architecture.md) · [Req](file:///docs/App#4-PhaseExecutionHarnessInteractiveDashboard/Requirements.md) · [Impl](file:///docs/App#4-PhaseExecutionHarnessInteractiveDashboard/Implementation.md) |

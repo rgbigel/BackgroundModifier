@@ -13,7 +13,7 @@
 - Platform: Windows 11 only.
 - Installer/setup execution: PowerShell 7 (pwsh).
 - Runtime model: Phase 1 collects system info and computes hash; Phase 2a automatically detects changes and conditionally renders/applies; Phase 2b provides interactive user actions.
-- Deployment model: non-repository runtime in BTools plus cmd exposure layer.
+- Deployment model: managed by Installer component; testing and development execute directly in-repository.
 - State contract: Comprehensive audit trail with versioning, source tracking, and transition management.
 - Runtime code follows the v10 preparation model; formal validation is pending.
 
@@ -290,44 +290,27 @@ Parameterization rule:
 
 ---
 
-## 3. Runtime Deployment Topology
+## 3. Runtime Deployment & Test Topology
 
-Runtime deployment is installer-managed and separate from repository sources:
+Runtime deployment is managed by the installer component, while development and testing operate directly in-repository:
 
-1. Deployment root (non-repository)
-- D:\OneDrive\BTools
-
-2. Per-repository runtime root
-- D:\OneDrive\BTools\<RepositoryName>
-
-3. Shared module catalog
-- D:\OneDrive\BTools\SharedModules
-
-4. Inventory root
-- D:\OneDrive\BTools\Inventory
-
-5. Deployment-only rule
-- BTools stores deployable sources, modules, and fallback assets.
-- BTools does not store live runtime state.
-- BTools does not store runtime logs.
-- Runtime logging is required and log output is written only to C:\BackgroundMotives\logs.
-
-The duplicate folder model SharedModules\SharedModules is intentionally not required in this topology.
+1. In-Repository Testing & Development:
+   - For development, debugging, and automated test execution, components run directly from `D:\Git_Repositories\BackgroundModifier`.
+   - Shared modules resolve to `D:\Git_Repositories\SharedModules`.
+2. Installation & Production Deployment:
+   - The production install location is determined and configured exclusively by the dedicated **Install component** (`Install/` / `Installation_LCD`).
+   - The deployed runtime contains executables and modules; it does not store live runtime state or logs.
+3. Runtime State & Logs:
+   - Runtime logging is written only to `C:\BackgroundMotives\logs`.
+   - Runtime state is maintained exclusively in `C:\BackgroundMotives\assets\state.json`.
 
 ---
 
 ## 4. User Exposure Layer
 
-User functionality is exposed through:
-
-- D:\OneDrive\cmd
-
-Installer responsibilities for exposure:
-
-1. Create and refresh command launchers/links from cmd to BTools runtime entrypoints.
-2. Keep exposure mappings aligned with Inventory records.
-3. Remove stale exposure artifacts no longer present in Inventory.
-4. Validate that each exposed command target resolves successfully.
+User functionality exposure:
+- Exposure mappings (launchers/links/shims) are created and managed by the Installer component based on inventory records.
+- For developer workflows and testing, entrypoints are executed directly from the repository `Source/` directory.fully.
 
 ---
 
@@ -554,14 +537,20 @@ These patterns are adapted ideas, not direct code imports.
 
 ---
 
-## 13. Paths
+## 13. Paths & Execution Topology
 
-1. Deployment root: D:\OneDrive\BTools
-2. Per-repository runtime root: D:\OneDrive\BTools\<RepositoryName>
-3. Shared module catalog: D:\OneDrive\BTools\SharedModules
-4. Inventory root: D:\OneDrive\BTools\Inventory
-5. User exposure root: D:\OneDrive\cmd
-6. Runtime state root: C:\BackgroundMotives
-7. Runtime assets root: C:\BackgroundMotives\assets
-8. Runtime logs root: C:\BackgroundMotives\logs
-9. State file: C:\BackgroundMotives\assets\state.json
+1. **Development & Testing Execution (In-Repository Default)**:
+   - For all development, testing, debugging, and quality gate execution, components execute directly from the repository source paths:
+     - Root: `D:\Git_Repositories\BackgroundModifier`
+     - Entrypoints: `D:\Git_Repositories\BackgroundModifier\Source`
+     - Modules: `D:\Git_Repositories\BackgroundModifier\Modules`
+     - Shared Modules: `D:\Git_Repositories\SharedModules`
+     - Test Runners: `D:\Git_Repositories\BackgroundModifier\tools`
+2. **Production Installation & Deployment Governance**:
+   - Production install locations are **NOT hardcoded** to any static external path (such as `D:\OneDrive\BTools`).
+   - It is the explicit responsibility of the **Install Component** (`Install/` / `Installation_LCD`) to determine, configure, and provision the active installation destination during setup/deployment.
+3. **Runtime State & Log Assets**:
+   - Runtime state root: `C:\BackgroundMotives`
+   - Runtime assets root: `C:\BackgroundMotives\assets`
+   - Runtime logs root: `C:\BackgroundMotives\logs`
+   - Primary state contract: `C:\BackgroundMotives\assets\state.json`

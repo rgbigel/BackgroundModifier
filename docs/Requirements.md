@@ -34,7 +34,7 @@ This requirement set defines the v10 preparation baseline; formal validation is 
 
 ### Module-Caller State Update Contract
 12.5. **Module Responsibility Boundary**: Modules are responsible only for processing logic (collect data, compute hashes, render images, apply settings); they do NOT directly modify state.json.
-12.6. **Caller Responsibility Boundary**: Callers (scripts that invoke modules) are responsible for: (a) reading state.json before calling module, (b) extracting and passing required data as parameters, (c) receiving module output, (d) updating state.json with results including timestamps, hashes, versions, audit trail fields (collectionSource, collectedAtUtc, etc.), (e) writing state atomically to prevent corruption. Failure to update state.json after a state-affecting module call is a caller bug, not a module bug.
+12.6. **Caller Responsibility Boundary**: Callers (scripts that invoke modules) are responsible for: (a) reading state.json before calling module, (b) extracting and passing required data as parameters, (c) receiving module output, (d) updating state.json with results including timestamps, hashes, versions, audit trail fields, (e) writing state atomically to prevent corruption.
 12.7. Each module header must document which state.json fields are affected (if any) and the caller's post-execution responsibilities.
 
 ### Versioning and Logging
@@ -44,13 +44,12 @@ This requirement set defines the v10 preparation baseline; formal validation is 
 16. Maintain consistent timestamp format across state.json: `yyyymmdd_hhmmss` (local time, no dashes, no timezone offset). Example: `20260624_093015` for June 24, 2026 at 9:30:15 AM.
 17. Store last critical error in state.json with phase, component, timestamp, full error details, and a human-readable user-visible error message for display to end user.
 
-### Deployment Topology
-18. Maintain source code in repository roots under `Git_Repositories`.
-19. Deploy runtime content to non-repository deployment plane: `D:\OneDrive\BTools\<RepositoryName>`.
-20. Deploy shared modules to `D:\OneDrive\BTools\SharedModules`.
-21. Maintain Inventory metadata under `D:\OneDrive\BTools\Inventory`.
-22. Store live runtime state exclusively under `C:\BackgroundMotives` (state.json, logs, assets).
-23. Expose user-facing commands in `D:\OneDrive\cmd` as launchers/links managed by Installer (Inventory-driven).
+### Deployment & Execution Topology
+18. Maintain source code and perform testing directly in repository roots under `Git_Repositories` (`D:\Git_Repositories\BackgroundModifier`).
+19. Shared modules for testing resolve directly to `D:\Git_Repositories\SharedModules`.
+20. The final production install and deployment location is not hardcoded and is determined exclusively by the dedicated **Install component** (`Install/` / `Installation_LCD`).
+21. Store live runtime state exclusively under `C:\BackgroundMotives` (state.json, logs, assets).
+22. User-facing exposure (launchers, command links) is managed by the Install component based on Inventory records.
 
 ### Execution and Sequencing
 24. Enforce sequencing rules through orchestrator logic to block invalid phase transitions.
