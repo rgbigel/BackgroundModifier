@@ -22,7 +22,7 @@ $Global:DeploymentRoot = "D:\OneDrive\BTools\BackgroundModifier"
 $Global:DeploymentModules = Join-Path $Global:DeploymentRoot "Modules"
 
 # Shared Modules (cross-repository)
-$Global:SharedModulesRoot = "D:\OneDrive\BTools\SharedModules"
+$Global:LCM_SharedRoot = "D:\OneDrive\BTools\LCM_Shared"
 
 # User Exposure Plane (launchers and user-facing commands)
 $Global:UserExposureRoot = "D:\OneDrive\cmd"

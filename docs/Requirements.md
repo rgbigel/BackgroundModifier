@@ -46,7 +46,7 @@ This requirement set defines the v10 preparation baseline; formal validation is 
 
 ### Deployment & Execution Topology
 18. Maintain source code and perform testing directly in repository roots under `Git_Repositories` (`D:\Git_Repositories\BackgroundModifier`).
-19. Shared modules for testing resolve directly to `D:\Git_Repositories\SharedModules`.
+19. Shared modules for testing resolve directly to `D:\Git_Repositories\LCM_Shared`.
 20. The final production install and deployment location is not hardcoded and is determined exclusively by the dedicated **Install component** (`Install/` / `Installation_LCD`).
 21. Store live runtime state exclusively under `C:\BackgroundMotives` (state.json, logs, assets).
 22. User-facing exposure (launchers, command links) is managed by the Install component based on Inventory records.

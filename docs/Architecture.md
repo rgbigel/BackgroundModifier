@@ -3,7 +3,7 @@
 Module: Architecture.md
 Purpose: Architectural design and dynamic Rainmeter skin overlay layout for BackgroundModifier.
 Path: docs/Architecture.md
-Authors: Rolf, Workspace_AI Engine
+Authors: Rolf, LCM_AI Engine
 Version: 2.0.0
 Changelog:
 - 2026-08-26: Modernize to Dynamic Rainmeter Telemetry Skin Engine (CR-2026-019).

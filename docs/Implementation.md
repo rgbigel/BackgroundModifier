@@ -296,7 +296,7 @@ Runtime deployment is managed by the installer component, while development and 
 
 1. In-Repository Testing & Development:
    - For development, debugging, and automated test execution, components run directly from `D:\Git_Repositories\BackgroundModifier`.
-   - Shared modules resolve to `D:\Git_Repositories\SharedModules`.
+   - Shared modules resolve to `D:\Git_Repositories\LCM_Shared`.
 2. Installation & Production Deployment:
    - The production install location is determined and configured exclusively by the dedicated **Install component** (`Install/` / `Installation_LCD`).
    - The deployed runtime contains executables and modules; it does not store live runtime state or logs.
@@ -544,7 +544,7 @@ These patterns are adapted ideas, not direct code imports.
      - Root: `D:\Git_Repositories\BackgroundModifier`
      - Entrypoints: `D:\Git_Repositories\BackgroundModifier\Source`
      - Modules: `D:\Git_Repositories\BackgroundModifier\Modules`
-     - Shared Modules: `D:\Git_Repositories\SharedModules`
+     - Shared Modules: `D:\Git_Repositories\LCM_Shared`
      - Test Runners: `D:\Git_Repositories\BackgroundModifier\tools`
 2. **Production Installation & Deployment Governance**:
    - Production install locations are **NOT hardcoded** to any static external path (such as `D:\OneDrive\BTools`).

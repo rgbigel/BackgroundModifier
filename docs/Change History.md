@@ -43,7 +43,7 @@ Summary:
 2. Added per-repository runtime topology under `BTools\<RepositoryName>`.
 3. Added `BTools\Inventory` as the deployment and exposure mapping source.
 4. Documented `D:\OneDrive\cmd` as the user-facing exposure layer managed during install/update.
-5. Clarified that the duplicate folder pattern `SharedModules\SharedModules` is intentionally avoided.
+5. Clarified that the duplicate folder pattern `LCM_Shared\LCM_Shared` is intentionally avoided.
 
 ## 2026-06-18 - 8.0.0 Runtime Sequencing Documentation Refresh
 
