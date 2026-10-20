@@ -1,6 +1,6 @@
 # BackgroundModifier
 
-Version: 1.0.1
+Version: 10.0.0
 
 Windows dynamic desktop wallpaper and system information overlay modifier.
 

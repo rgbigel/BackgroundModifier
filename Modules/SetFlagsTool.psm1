@@ -1,6 +1,6 @@
 <#
     Module: SetFlagsTool.psm1
-    Version: 8.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Provide invariant -t / -d flag handling for all operator-facing scripts and flag-aware modules.
 

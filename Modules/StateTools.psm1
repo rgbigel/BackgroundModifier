@@ -1,6 +1,6 @@
 <#
     Module: StateTools.psm1
-    Version: 1.0.1
+    Version: 10.0.0
     Purpose: Shared state.json helpers with explicit context and contract surface.
 
     Caller Contract (Module-Caller State Update Responsibility):

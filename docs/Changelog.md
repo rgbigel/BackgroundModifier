@@ -4,7 +4,7 @@ Module: Changelog.md
 Purpose: Record of version changes, fixes, and enhancements for BackgroundModifier.
 Path: docs/Changelog.md
 Authors: Rolf
-Version: 1.0.1
+Version: 10.0.0
 Changelog:
 - 2026-08-21: Bumped version to 1.0.1 and aligned LCM baseline.
 - 2026-08-16: Initial changelog created.

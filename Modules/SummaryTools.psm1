@@ -1,7 +1,7 @@
 <# ============================================================================================
     Path:       D:\Git_Repositories\BackgroundModifier\Modules
   Module:     SummaryTools.psm1
-    Version:    8.0.0
+    Version:    10.0.0
   Author:     Rolf Bercht
 
   Purpose:

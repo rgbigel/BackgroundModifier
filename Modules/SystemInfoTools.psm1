@@ -1,7 +1,7 @@
 <# ============================================================================================
     Path:       D:\Git_Repositories\BackgroundModifier\Modules
     Module:     SystemInfoTools.psm1
-    Version:    1.0.0
+    Version:    10.0.0
     Author:     Rolf Bercht
 
     Purpose:
@@ -20,7 +20,7 @@
         - This module does NOT directly modify state.json; caller owns state consistency
 ============================================================================================ #>
 
-$Version = "1.0.0"
+$Version = "10.0.0"
 
 function Write-BcdRawOutput {
     [CmdletBinding()]

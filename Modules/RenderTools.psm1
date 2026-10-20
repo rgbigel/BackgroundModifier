@@ -2,7 +2,7 @@
 #  Module:      RenderTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     8.0.0
+#  Version:     10.0.0
 #  Purpose:     Shared helpers for image rendering, composition, and deterministic output handling.
 #
 #  Caller Contract (Module-Caller State Update Responsibility):

@@ -1,6 +1,6 @@
 <#
     Module: RuntimeContext.psm1
-    Version: 1.0.0
+    Version: 10.0.0
     Purpose: Build and validate repository runtime context objects used by shared modules.
 
     Caller Contract (Module-Caller State Update Responsibility):

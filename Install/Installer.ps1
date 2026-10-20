@@ -13,7 +13,7 @@ param(
 
 <#
     Script: Installer.ps1
-    Version: 8.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Deploy BackgroundModifier runtime files from the repository to the runtime
              directory, then invoke Setup.ps1 from the deployed location.
@@ -64,7 +64,7 @@ if ($HelpMode) {
     exit 0
 }
 
-$ScriptVersion = "8.0.0"
+$ScriptVersion = "10.0.0"
 
 # --- Derive source root from this script's location ($PSScriptRoot = Install\) ---
 $RepoRoot    = Split-Path $PSScriptRoot -Parent

@@ -12,7 +12,7 @@ param(
 
 <#
     Script: CleanSlate.ps1
-    Version: 8.0.0
+    Version: 10.0.0
     Author: Rolf Bercht
     Purpose: Remove BackgroundModifier deployed runtime, runtime state, and scheduled tasks
              so setup/install testing can start from a deterministic clean slate.

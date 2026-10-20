@@ -2,7 +2,7 @@
 #  Module:      ImageTools.psm1
 #  Path:        .\Modules
 #  Author:      Rolf Bercht
-#  Version:     8.0.1
+#  Version:     10.0.0
 #  Purpose:     Additional image-related helpers used by renderer and installer.
 #
 #  Caller Contract (Module-Caller State Update Responsibility):
